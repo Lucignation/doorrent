@@ -1,0 +1,2933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DoorRent — Property Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Root ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #F5F4F0;
+  --surface: #FFFFFF;
+  --surface2: #F9F8F5;
+  --border: #E8E6DF;
+  --border2: #D4D1C7;
+  --ink: #1A1916;
+  --ink2: #6B6860;
+  --ink3: #A8A59E;
+  --accent: #1A3A2A;
+  --accent-light: #E8F0EB;
+  --accent2: #C8A96E;
+  --accent2-light: #FDF6EA;
+  --red: #C0392B;
+  --red-light: #FDECEA;
+  --green: #1A6B4A;
+  --green-light: #E6F4EE;
+  --amber: #B07D2A;
+  --amber-light: #FDF3E0;
+  --blue: #1A4A7A;
+  --blue-light: #E8F0FA;
+  --sidebar-w: 232px;
+  --topbar-h: 58px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 3px rgba(26,25,22,0.06), 0 1px 2px rgba(26,25,22,0.04);
+  --shadow-md: 0 4px 12px rgba(26,25,22,0.08), 0 2px 4px rgba(26,25,22,0.04);
+  --shadow-lg: 0 8px 32px rgba(26,25,22,0.12), 0 4px 12px rgba(26,25,22,0.06);
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font: 'DM Sans', system-ui, sans-serif;
+  --transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+html { font-size: 14px; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Auth Screen ──────────────────────────────────────────────── */
+#auth-screen {
+  min-height: 100vh;
+  display: flex;
+  background: var(--ink);
+}
+.auth-left {
+  flex: 1;
+  background: var(--ink);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+}
+.auth-left::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 20% 50%, rgba(26,58,42,0.6) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(200,169,110,0.15) 0%, transparent 50%);
+}
+.auth-logo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.auth-logo-mark {
+  width: 36px; height: 36px;
+  background: var(--accent2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--ink);
+}
+.auth-logo-name {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.auth-tagline {
+  position: relative;
+}
+.auth-tagline h1 {
+  font-family: var(--font-display);
+  font-size: 42px;
+  color: #fff;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+}
+.auth-tagline h1 em { color: var(--accent2); font-style: italic; }
+.auth-tagline p { color: rgba(255,255,255,0.5); font-size: 14px; line-height: 1.6; max-width: 320px; }
+.auth-stats {
+  position: relative;
+  display: flex;
+  gap: 32px;
+}
+.auth-stat { color: rgba(255,255,255,0.5); }
+.auth-stat strong { display: block; font-size: 28px; font-weight: 600; color: #fff; letter-spacing: -0.02em; }
+.auth-stat span { font-size: 12px; }
+.auth-right {
+  width: 480px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+.auth-form-wrap { width: 100%; max-width: 360px; }
+.auth-form-wrap h2 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--ink);
+  margin-bottom: 6px;
+  letter-spacing: -0.02em;
+}
+.auth-form-wrap p { color: var(--ink2); font-size: 13px; margin-bottom: 32px; }
+
+/* Role selector */
+.role-pills {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.role-pill {
+  flex: 1;
+  padding: 10px 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink2);
+  background: var(--surface);
+  transition: var(--transition);
+}
+.role-pill.active {
+  border-color: var(--accent);
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* Form fields */
+.form-group { margin-bottom: 16px; }
+.form-label { display: block; font-size: 12px; font-weight: 500; color: var(--ink2); margin-bottom: 6px; }
+.form-input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  transition: var(--transition);
+  outline: none;
+}
+.form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,58,42,0.08); }
+.form-input::placeholder { color: var(--ink3); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: var(--transition);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover { background: #0F2A1C; border-color: #0F2A1C; }
+.btn-secondary { background: var(--surface); color: var(--ink); border-color: var(--border); }
+.btn-secondary:hover { background: var(--surface2); border-color: var(--border2); }
+.btn-ghost { background: transparent; color: var(--ink2); border-color: transparent; }
+.btn-ghost:hover { background: var(--surface2); color: var(--ink); }
+.btn-danger { background: var(--red); color: #fff; border-color: var(--red); }
+.btn-danger:hover { background: #A93226; }
+.btn-gold { background: var(--accent2); color: var(--ink); border-color: var(--accent2); }
+.btn-gold:hover { background: #B8962A; }
+.btn-full { width: 100%; }
+.btn-sm { padding: 6px 12px; font-size: 12px; }
+.btn-xs { padding: 4px 10px; font-size: 11px; }
+.btn-icon { padding: 8px; }
+.auth-link { text-align: center; margin-top: 16px; font-size: 12px; color: var(--ink2); }
+.auth-link a { color: var(--accent); font-weight: 500; cursor: pointer; }
+
+/* ── App Shell ────────────────────────────────────────────────── */
+#app { display: none; height: 100vh; overflow: hidden; }
+.app-layout { display: flex; height: 100%; }
+
+/* ── Sidebar ──────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+.sidebar-logo {
+  padding: 20px 16px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-mark {
+  width: 32px; height: 32px;
+  background: var(--accent);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.logo-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+.sidebar-nav { flex: 1; overflow-y: auto; padding: 12px 8px; }
+.nav-section { margin-bottom: 8px; }
+.nav-section-label {
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink2);
+  transition: var(--transition);
+  position: relative;
+  margin-bottom: 1px;
+}
+.nav-item:hover { background: var(--bg); color: var(--ink); }
+.nav-item.active {
+  background: var(--accent-light);
+  color: var(--accent);
+  font-weight: 500;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 6px; bottom: 6px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 3px 3px 0;
+}
+.nav-icon { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.7; }
+.nav-item.active .nav-icon { opacity: 1; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 20px;
+  min-width: 18px;
+  text-align: center;
+}
+.nav-badge.amber { background: var(--amber); }
+.sidebar-user {
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+.sidebar-user:hover { background: var(--bg); }
+.user-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.user-info { flex: 1; min-width: 0; }
+.user-name { font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-role { font-size: 11px; color: var(--ink3); }
+
+/* ── Main Content ─────────────────────────────────────────────── */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+.topbar {
+  height: var(--topbar-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  flex-shrink: 0;
+  gap: 16px;
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.topbar-title { font-size: 15px; font-weight: 500; color: var(--ink); }
+.topbar-breadcrumb { font-size: 12px; color: var(--ink3); }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.icon-btn {
+  width: 34px; height: 34px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  color: var(--ink2);
+}
+.icon-btn:hover { background: var(--bg); color: var(--ink); border-color: var(--border2); }
+.icon-btn .dot {
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 7px; height: 7px;
+  background: var(--red);
+  border-radius: 50%;
+  border: 1.5px solid var(--surface);
+}
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px;
+}
+
+/* ── Page Header ──────────────────────────────────────────────── */
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+.page-header-left h1 {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+.page-header-left p { font-size: 13px; color: var(--ink2); }
+.page-header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* ── Stat Cards ───────────────────────────────────────────────── */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.stat-card:hover { border-color: var(--border2); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.stat-card.accent-green { border-top: 3px solid var(--green); }
+.stat-card.accent-amber { border-top: 3px solid var(--amber); }
+.stat-card.accent-red { border-top: 3px solid var(--red); }
+.stat-card.accent-blue { border-top: 3px solid var(--blue); }
+.stat-card.accent-gold { border-top: 3px solid var(--accent2); }
+.stat-label { font-size: 11px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+.stat-value { font-size: 28px; font-weight: 600; color: var(--ink); letter-spacing: -0.03em; line-height: 1; margin-bottom: 6px; }
+.stat-sub { font-size: 11px; color: var(--ink2); display: flex; align-items: center; gap: 4px; }
+.stat-up { color: var(--green); }
+.stat-down { color: var(--red); }
+.stat-icon {
+  position: absolute;
+  right: 16px; top: 16px;
+  width: 32px; height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.stat-icon.green { background: var(--green-light); color: var(--green); }
+.stat-icon.amber { background: var(--amber-light); color: var(--amber); }
+.stat-icon.red { background: var(--red-light); color: var(--red); }
+.stat-icon.blue { background: var(--blue-light); color: var(--blue); }
+.stat-icon.gold { background: var(--accent2-light); color: var(--accent2); }
+
+/* ── Cards ────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.card-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+.card-subtitle { font-size: 12px; color: var(--ink3); margin-top: 1px; }
+.card-body { padding: 20px; }
+.card-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* ── Table ────────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead tr { border-bottom: 1px solid var(--border); }
+th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  background: var(--surface2);
+}
+td {
+  padding: 13px 14px;
+  font-size: 13px;
+  color: var(--ink);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--surface2); cursor: pointer; }
+.td-muted { color: var(--ink2); font-size: 12px; }
+.td-bold { font-weight: 500; }
+
+/* ── Badges ───────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.badge-green { background: var(--green-light); color: var(--green); }
+.badge-red { background: var(--red-light); color: var(--red); }
+.badge-amber { background: var(--amber-light); color: var(--amber); }
+.badge-blue { background: var(--blue-light); color: var(--blue); }
+.badge-gray { background: var(--surface2); color: var(--ink2); }
+.badge-gold { background: var(--accent2-light); color: var(--amber); }
+
+/* ── Filters Bar ──────────────────────────────────────────────── */
+.filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.search-input-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 200px;
+  max-width: 320px;
+}
+.search-icon {
+  position: absolute;
+  left: 10px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink3);
+  width: 14px; height: 14px;
+}
+.search-input {
+  width: 100%;
+  padding: 8px 12px 8px 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--ink);
+  outline: none;
+  transition: var(--transition);
+}
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,58,42,0.08); }
+.filter-select {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font);
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--ink2);
+  outline: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.filter-select:focus { border-color: var(--accent); }
+
+/* ── Tabs ─────────────────────────────────────────────────────── */
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+.tab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink2);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.tab:hover { color: var(--ink); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Alerts / Banners ─────────────────────────────────────────── */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  font-size: 13px;
+  border: 1px solid;
+}
+.alert-icon { width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; }
+.alert-content { flex: 1; }
+.alert-title { font-weight: 600; margin-bottom: 2px; }
+.alert-desc { opacity: 0.8; }
+.alert-action { font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0; text-decoration: underline; opacity: 0.8; }
+.alert-red { background: var(--red-light); border-color: rgba(192,57,43,0.2); color: var(--red); }
+.alert-amber { background: var(--amber-light); border-color: rgba(176,125,42,0.2); color: var(--amber); }
+.alert-green { background: var(--green-light); border-color: rgba(26,107,74,0.2); color: var(--green); }
+.alert-blue { background: var(--blue-light); border-color: rgba(26,74,122,0.2); color: var(--blue); }
+
+/* ── Chart Area ───────────────────────────────────────────────── */
+.chart-container { position: relative; height: 200px; }
+.bar-chart { display: flex; align-items: flex-end; gap: 8px; height: 100%; padding-bottom: 28px; }
+.bar-group { display: flex; flex-direction: column; align-items: center; flex: 1; gap: 4px; }
+.bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+.bar:hover { opacity: 0.8; }
+.bar-label { font-size: 10px; color: var(--ink3); }
+.bar-val { font-size: 10px; color: var(--ink2); font-weight: 500; }
+.donut-wrap { position: relative; display: inline-flex; }
+.donut-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.donut-pct { font-size: 22px; font-weight: 600; color: var(--ink); letter-spacing: -0.03em; }
+.donut-sub { font-size: 11px; color: var(--ink3); }
+
+/* ── Modals ───────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,25,22,0.5);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: modalIn 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+.modal-lg { max-width: 680px; }
+.modal-xl { max-width: 820px; }
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title { font-family: var(--font-display); font-size: 20px; color: var(--ink); letter-spacing: -0.02em; }
+.modal-close {
+  width: 28px; height: 28px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--ink2);
+  font-size: 16px;
+  transition: var(--transition);
+}
+.modal-close:hover { background: var(--bg); color: var(--ink); }
+.modal-body { padding: 20px 24px; }
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  background: var(--surface2);
+}
+
+/* ── Form Elements ────────────────────────────────────────────── */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.form-full { grid-column: 1 / -1; }
+textarea.form-input { resize: vertical; min-height: 80px; }
+select.form-input { cursor: pointer; }
+.form-hint { font-size: 11px; color: var(--ink3); margin-top: 4px; }
+.form-error { font-size: 11px; color: var(--red); margin-top: 4px; display: none; }
+.form-input.error { border-color: var(--red); }
+.form-divider { height: 1px; background: var(--border); margin: 20px 0; }
+.checkbox-wrap { display: flex; align-items: center; gap: 8px; }
+.checkbox-wrap input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+.checkbox-wrap label { font-size: 13px; color: var(--ink); cursor: pointer; }
+
+/* ── Toast ────────────────────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.toast {
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 280px;
+  max-width: 380px;
+  animation: toastIn 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.toast.success { background: var(--green); }
+.toast.error { background: var(--red); }
+.toast.info { background: var(--blue); }
+
+/* ── Empty State ──────────────────────────────────────────────── */
+.empty-state {
+  padding: 60px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.empty-icon {
+  width: 56px; height: 56px;
+  border-radius: 16px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+.empty-title { font-size: 15px; font-weight: 600; color: var(--ink); }
+.empty-desc { font-size: 13px; color: var(--ink2); max-width: 300px; }
+
+/* ── Skeleton / Loading ───────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, var(--surface2) 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s infinite;
+  border-radius: 4px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ── Property Card ────────────────────────────────────────────── */
+.property-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.property-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.property-card:hover { border-color: var(--border2); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.property-img {
+  height: 140px;
+  background: linear-gradient(135deg, var(--accent) 0%, #0F2A1C 100%);
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  padding: 16px;
+}
+.property-img-num {
+  font-family: var(--font-display);
+  font-size: 36px;
+  color: rgba(255,255,255,0.15);
+  position: absolute;
+  top: 12px; right: 16px;
+  letter-spacing: -0.04em;
+}
+.property-img-badge {
+  position: absolute;
+  top: 12px; left: 12px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.property-name { font-size: 13px; font-weight: 600; color: #fff; }
+.property-addr { font-size: 11px; color: rgba(255,255,255,0.6); margin-top: 2px; }
+.property-meta {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.property-stats { display: flex; gap: 16px; }
+.prop-stat { }
+.prop-stat strong { display: block; font-size: 18px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; }
+.prop-stat span { font-size: 10px; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.04em; }
+.property-occ-bar {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin: 10px 16px 14px;
+  overflow: hidden;
+}
+.property-occ-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* ── Tenant Row ───────────────────────────────────────────────── */
+.tenant-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.tenant-info { display: flex; flex-direction: column; }
+.tenant-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+.tenant-email { font-size: 11px; color: var(--ink3); }
+
+/* ── Progress Bar ─────────────────────────────────────────────── */
+.progress { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+.progress-green { background: var(--green); }
+.progress-amber { background: var(--accent2); }
+.progress-red { background: var(--red); }
+
+/* ── Timeline ─────────────────────────────────────────────────── */
+.timeline { display: flex; flex-direction: column; gap: 0; }
+.timeline-item {
+  display: flex;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+.timeline-item:last-child { border-bottom: none; }
+.timeline-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+  margin-top: 5px;
+  position: relative;
+}
+.timeline-content { flex: 1; }
+.timeline-title { font-size: 13px; font-weight: 500; color: var(--ink); }
+.timeline-desc { font-size: 12px; color: var(--ink2); margin-top: 2px; }
+.timeline-time { font-size: 11px; color: var(--ink3); white-space: nowrap; }
+
+/* ── Sidebar Highlight cards ──────────────────────────────────── */
+.mini-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.mini-card-label { font-size: 10px; font-weight: 600; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.mini-card-value { font-size: 18px; font-weight: 600; color: var(--ink); letter-spacing: -0.02em; }
+.mini-card-sub { font-size: 11px; color: var(--ink2); margin-top: 2px; }
+
+/* ── Occupancy Ring ───────────────────────────────────────────── */
+.legend-list { display: flex; flex-direction: column; gap: 8px; }
+.legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink2); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── Sidebar toggle ───────────────────────────────────────────── */
+.sidebar-toggle { display: none; }
+
+/* ── Pagination ───────────────────────────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--ink2);
+}
+.pagination-pages { display: flex; gap: 4px; }
+.page-btn {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--ink2);
+  background: var(--surface);
+  transition: var(--transition);
+}
+.page-btn:hover, .page-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Views ────────────────────────────────────────────────────── */
+.view { display: none; }
+.view.active { display: block; }
+
+/* ── Separator ────────────────────────────────────────────────── */
+.sep { height: 1px; background: var(--border); margin: 20px 0; }
+
+/* ── Tag/Chip ─────────────────────────────────────────────────── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--ink2);
+}
+
+/* ── Stacked avatar group ─────────────────────────────────────── */
+.avatar-stack { display: flex; }
+.avatar-stack .tenant-avatar { border: 2px solid var(--surface); margin-left: -8px; }
+.avatar-stack .tenant-avatar:first-child { margin-left: 0; }
+
+/* ── Switch ───────────────────────────────────────────────────── */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 36px; height: 20px;
+}
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: var(--border2);
+  border-radius: 20px;
+  transition: var(--transition);
+}
+.switch-slider::before {
+  content: '';
+  position: absolute;
+  height: 14px; width: 14px;
+  left: 3px; bottom: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: var(--transition);
+}
+.switch input:checked + .switch-slider { background: var(--accent); }
+.switch input:checked + .switch-slider::before { transform: translateX(16px); }
+
+/* ── Sign pad ─────────────────────────────────────────────────── */
+.sign-pad {
+  width: 100%;
+  height: 160px;
+  border: 2px dashed var(--border2);
+  border-radius: var(--radius);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: crosshair;
+  position: relative;
+  overflow: hidden;
+}
+.sign-pad canvas { position: absolute; inset: 0; }
+.sign-pad-hint { font-size: 12px; color: var(--ink3); pointer-events: none; }
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar { position: fixed; left: -100%; z-index: 50; transition: var(--transition); }
+  .sidebar.mobile-open { left: 0; box-shadow: var(--shadow-lg); }
+  .sidebar-toggle { display: flex; }
+  .auth-left { display: none; }
+  .auth-right { width: 100%; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .content-area { padding: 16px; }
+  .topbar { padding: 0 16px; }
+  .page-header { flex-direction: column; gap: 12px; }
+}
+
+/* ── Animations ───────────────────────────────────────────────── */
+.view.active {
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- ── AUTH SCREEN ──────────────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-left">
+    <div class="auth-logo">
+      <div class="auth-logo-mark">P</div>
+      <span class="auth-logo-name">DoorRent</span>
+    </div>
+    <div class="auth-tagline">
+      <h1>Property management<br><em>reimagined.</em></h1>
+      <p>The complete platform for landlords — from rent collection to agreements, reminders, and tenant communication.</p>
+    </div>
+    <div class="auth-stats">
+      <div class="auth-stat">
+        <strong>12K+</strong>
+        <span>Properties managed</span>
+      </div>
+      <div class="auth-stat">
+        <strong>₦4.2B</strong>
+        <span>Rent collected</span>
+      </div>
+      <div class="auth-stat">
+        <strong>98.3%</strong>
+        <span>Uptime SLA</span>
+      </div>
+    </div>
+  </div>
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+      <h2>Welcome back</h2>
+      <p>Sign in to your DoorRent account</p>
+
+      <div class="role-pills">
+        <div class="role-pill active" onclick="setRole(this, 'landlord')">🏠 Landlord</div>
+        <div class="role-pill" onclick="setRole(this, 'admin')">⚙️ Admin</div>
+        <div class="role-pill" onclick="setRole(this, 'tenant')">🔑 Tenant</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email address</label>
+        <input class="form-input" type="email" placeholder="you@example.com" value="babatunde@lekki.io">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input class="form-input" type="password" placeholder="••••••••" value="password123">
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <div class="checkbox-wrap">
+          <input type="checkbox" id="rem" checked>
+          <label for="rem">Remember me</label>
+        </div>
+        <a style="font-size:12px;color:var(--accent);cursor:pointer;font-weight:500">Forgot password?</a>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="loginAs('landlord')" style="padding:12px">Sign in as Landlord</button>
+      <div class="auth-link">No account? <a onclick="showToast('Contact your platform admin to create an account','info')">Get started →</a></div>
+
+      <div style="margin-top:24px;padding:14px;background:var(--accent2-light);border:1px solid rgba(200,169,110,0.3);border-radius:var(--radius-sm)">
+        <div style="font-size:11px;font-weight:600;color:var(--amber);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.06em">Demo Access</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div onclick="loginAs('landlord')" style="cursor:pointer;font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;background:var(--surface)">
+            <span>🏠</span> <strong>Landlord</strong> — Babatunde Adeyemi
+          </div>
+          <div onclick="loginAs('admin')" style="cursor:pointer;font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;background:var(--surface)">
+            <span>⚙️</span> <strong>Super Admin</strong> — DoorRent Team
+          </div>
+          <div onclick="loginAs('tenant')" style="cursor:pointer;font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;background:var(--surface)">
+            <span>🔑</span> <strong>Tenant</strong> — Amaka Obi
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── APP SHELL ────────────────────────────────────────────────── -->
+<div id="app">
+  <div class="app-layout">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="logo-mark">P</div>
+        <span class="logo-name">DoorRent</span>
+      </div>
+      <nav class="sidebar-nav" id="sidebar-nav">
+        <!-- Injected by JS -->
+      </nav>
+      <div class="sidebar-user" id="sidebar-user">
+        <div class="user-avatar" id="user-initials">BA</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name-display">Babatunde Adeyemi</div>
+          <div class="user-role" id="user-role-display">Landlord</div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--ink3);flex-shrink:0"><circle cx="8" cy="8" r="6"/><path d="M8 10V8M8 6h.01"/></svg>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main-area">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn sidebar-toggle" onclick="document.getElementById('sidebar').classList.toggle('mobile-open')">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h12M2 12h12"/></svg>
+          </button>
+          <div>
+            <div class="topbar-title" id="topbar-title">Overview</div>
+            <div class="topbar-breadcrumb" id="topbar-crumb">Dashboard → Overview</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <div class="icon-btn" onclick="showToast('No new messages','info')">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v8a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l6 5 6-5"/></svg>
+          </div>
+          <div class="icon-btn" onclick="openModal('notification-modal')">
+            <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a5 5 0 015 5v2l1 2H2l1-2V7a5 5 0 015-5z"/><path d="M6.5 13.5a1.5 1.5 0 003 0"/></svg>
+            <div class="dot"></div>
+          </div>
+          <div class="user-avatar" style="cursor:pointer" onclick="showToast('Profile settings coming soon','info')" id="topbar-avatar">BA</div>
+          <button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>
+        </div>
+      </header>
+
+      <main class="content-area" id="content-area">
+        <!-- Views rendered here -->
+      </main>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODALS ────────────────────────────────────────────────────── -->
+
+<!-- Add Property Modal -->
+<div class="modal-overlay" id="add-property-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">Add New Property</div>
+      <div class="modal-close" onclick="closeModal('add-property-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Property Name *</label>
+          <input class="form-input" placeholder="e.g. Lekki Gardens Estate">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Property Type *</label>
+          <select class="form-input">
+            <option>Residential</option>
+            <option>Commercial</option>
+            <option>Mixed Use</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Full Address *</label>
+        <input class="form-input" placeholder="Street address">
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label class="form-label">City *</label>
+          <input class="form-input" placeholder="Lagos">
+        </div>
+        <div class="form-group">
+          <label class="form-label">State *</label>
+          <input class="form-input" placeholder="Lagos State">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total Floors</label>
+          <input class="form-input" type="number" placeholder="e.g. 4">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea class="form-input" placeholder="Brief description of the property…"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amenities</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" checked> 24/7 Security</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" checked> Parking</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox"> Swimming Pool</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" checked> Generator</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox"> Gym</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px"><input type="checkbox" checked> Borehole</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-property-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('add-property-modal');showToast('Property created successfully','success')">Create Property</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Tenant Modal -->
+<div class="modal-overlay" id="add-tenant-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">Add New Tenant</div>
+      <div class="modal-close" onclick="closeModal('add-tenant-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">Personal Information</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name *</label>
+            <input class="form-input" placeholder="First name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name *</label>
+            <input class="form-input" placeholder="Last name">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Email Address *</label>
+            <input class="form-input" type="email" placeholder="tenant@email.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone Number *</label>
+            <input class="form-input" placeholder="+234 800 000 0000">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">ID Type</label>
+            <select class="form-input"><option>National ID</option><option>International Passport</option><option>Driver's License</option><option>Voter's Card</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ID Number</label>
+            <input class="form-input" placeholder="ID number">
+          </div>
+        </div>
+      </div>
+      <div class="form-divider"></div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">Unit Assignment & Lease</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Property *</label>
+            <select class="form-input">
+              <option>Lekki Gardens Estate</option>
+              <option>VI Towers</option>
+              <option>Ikoyi Residences</option>
+              <option>Yaba Court</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Unit *</label>
+            <select class="form-input">
+              <option>B2 — 2 Bed (₦180,000/mo)</option>
+              <option>C1 — 1 Bed (₦120,000/mo)</option>
+              <option>D3 — 3 Bed (₦280,000/mo)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Lease Start Date *</label>
+            <input class="form-input" type="date" value="2026-04-01">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lease End Date *</label>
+            <input class="form-input" type="date" value="2027-03-31">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Rent Amount (₦) *</label>
+            <input class="form-input" type="number" placeholder="180000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Deposit Amount (₦)</label>
+            <input class="form-input" type="number" placeholder="360000">
+          </div>
+        </div>
+      </div>
+      <div class="form-divider"></div>
+      <div class="checkbox-wrap" style="margin-bottom:8px">
+        <input type="checkbox" id="send-invite" checked>
+        <label for="send-invite">Send portal invitation email to tenant</label>
+      </div>
+      <div class="checkbox-wrap">
+        <input type="checkbox" id="gen-agreement" checked>
+        <label for="gen-agreement">Generate tenancy agreement from template</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-tenant-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('add-tenant-modal');showToast('Tenant added & invite sent','success')">Add Tenant</button>
+    </div>
+  </div>
+</div>
+
+<!-- Send Notice Modal -->
+<div class="modal-overlay" id="send-notice-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Send Notice</div>
+      <div class="modal-close" onclick="closeModal('send-notice-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Notice Type *</label>
+        <select class="form-input">
+          <option>Rent Increase Notice</option>
+          <option>Vacate Notice</option>
+          <option>General Announcement</option>
+          <option>Maintenance Notice</option>
+          <option>Rent Reminder</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Recipients *</label>
+        <select class="form-input">
+          <option>All Tenants (24)</option>
+          <option>Lekki Gardens — All Tenants (8)</option>
+          <option>VI Towers — All Tenants (9)</option>
+          <option>Specific Tenant…</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Subject *</label>
+        <input class="form-input" placeholder="Notice subject" value="Rent Increase Notice — Q3 2026">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Message *</label>
+        <textarea class="form-input" style="min-height:120px">Dear Tenant,
+
+We wish to inform you that effective from July 1, 2026, your monthly rent will be adjusted in line with current market rates.
+
+Please contact us if you have any questions.
+
+DoorRent Property Management</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Delivery Method</label>
+        <div style="display:flex;gap:12px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" checked> Email</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="checkbox" checked> SMS</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Schedule</label>
+        <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="radio" name="sched" checked> Send Now</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="radio" name="sched"> Schedule for Later</label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('send-notice-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('send-notice-modal');showToast('Notice sent to 24 tenants','success')">Send Notice</button>
+    </div>
+  </div>
+</div>
+
+<!-- Agreement Sign Modal -->
+<div class="modal-overlay" id="sign-agreement-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <div class="modal-title">Review & Sign Agreement</div>
+      <div class="modal-close" onclick="closeModal('sign-agreement-modal')">✕</div>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;font-size:13px;line-height:1.8;max-height:280px;overflow-y:auto">
+        <div style="font-weight:600;font-size:15px;margin-bottom:12px;text-align:center">TENANCY AGREEMENT</div>
+        <p>This Tenancy Agreement is entered into on <strong>April 1, 2026</strong>, between <strong>Babatunde Adeyemi</strong> ("Landlord") and <strong>Amaka Obi</strong> ("Tenant").</p>
+        <br>
+        <p><strong>1. PROPERTY:</strong> The Landlord agrees to let and the Tenant agrees to take on tenancy the property known as Unit A3, Lekki Gardens Estate, Lekki Phase 1, Lagos.</p>
+        <br>
+        <p><strong>2. TERM:</strong> The tenancy shall commence on April 1, 2026 and expire on March 31, 2027 (12 months).</p>
+        <br>
+        <p><strong>3. RENT:</strong> The Tenant shall pay a monthly rent of ₦150,000 (One Hundred and Fifty Thousand Naira) payable in advance on the 1st of each month.</p>
+        <br>
+        <p><strong>4. DEPOSIT:</strong> A security deposit of ₦300,000 has been paid and will be refunded at the end of tenancy subject to satisfactory inspection.</p>
+        <br>
+        <p><strong>5. USE OF PROPERTY:</strong> The property shall be used solely as a private residential dwelling and for no other purpose.</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Your Signature *</label>
+        <div class="sign-pad" id="sign-pad">
+          <canvas id="sig-canvas" width="460" height="160"></canvas>
+          <div class="sign-pad-hint" id="sig-hint">Sign here with your mouse or touch</div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:6px">
+          <button class="btn btn-ghost btn-xs" onclick="clearSignature()">Clear</button>
+        </div>
+      </div>
+      <div class="checkbox-wrap">
+        <input type="checkbox" id="agree-check">
+        <label for="agree-check">I have read and agree to the terms of this tenancy agreement</label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('sign-agreement-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="closeModal('sign-agreement-modal');showToast('Agreement signed successfully','success')">Sign Agreement</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notification Modal -->
+<div class="modal-overlay" id="notification-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Notifications</div>
+      <div class="modal-close" onclick="closeModal('notification-modal')">✕</div>
+    </div>
+    <div class="modal-body" style="padding:0">
+      <div class="timeline" style="padding:0 20px">
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:var(--red)"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">Tunde Adeola — Rent Overdue</div>
+            <div class="timeline-desc">₦150,000 rent is 21 days overdue on Unit B1, Lekki Gardens</div>
+          </div>
+          <div class="timeline-time">2h ago</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:var(--amber)"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">Emeka Nwosu — Lease Expiring</div>
+            <div class="timeline-desc">Lease expires in 25 days. Send renewal notice.</div>
+          </div>
+          <div class="timeline-time">5h ago</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot" style="background:var(--green)"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">Payment Received — Chidinma Eze</div>
+            <div class="timeline-desc">₦320,000 received for Unit 5A, Ikoyi Residences</div>
+          </div>
+          <div class="timeline-time">1d ago</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">Agreement Signed — Kelechi Dike</div>
+            <div class="timeline-desc">Tenancy agreement for Unit 3B has been signed</div>
+          </div>
+          <div class="timeline-time">2d ago</div>
+        </div>
+        <div class="timeline-item">
+          <div class="timeline-dot"></div>
+          <div class="timeline-content">
+            <div class="timeline-title">New Tenant Portal Access</div>
+            <div class="timeline-desc">Ngozi Adichie activated their tenant portal account</div>
+          </div>
+          <div class="timeline-time">3d ago</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <span style="font-size:12px;color:var(--ink3)">5 notifications</span>
+      <button class="btn btn-ghost btn-xs">Mark all read</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let currentRole = 'landlord';
+let currentView = 'overview';
+
+const ROLES = {
+  landlord: {
+    name: 'Babatunde Adeyemi',
+    role: 'Landlord',
+    initials: 'BA',
+    nav: [
+      { section: 'Main', items: [
+        { id: 'overview', label: 'Overview', icon: gridIcon() },
+        { id: 'properties', label: 'Properties', icon: homeIcon() },
+        { id: 'units', label: 'Units', icon: buildingIcon() },
+        { id: 'tenants', label: 'Tenants', icon: usersIcon(), badge: '3' },
+        { id: 'agreements', label: 'Agreements', icon: docIcon(), badge: '2', badgeClass: 'amber' },
+      ]},
+      { section: 'Finance', items: [
+        { id: 'payments', label: 'Payments', icon: cardIcon() },
+        { id: 'receipts', label: 'Receipts', icon: receiptIcon() },
+      ]},
+      { section: 'Communication', items: [
+        { id: 'notices', label: 'Notices', icon: bellIcon() },
+        { id: 'reminders', label: 'Reminders', icon: clockIcon() },
+      ]},
+      { section: 'Analytics', items: [
+        { id: 'reports', label: 'Reports', icon: chartIcon() },
+      ]},
+      { section: 'Account', items: [
+        { id: 'settings', label: 'Settings', icon: settingsIcon() },
+      ]},
+    ]
+  },
+  admin: {
+    name: 'DoorRent Admin',
+    role: 'Super Admin',
+    initials: 'PA',
+    nav: [
+      { section: 'Back Office', items: [
+        { id: 'admin-overview', label: 'Overview', icon: gridIcon() },
+        { id: 'admin-landlords', label: 'Landlords', icon: usersIcon() },
+        { id: 'admin-properties', label: 'Properties', icon: homeIcon() },
+        { id: 'admin-transactions', label: 'Transactions', icon: cardIcon() },
+        { id: 'admin-subscriptions', label: 'Subscriptions', icon: starIcon() },
+      ]},
+      { section: 'Operations', items: [
+        { id: 'admin-support', label: 'Support', icon: chatIcon(), badge: '5' },
+        { id: 'admin-templates', label: 'Templates', icon: docIcon() },
+        { id: 'admin-staff', label: 'Staff & Roles', icon: shieldIcon() },
+      ]},
+      { section: 'Analytics', items: [
+        { id: 'admin-reports', label: 'Reports', icon: chartIcon() },
+        { id: 'admin-audit', label: 'Audit Logs', icon: logIcon() },
+      ]},
+      { section: 'System', items: [
+        { id: 'admin-settings', label: 'Settings', icon: settingsIcon() },
+      ]},
+    ]
+  },
+  tenant: {
+    name: 'Amaka Obi',
+    role: 'Tenant · Unit A3',
+    initials: 'AO',
+    nav: [
+      { section: 'My Portal', items: [
+        { id: 'tenant-dashboard', label: 'Dashboard', icon: gridIcon() },
+        { id: 'tenant-rent', label: 'My Rent', icon: cardIcon() },
+        { id: 'tenant-pay', label: 'Pay Rent', icon: payIcon() },
+        { id: 'tenant-receipts', label: 'Receipts', icon: receiptIcon() },
+        { id: 'tenant-agreement', label: 'My Agreement', icon: docIcon(), badge: '1', badgeClass: 'amber' },
+        { id: 'tenant-notices', label: 'Notices', icon: bellIcon(), badge: '2' },
+      ]},
+      { section: 'Account', items: [
+        { id: 'tenant-profile', label: 'Profile', icon: settingsIcon() },
+      ]},
+    ]
+  }
+};
+
+// ── Icons ──────────────────────────────────────────────────────────────────
+function gridIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg>`; }
+function homeIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7L8 2l6 5v7a1 1 0 01-1 1H3a1 1 0 01-1-1V7z"/><path d="M6 15V9h4v6"/></svg>`; }
+function usersIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2.2-5 5-5s5 2 5 5"/><circle cx="12" cy="6" r="2"/><path d="M12 10c1.5 0 3 1 3 3.5"/></svg>`; }
+function buildingIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="12" rx="1"/><path d="M5 15V9h6v6"/><path d="M5 6h1m4 0h1M5 9h1"/></svg>`; }
+function docIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 2H3a1 1 0 00-1 1v10a1 1 0 001 1h10a1 1 0 001-1V6L10 2z"/><path d="M10 2v4h4"/><path d="M5 9h6M5 11h4"/></svg>`; }
+function cardIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="14" height="9" rx="1.5"/><path d="M1 7h14"/><path d="M4 11h3"/></svg>`; }
+function receiptIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2v12l2-1.5 2 1.5 2-1.5L13 14V2H3z"/><path d="M5 6h6M5 9h4"/></svg>`; }
+function bellIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a5 5 0 015 5v2l1 2H2l1-2V7a5 5 0 015-5z"/><path d="M6.5 13.5a1.5 1.5 0 003 0"/></svg>`; }
+function clockIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>`; }
+function chartIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12l4-4 3 3 5-6"/><path d="M2 14h12"/></svg>`; }
+function settingsIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.42 1.42M11.53 11.53l1.42 1.42M3.05 12.95l1.42-1.42M11.53 4.47l1.42-1.42"/></svg>`; }
+function starIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l1.8 3.6L14 6.3l-3 2.9.7 4.1L8 11.3l-3.7 2 .7-4.1L2 6.3l4.2-.7L8 2z"/></svg>`; }
+function chatIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v7a1 1 0 01-1 1H5l-3 2V3z"/></svg>`; }
+function shieldIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l5 2v4c0 3-2 5.3-5 6-3-.7-5-3-5-6V4l5-2z"/></svg>`; }
+function logIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h8M4 8h8M4 12h5"/><rect x="1" y="1" width="14" height="14" rx="2"/></svg>`; }
+function payIcon() { return `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12M5 5h4.5a2.5 2.5 0 010 5H5"/><path d="M5 5H3m2 5H3"/></svg>`; }
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+function setRole(el, role) {
+  document.querySelectorAll('.role-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  const btn = document.querySelector('.auth-right .btn-primary');
+  const labels = { landlord: 'Sign in as Landlord', admin: 'Sign in as Admin', tenant: 'Sign in as Tenant' };
+  btn.textContent = labels[role];
+  btn.onclick = () => loginAs(role);
+}
+
+function loginAs(role) {
+  currentRole = role;
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  initApp();
+  const defaultViews = { landlord: 'overview', admin: 'admin-overview', tenant: 'tenant-dashboard' };
+  navigateTo(defaultViews[role]);
+}
+
+function logout() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+// ── App Init ───────────────────────────────────────────────────────────────
+function initApp() {
+  const user = ROLES[currentRole];
+  document.getElementById('user-name-display').textContent = user.name;
+  document.getElementById('user-role-display').textContent = user.role;
+  document.getElementById('user-initials').textContent = user.initials;
+  document.getElementById('topbar-avatar').textContent = user.initials;
+
+  // Build nav
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = user.nav.map(section => `
+    <div class="nav-section">
+      <div class="nav-section-label">${section.section}</div>
+      ${section.items.map(item => `
+        <div class="nav-item" id="nav-${item.id}" onclick="navigateTo('${item.id}')">
+          <span class="nav-icon">${item.icon}</span>
+          ${item.label}
+          ${item.badge ? `<span class="nav-badge ${item.badgeClass||''}">${item.badge}</span>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function navigateTo(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  const navEl = document.getElementById(`nav-${view}`);
+  if (navEl) navEl.classList.add('active');
+
+  const titles = {
+    overview: 'Overview',
+    properties: 'Properties',
+    units: 'Units',
+    tenants: 'Tenants',
+    agreements: 'Agreements',
+    payments: 'Payments',
+    receipts: 'Receipts',
+    notices: 'Notices',
+    reminders: 'Reminders',
+    reports: 'Reports',
+    settings: 'Settings',
+    'admin-overview': 'Platform Overview',
+    'admin-landlords': 'Landlord Management',
+    'admin-properties': 'All Properties',
+    'admin-transactions': 'Transactions',
+    'admin-subscriptions': 'Subscriptions',
+    'admin-support': 'Support Center',
+    'admin-templates': 'Templates',
+    'admin-staff': 'Staff & Roles',
+    'admin-reports': 'Reports & Analytics',
+    'admin-audit': 'Audit Logs',
+    'admin-settings': 'System Settings',
+    'tenant-dashboard': 'My Dashboard',
+    'tenant-rent': 'My Rent',
+    'tenant-pay': 'Pay Rent',
+    'tenant-receipts': 'Receipts',
+    'tenant-agreement': 'My Agreement',
+    'tenant-notices': 'Notices',
+    'tenant-profile': 'Profile',
+  };
+
+  document.getElementById('topbar-title').textContent = titles[view] || view;
+  document.getElementById('topbar-crumb').textContent = `Dashboard → ${titles[view] || view}`;
+
+  const content = document.getElementById('content-area');
+  const renderer = VIEWS[view];
+  if (renderer) {
+    content.innerHTML = renderer();
+    if (view === 'overview') renderOverviewCharts();
+    if (view === 'reports') renderReportCharts();
+    if (view === 'admin-overview') renderAdminCharts();
+  } else {
+    content.innerHTML = renderNotBuilt(titles[view]);
+  }
+}
+
+function renderNotBuilt(name) {
+  return `<div class="empty-state"><div class="empty-icon">🚧</div><div class="empty-title">${name}</div><div class="empty-desc">This view is part of the complete implementation. Navigate to other sections.</div></div>`;
+}
+
+// ── Views ──────────────────────────────────────────────────────────────────
+const VIEWS = {
+
+  // ─── LANDLORD OVERVIEW ──────────────────────────────────────────────────
+  overview: () => `
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Good morning, Babatunde 👋</h1>
+        <p>Saturday, March 21, 2026 · Here's your portfolio at a glance</p>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm" onclick="openModal('send-notice-modal')">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12v8a1 1 0 01-1 1H3a1 1 0 01-1-1V4z"/><path d="M2 4l6 5 6-5"/></svg>
+          Send Notice
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('add-property-modal')">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v12M2 8h12"/></svg>
+          Add Property
+        </button>
+      </div>
+    </div>
+
+    <div class="alert alert-red">
+      <svg class="alert-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 11h.01"/></svg>
+      <div class="alert-content">
+        <div class="alert-title">3 tenants have overdue rent</div>
+        <div class="alert-desc">Total outstanding: ₦780,000 · Oldest overdue: 21 days</div>
+      </div>
+      <span class="alert-action" onclick="navigateTo('payments')">View arrears</span>
+    </div>
+
+    <div class="alert alert-amber">
+      <svg class="alert-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3M8 11h.01"/></svg>
+      <div class="alert-content">
+        <div class="alert-title">2 leases expire within 30 days</div>
+        <div class="alert-desc">Send renewal notices to avoid vacancies</div>
+      </div>
+      <span class="alert-action" onclick="navigateTo('tenants')">View leases</span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card accent-green" onclick="navigateTo('properties')">
+        <div class="stat-icon green">🏠</div>
+        <div class="stat-label">Properties</div>
+        <div class="stat-value">4</div>
+        <div class="stat-sub">24 total units</div>
+      </div>
+      <div class="stat-card accent-blue" onclick="navigateTo('units')">
+        <div class="stat-icon blue">📐</div>
+        <div class="stat-label">Occupancy</div>
+        <div class="stat-value">87.5%</div>
+        <div class="stat-sub stat-up">▲ 21 of 24 occupied</div>
+      </div>
+      <div class="stat-card accent-gold" onclick="navigateTo('payments')">
+        <div class="stat-icon gold">₦</div>
+        <div class="stat-label">Collected (Mar)</div>
+        <div class="stat-value">₦3.12M</div>
+        <div class="stat-sub stat-up">↑ 12% vs Feb</div>
+      </div>
+      <div class="stat-card accent-red" onclick="navigateTo('payments')">
+        <div class="stat-icon red">⚠</div>
+        <div class="stat-label">Overdue Rent</div>
+        <div class="stat-value">₦780K</div>
+        <div class="stat-sub stat-down">3 tenants overdue</div>
+      </div>
+      <div class="stat-card accent-amber" onclick="navigateTo('payments')">
+        <div class="stat-icon amber">📋</div>
+        <div class="stat-label">Due This Month</div>
+        <div class="stat-value">₦560K</div>
+        <div class="stat-sub">7 invoices pending</div>
+      </div>
+      <div class="stat-card" onclick="navigateTo('agreements')">
+        <div class="stat-icon amber">✍</div>
+        <div class="stat-label">Awaiting Signature</div>
+        <div class="stat-value">2</div>
+        <div class="stat-sub">Agreements pending</div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Rent Collection (12 months)</div>
+            <div class="card-subtitle">Monthly rent received in ₦M</div>
+          </div>
+          <button class="btn btn-ghost btn-xs" onclick="navigateTo('reports')">Full report →</button>
+        </div>
+        <div class="card-body">
+          <div class="chart-container" id="rent-chart-overview"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Unit Occupancy</div>
+            <div class="card-subtitle">Across all properties</div>
+          </div>
+        </div>
+        <div class="card-body" style="display:flex;align-items:center;gap:24px">
+          <div class="donut-wrap">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="46" fill="none" stroke="var(--border)" stroke-width="14"/>
+              <circle cx="60" cy="60" r="46" fill="none" stroke="var(--green)" stroke-width="14"
+                stroke-dasharray="248 40" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
+              <circle cx="60" cy="60" r="46" fill="none" stroke="var(--accent2)" stroke-width="14"
+                stroke-dasharray="17 271" stroke-dashoffset="-248" transform="rotate(-90 60 60)"/>
+              <circle cx="60" cy="60" r="46" fill="none" stroke="var(--border2)" stroke-width="14"
+                stroke-dasharray="23 265" stroke-dashoffset="-265" transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="donut-center">
+              <div class="donut-pct">87%</div>
+              <div class="donut-sub">Occupied</div>
+            </div>
+          </div>
+          <div class="legend-list">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Occupied — 21 units</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>Expiring soon — 2 units</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--border2)"></div>Vacant — 3 units</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Payments</div>
+        <button class="btn btn-ghost btn-xs" onclick="navigateTo('payments')">View all</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tenant</th><th>Property / Unit</th><th>Amount</th><th>Date</th><th>Method</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            ${[
+              ['Amaka Obi','Lekki Gardens / A3','₦150,000','Mar 18','Paystack','paid'],
+              ['Emeka Nwosu','VI Towers / 12B','₦280,000','Mar 15','Paystack','paid'],
+              ['Chidinma Eze','Ikoyi Residences / 5A','₦320,000','Mar 10','Paystack','paid'],
+              ['Tunde Adeola','Lekki Gardens / B1','₦150,000','Mar 1','—','overdue'],
+              ['Ngozi Adichie','VI Towers / 8C','₦280,000','Feb 28','—','overdue'],
+              ['Bayo Martins','Yaba Court / 1F','₦95,000','Mar 20','Paystack','paid'],
+            ].map(([n,p,a,d,m,s]) => `
+              <tr>
+                <td><div style="display:flex;align-items:center;gap:10px">
+                  <div class="tenant-avatar">${n.split(' ').map(w=>w[0]).join('')}</div>
+                  <div class="tenant-info"><div class="tenant-name">${n}</div></div>
+                </div></td>
+                <td class="td-muted">${p}</td>
+                <td class="td-bold">${a}</td>
+                <td class="td-muted">${d}</td>
+                <td class="td-muted">${m}</td>
+                <td><span class="badge ${s==='paid'?'badge-green':'badge-red'}">${s==='paid'?'Paid':'Overdue'}</span></td>
+                <td><button class="btn btn-ghost btn-xs">${s==='paid'?'Receipt':'Remind'}</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`,
+
+  // ─── PROPERTIES ────────────────────────────────────────────────────────
+  properties: () => `
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Properties</h1>
+        <p>4 properties · 24 units · ₦6.5M potential monthly revenue</p>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M5 8h6M7 12h2"/></svg>
+          Filter
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('add-property-modal')">+ Add Property</button>
+      </div>
+    </div>
+
+    <div class="property-grid">
+      ${[
+        { name:'Lekki Gardens Estate', addr:'Lekki Phase 1, Lagos', type:'Residential', units:8, occ:7, rev:'₦1.05M', ocp:87, idx:1 },
+        { name:'VI Towers', addr:'Victoria Island, Lagos', type:'Mixed', units:10, occ:9, rev:'₦2.24M', ocp:90, idx:2 },
+        { name:'Ikoyi Residences', addr:'Ikoyi, Lagos', type:'Residential', units:4, occ:4, rev:'₦1.28M', ocp:100, idx:3 },
+        { name:'Yaba Court', addr:'Yaba, Lagos', type:'Residential', units:2, occ:1, rev:'₦190K', ocp:50, idx:4 },
+      ].map(p => `
+        <div class="property-card" onclick="navigateTo('units')">
+          <div class="property-img">
+            <div class="property-img-num">${String(p.idx).padStart(2,'0')}</div>
+            <div class="property-img-badge">${p.type}</div>
+            <div>
+              <div class="property-name">${p.name}</div>
+              <div class="property-addr">${p.addr}</div>
+            </div>
+          </div>
+          <div class="property-occ-bar"><div class="property-occ-fill" style="width:${p.ocp}%"></div></div>
+          <div class="property-meta">
+            <div class="property-stats">
+              <div class="prop-stat"><strong>${p.units}</strong><span>Units</span></div>
+              <div class="prop-stat"><strong>${p.occ}</strong><span>Occupied</span></div>
+              <div class="prop-stat"><strong>${p.rev}</strong><span>Monthly</span></div>
+            </div>
+            <span class="badge ${p.ocp===100?'badge-green':p.ocp>=80?'badge-amber':'badge-red'}">${p.ocp}% full</span>
+          </div>
+        </div>`).join('')}
+      <div class="property-card" style="border-style:dashed;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:240px;gap:10px;background:var(--surface2)" onclick="openModal('add-property-modal')">
+        <div style="width:48px;height:48px;border-radius:12px;background:var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--ink3)">+</div>
+        <div style="font-size:14px;font-weight:500;color:var(--ink2)">Add New Property</div>
+        <div style="font-size:12px;color:var(--ink3)">Expand your portfolio</div>
+      </div>
+    </div>`,
+
+  // ─── UNITS ─────────────────────────────────────────────────────────────
+  units: () => `
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Units</h1>
+        <p>24 units across all properties</p>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-primary btn-sm" onclick="showToast('Select a property first to add a unit','info')">+ Add Unit</button>
+      </div>
+    </div>
+
+    <div class="filters-bar">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M11 11l3 3"/></svg>
+        <input class="search-input" placeholder="Search units or tenants…">
+      </div>
+      <select class="filter-select"><option>All Properties</option><option>Lekki Gardens</option><option>VI Towers</option><option>Ikoyi Residences</option></select>
+      <select class="filter-select"><option>All Status</option><option>Occupied</option><option>Vacant</option><option>Maintenance</option></select>
+      <select class="filter-select"><option>All Types</option><option>Studio</option><option>1 Bedroom</option><option>2 Bedroom</option><option>3 Bedroom</option></select>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Unit</th><th>Property</th><th>Type</th><th>Tenant</th><th>Rent/mo</th><th>Lease End</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${[
+              ['A3','Lekki Gardens','2 Bed','Amaka Obi','₦150,000','Mar 31 2027','occupied'],
+              ['12B','VI Towers','3 Bed','Emeka Nwosu','₦280,000','Apr 15 2026','expiring'],
+              ['5A','Ikoyi Residences','3 Bed','Chidinma Eze','₦320,000','Sep 30 2026','occupied'],
+              ['B1','Lekki Gardens','2 Bed','Tunde Adeola','₦150,000','Dec 31 2026','overdue'],
+              ['8C','VI Towers','2 Bed','Ngozi Adichie','₦280,000','Mar 31 2026','overdue'],
+              ['1F','Yaba Court','1 Bed','Bayo Martins','₦95,000','Jun 30 2026','occupied'],
+              ['C2','Lekki Gardens','Studio','—','₦85,000','—','vacant'],
+              ['9A','VI Towers','2 Bed','—','₦260,000','—','vacant'],
+              ['3B','Ikoyi Residences','2 Bed','—','₦295,000','—','maintenance'],
+            ].map(([u,p,t,tn,r,le,s]) => `<tr>
+              <td class="td-bold">${u}</td>
+              <td class="td-muted">${p}</td>
+              <td>${t}</td>
+              <td>${tn==='—'?'<span class="td-muted">—</span>':`<div style="display:flex;align-items:center;gap:8px"><div class="tenant-avatar" style="width:24px;height:24px;font-size:10px">${tn.split(' ').map(w=>w[0]).join('')}</div>${tn}</div>`}</td>
+              <td class="td-bold">${r}</td>
+              <td class="td-muted">${le}</td>
+              <td><span class="badge ${s==='occupied'?'badge-green':s==='vacant'?'badge-gray':s==='expiring'?'badge-amber':s==='overdue'?'badge-red':'badge-blue'}">${s}</span></td>
+              <td><div style="display:flex;gap:4px"><button class="btn btn-ghost btn-xs">Edit</button>${s==='vacant'?`<button class="btn btn-secondary btn-xs" onclick="openModal('add-tenant-modal')">Assign</button>`:''}</div></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span>Showing 9 of 24 units</span>
+        <div class="pagination-pages">
+          <div class="page-btn active">1</div>
+          <div class="page-btn">2</div>
+          <div class="page-btn">3</div>
+          <div class="page-btn">→</div>
+        </div>
+      </div>
+    </div>`,
+
+  // ─── TENANTS ───────────────────────────────────────────────────────────
+  tenants: () => `
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Tenants</h1>
+        <p>21 active tenants across 4 properties</p>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm" onclick="openModal('send-notice-modal')">Send Bulk Notice</button>
+        <button class="btn btn-primary btn-sm" onclick="openModal('add-tenant-modal')">+ Add Tenant</button>
+      </div>
+    </div>
+
+    <div class="filters-bar">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M11 11l3 3"/></svg>
+        <input class="search-input" placeholder="Search tenants…">
+      </div>
+      <select class="filter-select"><option>All Properties</option><option>Lekki Gardens</option><option>VI Towers</option></select>
+      <select class="filter-select"><option>All Status</option><option>Current</option><option>Overdue</option><option>Expiring</option></select>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tenant</th><th>Unit</th><th>Rent/mo</th><th>Lease End</th><th>Balance</th><th>Payment Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${[
+              ['Amaka Obi','ao@email.com','A3 · Lekki','₦150,000','Mar 2027','—','current'],
+              ['Emeka Nwosu','en@email.com','12B · VI','₦280,000','Apr 2026','—','expiring'],
+              ['Chidinma Eze','ce@email.com','5A · Ikoyi','₦320,000','Sep 2026','—','current'],
+              ['Tunde Adeola','ta@email.com','B1 · Lekki','₦150,000','Dec 2026','₦150,000','overdue'],
+              ['Ngozi Adichie','na@email.com','8C · VI','₦280,000','Mar 2026','₦560,000','overdue'],
+              ['Bayo Martins','bm@email.com','1F · Yaba','₦95,000','Jun 2026','—','current'],
+              ['Kelechi Dike','kd@email.com','3B · Ikoyi','₦295,000','Aug 2026','—','current'],
+            ].map(([n,e,u,r,le,bal,s]) => `<tr>
+              <td><div style="display:flex;align-items:center;gap:10px">
+                <div class="tenant-avatar">${n.split(' ').map(w=>w[0]).join('')}</div>
+                <div class="tenant-info"><div class="tenant-name">${n}</div><div class="tenant-email">${e}</div></div>
+              </div></td>
+              <td class="td-muted">${u}</td>
+              <td class="td-bold">${r}</td>
+              <td class="td-muted">${le}</td>
+              <td>${bal==='—'?'<span class="badge badge-green">None</span>':`<span style="color:var(--red);font-weight:600">${bal}</span>`}</td>
+              <td><span class="badge ${s==='current'?'badge-green':s==='expiring'?'badge-amber':'badge-red'}">${s}</span></td>
+              <td><div style="display:flex;gap:4px">
+                <button class="btn btn-ghost btn-xs">View</button>
+                ${s==='overdue'?`<button class="btn btn-danger btn-xs" onclick="openModal('send-notice-modal')">Remind</button>`:
+                  s==='expiring'?`<button class="btn btn-secondary btn-xs" onclick="openModal('send-notice-modal')">Renew</button>`:''}
+              </div></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span>Showing 7 of 21 tenants</span>
+        <div class="pagination-pages">
+          <div class="page-btn active">1</div>
+          <div class="page-btn">2</div>
+          <div class="page-btn">3</div>
+          <div class="page-btn">→</div>
+        </div>
+      </div>
+    </div>`,
+
+  // ─── AGREEMENTS ────────────────────────────────────────────────────────
+  agreements: () => `
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Agreements</h1>
+        <p>Tenancy agreements & e-signature tracking</p>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm">Upload Template</button>
+        <button class="btn btn-primary btn-sm" onclick="showToast('Select a tenant to generate agreement','info')">+ New Agreement</button>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active">All Agreements (12)</div>
+      <div class="tab" onclick="showToast('Filter applied','info')">Pending (2)</div>
+      <div class="tab" onclick="showToast('Filter applied','info')">Signed (9)</div>
+      <div class="tab" onclick="showToast('Filter applied','info')">Expired (1)</div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tenant</th><th>Unit</th><th>Template</th><th>Sent</th><th>Last Activity</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${[
+              ['Amaka Obi','A3 · Lekki','Standard Residential','Jan 5','Signed Jan 6','signed'],
+              ['Emeka Nwosu','12B · VI','Standard Residential','Mar 10','Viewed Mar 11','sent'],
+              ['Chidinma Eze','5A · Ikoyi','Commercial Lease','Nov 1','Signed Nov 2','signed'],
+              ['Kelechi Dike','3B · Ikoyi','Standard Residential','Mar 15','—','draft'],
+              ['Tunde Adeola','B1 · Lekki','Standard Residential','Jan 2','Signed Jan 3','signed'],
+              ['Ngozi Adichie','8C · VI','Standard Residential','Dec 1','Signed Dec 3','signed'],
+              ['Bayo Martins','1F · Yaba','Standard Residential','Mar 20','—','sent'],
+            ].map(([n,u,t,s,la,st]) => `<tr>
+              <td><div style="display:flex;align-items:center;gap:10px">
+                <div class="tenant-avatar">${n.split(' ').map(w=>w[0]).join('')}</div>
+                <div class="tenant-name">${n}</div>
+              </div></td>
+              <td class="td-muted">${u}</td>
+              <td class="td-muted">${t}</td>
+              <td class="td-muted">${s}</td>
+              <td class="td-muted">${la}</td>
+              <td><span class="badge ${st==='signed'?'badge-green':st==='sent'?'badge-amber':st==='draft'?'badge-gray':'badge-red'}">${st}</span></td>
+              <td><div style="display:flex;gap:4px">
+                <button class="btn btn-ghost btn-xs">View</button>
+                ${st==='sent'?`<button class="btn btn-secondary btn-xs" onclick="showToast('Reminder sent','success')">Resend</button>`:''}
+                ${st==='signed'?`<button class="btn btn-secondary btn-xs">Download</button>`:''}
+                ${st==='draft'?`<button class="btn btn-primary btn-xs" onclick="showToast('Agreement sent to tenant','success')">Send</button>`:''}
+              </div></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`,
+
+  // ─── PAYMENTS ──────────────────────────────────────────────────────────
+  payments: () => `
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Payments</h1>
+        <p>Invoices, history & arrears management</p>
+      </div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm">Export CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="showToast('Invoice created','success')">+ Create Invoice</button>
+      </div>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat-card accent-green"><div class="stat-label">Collected (Mar)</div><div class="stat-value">₦3.12M</div><div class="stat-sub stat-up">↑ 12% vs Feb</div></div>
+      <div class="stat-card accent-red"><div class="stat-label">Outstanding</div><div class="stat-value">₦780K</div><div class="stat-sub stat-down">3 tenants</div></div>
+      <div class="stat-card accent-amber"><div class="stat-label">Due This Month</div><div class="stat-value">₦560K</div><div class="stat-sub">7 invoices</div></div>
+      <div class="stat-card accent-gold"><div class="stat-label">YTD Revenue</div><div class="stat-value">₦8.4M</div><div class="stat-sub">Jan–Mar 2026</div></div>
+    </div>
+
+    <div style="margin-bottom:16px;padding:16px 20px;background:var(--red-light);border:1px solid rgba(192,57,43,0.2);border-radius:var(--radius)">
+      <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:12px">⚠ Arrears — ₦780,000 outstanding</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tenant</th><th>Unit</th><th>Amount Due</th><th>Days Overdue</th><th>Last Reminder</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${[
+              ['Tunde Adeola','Lekki / B1','₦150,000',21,'Mar 14'],
+              ['Ngozi Adichie','VI / 8C','₦280,000',18,'Mar 14'],
+              ['Bayo Martins (partial)','Yaba / 1F','₦350,000',5,'Mar 16'],
+            ].map(([n,u,a,d,lr]) => `<tr>
+              <td class="td-bold">${n}</td>
+              <td class="td-muted">${u}</td>
+              <td style="color:var(--red);font-weight:600">${a}</td>
+              <td><span class="badge ${d>14?'badge-red':'badge-amber'}">${d} days</span></td>
+              <td class="td-muted">${lr}</td>
+              <td><button class="btn btn-danger btn-xs" onclick="openModal('send-notice-modal')">Send Reminder</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Payment History</div>
+        <div class="filters-bar" style="margin:0">
+          <select class="filter-select"><option>All Properties</option></select>
+          <select class="filter-select"><option>Last 30 days</option><option>Last 3 months</option><option>This year</option></select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ref</th><th>Tenant</th><th>Amount</th><th>Date</th><th>Method</th><th>Status</th><th>Receipt</th></tr></thead>
+          <tbody>
+            ${[
+              ['PAY-2026-0318','Amaka Obi','₦150,000','Mar 18','Paystack · Card','success'],
+              ['PAY-2026-0315','Emeka Nwosu','₦280,000','Mar 15','Paystack · Card','success'],
+              ['PAY-2026-0310','Chidinma Eze','₦320,000','Mar 10','Paystack · Transfer','success'],
+              ['PAY-2026-0320','Bayo Martins','₦95,000','Mar 20','Paystack · Card','success'],
+              ['PAY-2026-0308','Kelechi Dike','₦295,000','Mar 8','Paystack · Card','success'],
+              ['PAY-2026-0305','Amaka Obi','₦150,000','Mar 5','Paystack · Card','success'],
+            ].map(([ref,n,a,d,m,s]) => `<tr>
+              <td class="td-muted" style="font-size:11px">${ref}</td>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="tenant-avatar" style="width:24px;height:24px;font-size:10px">${n.split(' ').map(w=>w[0]).join('')}</div>${n}</div></td>
+              <td class="td-bold">${a}</td>
+              <td class="td-muted">${d}</td>
+              <td class="td-muted">${m}</td>
+              <td><span class="badge badge-green">Paid</span></td>
+              <td><button class="btn btn-ghost btn-xs" onclick="showToast('Receipt downloaded','success')">↓ PDF</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span>Showing 6 of 48 payments</span>
+        <div class="pagination-pages">
+          <div class="page-btn active">1</div><div class="page-btn">2</div><div class="page-btn">3</div><div class="page-btn">→</div>
+        </div>
+      </div>
+    </div>`,
+
+  // ─── NOTICES ───────────────────────────────────────────────────────────
+  notices: () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Notices & Communication</h1><p>Send notices, announcements & rent increase letters</p></div>
+      <div class="page-header-right">
+        <button class="btn btn-primary btn-sm" onclick="openModal('send-notice-modal')">+ Send Notice</button>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="tabs">
+          <div class="tab active">Sent (18)</div>
+          <div class="tab">Scheduled (2)</div>
+          <div class="tab">Drafts (1)</div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Subject</th><th>Recipients</th><th>Type</th><th>Sent</th><th>Status</th></tr></thead>
+              <tbody>
+                ${[
+                  ['Rent Increase Notice — Q2 2026','All tenants (24)','Rent Increase','Mar 1','delivered'],
+                  ['Scheduled water maintenance','Lekki Gardens (8)','Maintenance','Feb 20','delivered'],
+                  ['Lease renewal — April expiries','2 tenants','Renewal','Mar 10','delivered'],
+                  ['Overdue reminder — Tunde Adeola','1 tenant','Reminder','Mar 14','delivered'],
+                  ['Welcome to DoorRent — Bayo Martins','1 tenant','Welcome','Mar 18','delivered'],
+                ].map(([s,r,t,d,st]) => `<tr>
+                  <td><div style="font-size:13px;font-weight:500">${s}</div><div class="td-muted" style="font-size:11px">${r}</div></td>
+                  <td><span class="badge ${t==='Rent Increase'?'badge-amber':t==='Maintenance'?'badge-blue':t==='Reminder'?'badge-red':'badge-green'}">${t}</span></td>
+                  <td class="td-muted">${d}</td>
+                  <td><span class="badge badge-green">${st}</span></td>
+                </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">Quick Actions</div>
+        ${[
+          {icon:'💸',title:'Rent Increase Notice',desc:'Notify tenants of new rent amount',color:'amber'},
+          {icon:'🔔',title:'Overdue Reminder',desc:'Send to tenants with outstanding balance',color:'red'},
+          {icon:'📋',title:'Lease Renewal',desc:'Send renewal offer before expiry',color:'green'},
+          {icon:'🔧',title:'Maintenance Notice',desc:'Inform tenants of scheduled works',color:'blue'},
+          {icon:'📢',title:'General Announcement',desc:'Broadcast to all or selected tenants',color:'gray'},
+        ].map(a=>`
+          <div class="mini-card" style="cursor:pointer;margin-bottom:8px" onclick="openModal('send-notice-modal')">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="width:36px;height:36px;border-radius:8px;background:var(--${a.color==='gray'?'surface2':'bg'});display:flex;align-items:center;justify-content:center;font-size:16px">${a.icon}</div>
+              <div>
+                <div style="font-size:13px;font-weight:500;color:var(--ink)">${a.title}</div>
+                <div style="font-size:11px;color:var(--ink3)">${a.desc}</div>
+              </div>
+              <svg style="margin-left:auto;color:var(--ink3)" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 4l4 4-4 4"/></svg>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`,
+
+  // ─── REMINDERS ─────────────────────────────────────────────────────────
+  reminders: () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Reminders & Automations</h1><p>Configure automatic notification rules</p></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">Reminder Rules</div>
+        ${[
+          {trigger:'30 days before lease expiry',action:'Email + SMS renewal notice',on:true},
+          {trigger:'14 days before lease expiry',action:'Email reminder',on:true},
+          {trigger:'7 days before lease expiry',action:'Email + SMS final notice',on:true},
+          {trigger:'1 day after rent due date',action:'Email overdue alert',on:true},
+          {trigger:'7 days after rent due date',action:'Email + SMS strong notice',on:true},
+          {trigger:'30 days after rent due date',action:'Email formal demand notice',on:false},
+        ].map(r=>`
+          <div class="card" style="margin-bottom:10px">
+            <div class="card-body" style="display:flex;align-items:center;gap:14px;padding:14px 16px">
+              <div style="flex:1">
+                <div style="font-size:13px;font-weight:500;color:var(--ink)">${r.trigger}</div>
+                <div style="font-size:11px;color:var(--ink3);margin-top:2px">${r.action}</div>
+              </div>
+              <label class="switch"><input type="checkbox" ${r.on?'checked':''} onchange="showToast('Rule '+(this.checked?'enabled':'disabled'),'success')"><div class="switch-slider"></div></label>
+            </div>
+          </div>`).join('')}
+        <button class="btn btn-secondary btn-sm" onclick="showToast('Custom rule added','success')" style="margin-top:4px">+ Add Custom Rule</button>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">Recent Reminder Log</div>
+        <div class="card">
+          <div class="timeline" style="padding:0 16px">
+            ${[
+              ['Mar 21','Lease expiry reminder','Emeka Nwosu · 25 days to expiry','delivered'],
+              ['Mar 20','Overdue rent notice (7 days)','Tunde Adeola · ₦150,000 overdue','delivered'],
+              ['Mar 14','Overdue rent notice (1 day)','Tunde Adeola · ₦150,000 overdue','delivered'],
+              ['Mar 14','Overdue rent notice (1 day)','Ngozi Adichie · ₦280,000 overdue','delivered'],
+              ['Mar 10','Lease expiry reminder (30 days)','Emeka Nwosu · 35 days to expiry','delivered'],
+            ].map(([d,t,desc,s])=>`
+              <div class="timeline-item">
+                <div class="timeline-dot" style="background:${s==='delivered'?'var(--green)':'var(--red)'}"></div>
+                <div class="timeline-content">
+                  <div class="timeline-title">${t}</div>
+                  <div class="timeline-desc">${desc}</div>
+                </div>
+                <div class="timeline-time">${d}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>
+    </div>`,
+
+  // ─── REPORTS ───────────────────────────────────────────────────────────
+  reports: () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Reports & Analytics</h1><p>Portfolio performance insights</p></div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm">Export PDF</button>
+        <button class="btn btn-secondary btn-sm">Export CSV</button>
+      </div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:24px">
+      <div class="stat-card accent-gold"><div class="stat-label">YTD Revenue</div><div class="stat-value">₦8.4M</div><div class="stat-sub stat-up">↑ 18% vs 2025</div></div>
+      <div class="stat-card accent-green"><div class="stat-label">Avg Occupancy</div><div class="stat-value">91%</div><div class="stat-sub">Q1 2026</div></div>
+      <div class="stat-card accent-amber"><div class="stat-label">Renewal Rate</div><div class="stat-value">82%</div><div class="stat-sub">Last 12 months</div></div>
+      <div class="stat-card accent-blue"><div class="stat-label">Avg Collection Time</div><div class="stat-value">3.2 days</div><div class="stat-sub">From due date</div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Monthly Rent Collection</div><div class="card-subtitle">₦M collected per month</div></div>
+        <div class="card-body"><div class="chart-container" id="report-chart-1"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Occupancy Rate Trend</div><div class="card-subtitle">% occupied per month</div></div>
+        <div class="card-body"><div class="chart-container" id="report-chart-2"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Revenue by Property</div></div>
+      <div class="card-body">
+        ${[
+          {name:'VI Towers',rev:'₦2,240,000',pct:34,color:'var(--accent)'},
+          {name:'Ikoyi Residences',rev:'₦1,280,000',pct:20,color:'var(--accent2)'},
+          {name:'Lekki Gardens',rev:'₦1,050,000',pct:16,color:'var(--green)'},
+          {name:'Yaba Court',rev:'₦190,000',pct:3,color:'var(--blue)'},
+        ].map(p=>`
+          <div style="margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px">
+              <span style="font-weight:500">${p.name}</span>
+              <span style="color:var(--ink2)">${p.rev}</span>
+            </div>
+            <div class="progress"><div class="progress-fill" style="width:${p.pct*3}%;background:${p.color}"></div></div>
+          </div>`).join('')}
+      </div>
+    </div>`,
+
+  // ─── SETTINGS ──────────────────────────────────────────────────────────
+  settings: () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Settings</h1><p>Manage your account and preferences</p></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">Company Profile</div></div>
+          <div class="card-body">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+              <div class="user-avatar" style="width:64px;height:64px;font-size:22px">BA</div>
+              <div><div style="font-size:15px;font-weight:600">Babatunde Adeyemi</div><div style="font-size:12px;color:var(--ink3)">babatunde@lekki.io</div>
+              <button class="btn btn-ghost btn-xs" style="margin-top:6px">Change photo</button></div>
+            </div>
+            <div class="form-group"><label class="form-label">Company Name</label><input class="form-input" value="Lekki Property Holdings Ltd"></div>
+            <div class="form-row">
+              <div class="form-group"><label class="form-label">First Name</label><input class="form-input" value="Babatunde"></div>
+              <div class="form-group"><label class="form-label">Last Name</label><input class="form-input" value="Adeyemi"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Phone</label><input class="form-input" value="+234 806 000 0001"></div>
+            <button class="btn btn-primary btn-sm" onclick="showToast('Profile saved','success')">Save Changes</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Subscription</div></div>
+          <div class="card-body">
+            <div style="padding:16px;background:var(--accent-light);border-radius:var(--radius-sm);margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;align-items:center">
+                <div><div style="font-size:14px;font-weight:600;color:var(--accent)">Pro Plan</div><div style="font-size:12px;color:var(--accent);opacity:0.7">Up to 30 properties · 200 units · 3 team members</div></div>
+                <div style="font-size:20px;font-weight:600;color:var(--accent)">₦25,000<span style="font-size:11px;font-weight:400">/mo</span></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--ink2)">
+              <span>Next billing: April 1, 2026</span>
+              <button class="btn btn-secondary btn-xs">Upgrade Plan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">Notification Preferences</div></div>
+          <div class="card-body">
+            ${[
+              ['Rent payment received','Email + SMS',true],
+              ['Overdue rent alerts','Email + SMS',true],
+              ['Lease expiry reminders','Email',true],
+              ['Agreement signed','Email',true],
+              ['New support replies','Email',false],
+            ].map(([n,m,on])=>`
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+                <div><div style="font-size:13px;font-weight:500">${n}</div><div style="font-size:11px;color:var(--ink3)">${m}</div></div>
+                <label class="switch"><input type="checkbox" ${on?'checked':''} onchange="showToast('Preference saved','success')"><div class="switch-slider"></div></label>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Team Members</div></div>
+          <div class="card-body">
+            ${[
+              ['Babatunde Adeyemi','babatunde@lekki.io','Owner','BA'],
+              ['Funmi Adeola','funmi@lekki.io','Property Manager','FA'],
+              ['Olu Johnson','olu@lekki.io','Finance','OJ'],
+            ].map(([n,e,r,i])=>`
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+                <div class="tenant-avatar">${i}</div>
+                <div style="flex:1"><div style="font-size:13px;font-weight:500">${n}</div><div style="font-size:11px;color:var(--ink3)">${e}</div></div>
+                <span class="tag">${r}</span>
+              </div>`).join('')}
+            <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="showToast('Invite sent','success')">+ Invite Member</button>
+          </div>
+        </div>
+      </div>
+    </div>`,
+
+  // ─── RECEIPTS ──────────────────────────────────────────────────────────
+  receipts: () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Receipts</h1><p>All generated payment receipts</p></div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm">Export All</button>
+      </div>
+    </div>
+    <div class="filters-bar">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M11 11l3 3"/></svg>
+        <input class="search-input" placeholder="Search receipts…">
+      </div>
+      <select class="filter-select"><option>All Properties</option></select>
+      <select class="filter-select"><option>All time</option><option>This month</option><option>Last 3 months</option></select>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Receipt #</th><th>Tenant</th><th>Property / Unit</th><th>Amount</th><th>For Period</th><th>Issued</th><th>Download</th></tr></thead>
+          <tbody>
+            ${[
+              ['RCP-2026-0142','Amaka Obi','Lekki / A3','₦150,000','Mar 2026','Mar 18'],
+              ['RCP-2026-0141','Emeka Nwosu','VI / 12B','₦280,000','Mar 2026','Mar 15'],
+              ['RCP-2026-0140','Chidinma Eze','Ikoyi / 5A','₦320,000','Mar 2026','Mar 10'],
+              ['RCP-2026-0139','Bayo Martins','Yaba / 1F','₦95,000','Mar 2026','Mar 20'],
+              ['RCP-2026-0138','Kelechi Dike','Ikoyi / 3B','₦295,000','Mar 2026','Mar 8'],
+              ['RCP-2026-0137','Amaka Obi','Lekki / A3','₦150,000','Feb 2026','Feb 3'],
+            ].map(([id,n,p,a,per,d])=>`
+              <tr>
+                <td style="font-size:11px;color:var(--ink3);font-family:monospace">${id}</td>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="tenant-avatar" style="width:24px;height:24px;font-size:10px">${n.split(' ').map(w=>w[0]).join('')}</div>${n}</div></td>
+                <td class="td-muted">${p}</td>
+                <td class="td-bold">${a}</td>
+                <td class="td-muted">${per}</td>
+                <td class="td-muted">${d}</td>
+                <td><button class="btn btn-ghost btn-xs" onclick="showToast('Receipt downloaded','success')">↓ PDF</button></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination"><span>Showing 6 of 42 receipts</span>
+        <div class="pagination-pages"><div class="page-btn active">1</div><div class="page-btn">2</div><div class="page-btn">→</div></div>
+      </div>
+    </div>`,
+
+  // ─── ADMIN OVERVIEW ────────────────────────────────────────────────────
+  'admin-overview': () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Platform Overview</h1><p>Saturday, March 21, 2026 · All metrics across DoorRent</p></div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm">Download Report</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card accent-green"><div class="stat-icon green">🏢</div><div class="stat-label">Active Landlords</div><div class="stat-value">1,284</div><div class="stat-sub stat-up">↑ 48 this month</div></div>
+      <div class="stat-card accent-blue"><div class="stat-icon blue">🏠</div><div class="stat-label">Total Properties</div><div class="stat-value">8,432</div><div class="stat-sub">Across 6 states</div></div>
+      <div class="stat-card accent-gold"><div class="stat-icon gold">₦</div><div class="stat-label">Platform MRR</div><div class="stat-value">₦42.1M</div><div class="stat-sub stat-up">↑ 22% vs Feb</div></div>
+      <div class="stat-card accent-amber"><div class="stat-icon amber">📊</div><div class="stat-label">Transactions (Mar)</div><div class="stat-value">24,180</div><div class="stat-sub">₦4.2B processed</div></div>
+      <div class="stat-card accent-red"><div class="stat-icon red">🎫</div><div class="stat-label">Open Tickets</div><div class="stat-value">47</div><div class="stat-sub stat-down">↑ 5 from yesterday</div></div>
+      <div class="stat-card"><div class="stat-icon green">✓</div><div class="stat-label">Webhook Success</div><div class="stat-value">99.6%</div><div class="stat-sub stat-up">Last 30 days</div></div>
+    </div>
+    <div class="grid-2" style="margin-bottom:20px">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Landlord Signups (12 months)</div><div class="card-subtitle">New landlords per month</div></div>
+        <div class="card-body"><div class="chart-container" id="admin-chart-1"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Recent Landlord Activity</div></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Landlord</th><th>Plan</th><th>Properties</th><th>Status</th></tr></thead>
+            <tbody>
+              ${[
+                ['Chisom Okafor','Pro','12','active'],
+                ['Aisha Buhari','Starter','3','active'],
+                ['Funke Adeyemi','Enterprise','45','active'],
+                ['Emeka Peters','Pro','8','active'],
+                ['Grace Nwosu','Starter','2','trial'],
+                ['Ibrahim Musa','Pro','17','suspended'],
+              ].map(([n,p,pr,s])=>`<tr>
+                <td><div style="display:flex;align-items:center;gap:8px"><div class="tenant-avatar" style="width:24px;height:24px;font-size:10px">${n.split(' ').map(w=>w[0]).join('')}</div>${n}</div></td>
+                <td><span class="badge ${p==='Enterprise'?'badge-gold':p==='Pro'?'badge-blue':'badge-gray'}">${p}</span></td>
+                <td class="td-muted">${pr}</td>
+                <td><span class="badge ${s==='active'?'badge-green':s==='trial'?'badge-amber':'badge-red'}">${s}</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`,
+
+  // ─── ADMIN LANDLORDS ───────────────────────────────────────────────────
+  'admin-landlords': () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Landlord Management</h1><p>1,284 landlords on the platform</p></div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm">Export CSV</button>
+        <button class="btn btn-primary btn-sm" onclick="showToast('Create landlord form','info')">+ Add Landlord</button>
+      </div>
+    </div>
+    <div class="filters-bar">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M11 11l3 3"/></svg>
+        <input class="search-input" placeholder="Search landlords…">
+      </div>
+      <select class="filter-select"><option>All Status</option><option>Active</option><option>Suspended</option><option>Trial</option></select>
+      <select class="filter-select"><option>All Plans</option><option>Starter</option><option>Pro</option><option>Enterprise</option></select>
+      <select class="filter-select"><option>All States</option><option>Lagos</option><option>Abuja</option><option>Kano</option></select>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Landlord</th><th>Email</th><th>Plan</th><th>Properties</th><th>Tenants</th><th>MRR</th><th>Status</th><th>Joined</th><th>Actions</th></tr></thead>
+          <tbody>
+            ${[
+              ['Chisom Okafor','chisom@realty.ng','Pro',12,78,'₦1.2M','active','Jan 2025'],
+              ['Aisha Buhari','aisha@property.ng','Starter',3,12,'₦180K','active','Mar 2025'],
+              ['Funke Adeyemi','funke@estates.ng','Enterprise',45,320,'₦8.4M','active','Jun 2024'],
+              ['Emeka Peters','emeka@homes.ng','Pro',8,45,'₦640K','active','Feb 2025'],
+              ['Grace Nwosu','grace@grace.ng','Starter',2,8,'₦120K','trial','Mar 2026'],
+              ['Ibrahim Musa','ibrahim@musa.ng','Pro',17,92,'₦1.8M','suspended','Aug 2024'],
+            ].map(([n,e,p,pr,t,m,s,j])=>`<tr>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="tenant-avatar" style="width:28px;height:28px;font-size:10px">${n.split(' ').map(w=>w[0]).join('')}</div><span style="font-weight:500">${n}</span></div></td>
+              <td class="td-muted">${e}</td>
+              <td><span class="badge ${p==='Enterprise'?'badge-gold':p==='Pro'?'badge-blue':'badge-gray'}">${p}</span></td>
+              <td class="td-muted">${pr}</td>
+              <td class="td-muted">${t}</td>
+              <td class="td-bold">${m}</td>
+              <td><span class="badge ${s==='active'?'badge-green':s==='trial'?'badge-amber':'badge-red'}">${s}</span></td>
+              <td class="td-muted">${j}</td>
+              <td><div style="display:flex;gap:4px">
+                <button class="btn btn-ghost btn-xs">View</button>
+                ${s==='suspended'?`<button class="btn btn-secondary btn-xs" onclick="showToast('Account activated','success')">Activate</button>`:`<button class="btn btn-danger btn-xs" onclick="showToast('Account suspended','success')">Suspend</button>`}
+              </div></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination"><span>Showing 6 of 1,284 landlords</span>
+        <div class="pagination-pages"><div class="page-btn active">1</div><div class="page-btn">2</div><div class="page-btn">3</div><div class="page-btn">→</div></div>
+      </div>
+    </div>`,
+
+  // ─── ADMIN SUPPORT ─────────────────────────────────────────────────────
+  'admin-support': () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Support Center</h1><p>47 open tickets · 5 critical</p></div>
+    </div>
+    <div class="stats-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat-card accent-red"><div class="stat-label">Critical</div><div class="stat-value">5</div></div>
+      <div class="stat-card accent-amber"><div class="stat-label">High Priority</div><div class="stat-value">12</div></div>
+      <div class="stat-card accent-blue"><div class="stat-label">In Progress</div><div class="stat-value">18</div></div>
+      <div class="stat-card accent-green"><div class="stat-label">Resolved Today</div><div class="stat-value">8</div></div>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Ticket</th><th>Submitter</th><th>Subject</th><th>Priority</th><th>Status</th><th>Assigned</th><th>Created</th><th>Action</th></tr></thead>
+          <tbody>
+            ${[
+              ['#TKT-1028','Chisom Okafor (Landlord)','Payment webhook not updating invoice status','critical','open','Unassigned','Mar 21'],
+              ['#TKT-1027','Amaka Obi (Tenant)','Cannot download my receipt — PDF error','high','in_progress','Olu Support','Mar 20'],
+              ['#TKT-1026','Ibrahim Musa (Landlord)','Account suspension — requesting review','high','open','Unassigned','Mar 20'],
+              ['#TKT-1025','Grace Nwosu (Landlord)','How to add multiple unit types?','medium','resolved','Funmi CS','Mar 19'],
+              ['#TKT-1024','Emeka Peters (Landlord)','SMS reminder not sending for tenant','medium','in_progress','Olu Support','Mar 18'],
+            ].map(([id,s,sub,p,st,a,d])=>`<tr>
+              <td style="font-size:11px;color:var(--ink3)">${id}</td>
+              <td class="td-muted">${s}</td>
+              <td style="font-size:13px;max-width:260px">${sub}</td>
+              <td><span class="badge ${p==='critical'?'badge-red':p==='high'?'badge-amber':'badge-gray'}">${p}</span></td>
+              <td><span class="badge ${st==='open'?'badge-red':st==='in_progress'?'badge-blue':'badge-green'}">${st}</span></td>
+              <td class="td-muted">${a}</td>
+              <td class="td-muted">${d}</td>
+              <td><button class="btn btn-ghost btn-xs">Open</button></td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`,
+
+  // ─── ADMIN AUDIT ───────────────────────────────────────────────────────
+  'admin-audit': () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Audit Logs</h1><p>Full platform activity trail</p></div>
+      <div class="page-header-right">
+        <button class="btn btn-secondary btn-sm">Export CSV</button>
+      </div>
+    </div>
+    <div class="filters-bar">
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6.5" cy="6.5" r="4.5"/><path d="M11 11l3 3"/></svg>
+        <input class="search-input" placeholder="Search actions…">
+      </div>
+      <select class="filter-select"><option>All Actions</option><option>Login</option><option>Create</option><option>Update</option><option>Delete</option><option>Suspend</option></select>
+      <select class="filter-select"><option>All Roles</option><option>Super Admin</option><option>Landlord</option><option>Tenant</option></select>
+      <select class="filter-select"><option>Last 24h</option><option>Last 7 days</option><option>Last 30 days</option></select>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Timestamp</th><th>Actor</th><th>Role</th><th>Action</th><th>Entity</th><th>IP Address</th></tr></thead>
+          <tbody>
+            ${[
+              ['Mar 21 14:32:11','DoorRent Admin','super_admin','USER_SUSPENDED','Landlord: Ibrahim Musa','41.190.3.xxx'],
+              ['Mar 21 13:18:44','Chisom Okafor','landlord','PROPERTY_CREATED','Property: Lekki Courts','105.112.xx.xx'],
+              ['Mar 21 12:05:22','Amaka Obi','tenant','AGREEMENT_SIGNED','Agreement: A3-2026','102.89.xx.xx'],
+              ['Mar 21 11:44:08','DoorRent Admin','super_admin','PLAN_UPDATED','Plan: Pro → Enterprise (Funke)','41.190.3.xxx'],
+              ['Mar 21 10:30:55','Emeka Peters','landlord','TENANT_CREATED','Tenant: Bello Usman','105.113.xx.xx'],
+              ['Mar 21 09:12:30','Olu Support','admin_staff','TICKET_RESOLVED','Ticket: #TKT-1025','41.190.3.xxx'],
+            ].map(([ts,a,r,ac,e,ip])=>`<tr>
+              <td style="font-size:11px;color:var(--ink3);white-space:nowrap">${ts}</td>
+              <td><div style="display:flex;align-items:center;gap:8px"><div class="tenant-avatar" style="width:24px;height:24px;font-size:10px">${a.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>${a}</div></td>
+              <td><span class="badge ${r==='super_admin'?'badge-red':r==='landlord'?'badge-blue':'badge-gray'}">${r}</span></td>
+              <td><code style="font-size:11px;background:var(--bg);padding:2px 6px;border-radius:3px">${ac}</code></td>
+              <td class="td-muted">${e}</td>
+              <td style="font-size:11px;color:var(--ink3);font-family:monospace">${ip}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination"><span>Showing 6 of 24,180 events</span>
+        <div class="pagination-pages"><div class="page-btn active">1</div><div class="page-btn">2</div><div class="page-btn">3</div><div class="page-btn">→</div></div>
+      </div>
+    </div>`,
+
+  // ─── TENANT DASHBOARD ──────────────────────────────────────────────────
+  'tenant-dashboard': () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Good morning, Amaka 👋</h1><p>Unit A3 · Lekki Gardens Estate · Lekki Phase 1, Lagos</p></div>
+    </div>
+
+    <div class="alert alert-amber">
+      <svg class="alert-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a5 5 0 015 5v2l1 2H2l1-2V7a5 5 0 015-5z"/><path d="M6.5 13.5a1.5 1.5 0 003 0"/></svg>
+      <div class="alert-content">
+        <div class="alert-title">Your tenancy agreement is awaiting signature</div>
+        <div class="alert-desc">Please review and sign your agreement before April 10, 2026</div>
+      </div>
+      <span class="alert-action" onclick="navigateTo('tenant-agreement')">Sign now</span>
+    </div>
+
+    <div class="stats-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="stat-card accent-gold">
+        <div class="stat-label">Monthly Rent</div>
+        <div class="stat-value">₦150,000</div>
+        <div class="stat-sub">Due 1st of each month</div>
+      </div>
+      <div class="stat-card accent-green">
+        <div class="stat-label">Outstanding Balance</div>
+        <div class="stat-value">₦0</div>
+        <div class="stat-sub stat-up">✓ All paid up</div>
+      </div>
+      <div class="stat-card accent-amber">
+        <div class="stat-label">Lease Expires</div>
+        <div class="stat-value">Mar 2027</div>
+        <div class="stat-sub">377 days remaining</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-header"><div class="card-title">Quick Actions</div></div>
+        <div class="card-body">
+          ${[
+            {icon:'💳',label:'Pay Rent Now',desc:'Next due Apr 1, 2026',view:'tenant-pay',color:'var(--accent)'},
+            {icon:'📄',label:'Download Receipt',desc:'Last receipt: Mar 18',view:'tenant-receipts',color:'var(--green)'},
+            {icon:'✍',label:'Sign Agreement',desc:'Pending since Mar 10',view:'tenant-agreement',color:'var(--amber)'},
+            {icon:'📢',label:'View Notices',desc:'2 unread notices',view:'tenant-notices',color:'var(--blue)'},
+          ].map(a=>`
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="navigateTo('${a.view}')">
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px">${a.icon}</div>
+              <div style="flex:1"><div style="font-size:13px;font-weight:500">${a.label}</div><div style="font-size:11px;color:var(--ink3)">${a.desc}</div></div>
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--ink3)"><path d="M6 4l4 4-4 4"/></svg>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title">Payment History</div><button class="btn btn-ghost btn-xs" onclick="navigateTo('tenant-receipts')">View all</button></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Period</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody>
+              ${[
+                ['Mar 2026','₦150,000','Mar 18','paid'],
+                ['Feb 2026','₦150,000','Feb 3','paid'],
+                ['Jan 2026','₦150,000','Jan 2','paid'],
+                ['Dec 2025','₦150,000','Dec 1','paid'],
+                ['Nov 2025','₦150,000','Nov 4','paid'],
+              ].map(([p,a,d,s])=>`<tr>
+                <td class="td-muted">${p}</td>
+                <td class="td-bold">${a}</td>
+                <td class="td-muted">${d}</td>
+                <td><span class="badge badge-green">Paid</span></td>
+              </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>`,
+
+  // ─── TENANT PAY ────────────────────────────────────────────────────────
+  'tenant-pay': () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Pay Rent</h1><p>Secure payment via Paystack</p></div>
+    </div>
+    <div style="max-width:520px;margin:0 auto">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-title">Payment Summary</div></div>
+        <div class="card-body">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink2)">Property</span><span style="font-weight:500">Lekki Gardens Estate</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink2)">Unit</span><span style="font-weight:500">A3 — 2 Bedroom</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink2)">Period</span><span style="font-weight:500">April 2026</span></div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)"><span style="color:var(--ink2)">Due Date</span><span style="font-weight:500">April 1, 2026</span></div>
+          <div style="display:flex;justify-content:space-between;padding:14px 0;margin-top:4px"><span style="font-size:15px;font-weight:600">Total Due</span><span style="font-size:22px;font-weight:700;color:var(--accent)">₦150,000</span></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-header"><div class="card-title">Payment Amount</div></div>
+        <div class="card-body">
+          <div style="display:flex;gap:10px;margin-bottom:16px">
+            <div style="flex:1;padding:12px;border:2px solid var(--accent);border-radius:var(--radius-sm);text-align:center;cursor:pointer;background:var(--accent-light)">
+              <div style="font-size:12px;font-weight:600;color:var(--accent)">Full Payment</div>
+              <div style="font-size:18px;font-weight:700;color:var(--accent)">₦150,000</div>
+            </div>
+            <div style="flex:1;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);text-align:center;cursor:pointer" onclick="showToast('Enter partial amount below','info')">
+              <div style="font-size:12px;font-weight:600;color:var(--ink2)">Partial Payment</div>
+              <div style="font-size:18px;font-weight:700;color:var(--ink2)">Custom</div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Amount (₦)</label><input class="form-input" type="number" value="150000"></div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" style="padding:14px;font-size:15px" onclick="showToast('Redirecting to Paystack checkout…','info')">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="14" height="9" rx="1.5"/><path d="M1 7h14"/><path d="M4 11h3"/></svg>
+        Pay ₦150,000 via Paystack
+      </button>
+      <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--ink3)">🔒 Secured by Paystack · Your payment info is encrypted</div>
+    </div>`,
+
+  // ─── TENANT AGREEMENT ──────────────────────────────────────────────────
+  'tenant-agreement': () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>My Agreement</h1><p>Tenancy agreement for Unit A3, Lekki Gardens</p></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header">
+            <div><div class="card-title">Tenancy Agreement</div><div class="card-subtitle">Standard Residential · Version 2.1</div></div>
+            <span class="badge badge-amber">Awaiting Signature</span>
+          </div>
+          <div style="padding:20px;background:var(--bg);border-bottom:1px solid var(--border);max-height:340px;overflow-y:auto;font-size:13px;line-height:1.8;color:var(--ink2)">
+            <div style="font-weight:700;font-size:15px;text-align:center;color:var(--ink);margin-bottom:16px">RESIDENTIAL TENANCY AGREEMENT</div>
+            <p><strong>Date:</strong> April 1, 2026</p><br>
+            <p><strong>Landlord:</strong> Babatunde Adeyemi (Lekki Property Holdings Ltd)</p>
+            <p><strong>Tenant:</strong> Amaka Obi</p><br>
+            <p><strong>1. PROPERTY:</strong> Unit A3, Lekki Gardens Estate, Lekki Phase 1, Lagos State, Nigeria.</p><br>
+            <p><strong>2. TERM:</strong> 12 months commencing April 1, 2026 and ending March 31, 2027.</p><br>
+            <p><strong>3. RENT:</strong> ₦150,000 per month, payable on the 1st of each month without demand.</p><br>
+            <p><strong>4. DEPOSIT:</strong> Security deposit of ₦300,000 (equivalent to 2 months rent) held by Landlord.</p><br>
+            <p><strong>5. USE:</strong> Residential purposes only. Sub-letting is prohibited without written consent.</p><br>
+            <p><strong>6. UTILITIES:</strong> Tenant is responsible for all electricity (EKEDC) and water bills.</p><br>
+            <p><strong>7. MAINTENANCE:</strong> Tenant shall maintain the property in good condition and promptly report damage.</p>
+          </div>
+          <div class="card-body">
+            <button class="btn btn-primary btn-full" onclick="openModal('sign-agreement-modal')">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M11 3L13 5 6 12 3 13l1-3 7-7z"/></svg>
+              Review & Sign Agreement
+            </button>
+            <button class="btn btn-secondary btn-full" style="margin-top:8px" onclick="showToast('Agreement downloaded','success')">↓ Download PDF</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Agreement Status</div></div>
+          <div class="card-body">
+            <div class="timeline">
+              ${[
+                {label:'Agreement created',desc:'By Babatunde Adeyemi',time:'Mar 10, 2026',done:true},
+                {label:'Sent to tenant',desc:'Delivered to amaka@email.com',time:'Mar 10, 2026',done:true},
+                {label:'Email opened',desc:'Amaka opened notification',time:'Mar 11, 2026',done:true},
+                {label:'Agreement viewed',desc:'Tenant viewed the document',time:'Mar 11, 2026',done:true},
+                {label:'Tenant signature',desc:'Pending — expires Apr 10',time:'Pending',done:false},
+                {label:'Landlord countersign',desc:'After tenant signs',time:'—',done:false},
+                {label:'Fully executed',desc:'Both parties signed',time:'—',done:false},
+              ].map(s=>`
+                <div class="timeline-item">
+                  <div class="timeline-dot" style="background:${s.done?'var(--green)':'var(--border2)'}"></div>
+                  <div class="timeline-content">
+                    <div class="timeline-title" style="${!s.done?'color:var(--ink3)':''}">${s.label}</div>
+                    <div class="timeline-desc">${s.desc}</div>
+                  </div>
+                  <div class="timeline-time">${s.time}</div>
+                </div>`).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`,
+
+  // ─── TENANT NOTICES ────────────────────────────────────────────────────
+  'tenant-notices': () => `
+    <div class="page-header">
+      <div class="page-header-left"><h1>Notices</h1><p>Messages from your landlord</p></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      ${[
+        {icon:'💸',type:'Rent Increase',title:'Rent Increase Notice — Q3 2026',body:'Dear Amaka, we wish to inform you that your monthly rent will increase from ₦150,000 to ₦165,000 effective July 1, 2026. This adjustment reflects current market rates. Please contact us if you have any questions.',date:'Mar 1, 2026',read:false,badge:'badge-amber'},
+        {icon:'🔧',type:'Maintenance',title:'Scheduled water supply maintenance',body:'Please be informed that there will be a scheduled interruption to water supply on Saturday March 23, 2026 between 9am–3pm for maintenance work. We apologize for any inconvenience.',date:'Feb 20, 2026',read:true,badge:'badge-blue'},
+        {icon:'📋',type:'Lease Renewal',title:'Lease renewal offer — March 2027',body:'Your current tenancy expires March 31, 2027. We are pleased to offer you a lease renewal at the updated rate. Please indicate your intention to renew by December 31, 2026.',date:'Feb 10, 2026',read:true,badge:'badge-green'},
+      ].map(n=>`
+        <div class="card" style="${!n.read?'border-left:3px solid var(--accent)':''}">
+          <div class="card-body">
+            <div style="display:flex;align-items:flex-start;gap:14px">
+              <div style="width:40px;height:40px;border-radius:10px;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${n.icon}</div>
+              <div style="flex:1">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+                  <span class="badge ${n.badge}" style="font-size:10px">${n.type}</span>
+                  ${!n.read?`<span style="background:var(--accent);color:#fff;font-size:9px;font-weight:600;padding:2px 6px;border-radius:8px">NEW</span>`:''}
+                  <span style="font-size:11px;color:var(--ink3);margin-left:auto">${n.date}</span>
+                </div>
+                <div style="font-size:14px;font-weight:600;margin-bottom:6px;color:var(--ink)">${n.title}</div>
+                <div style="font-size:13px;color:var(--ink2);line-height:1.6">${n.body}</div>
+              </div>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>`,
+};
+
+// ── Chart Renderers ────────────────────────────────────────────────────────
+function renderOverviewCharts() {
+  renderBarChart('rent-chart-overview',
+    ['A','M','J','J','A','S','O','N','D','J','F','M'],
+    [1.2,1.5,1.4,1.8,2.1,1.9,2.3,2.0,2.8,2.4,2.9,3.1],
+    'var(--accent)'
+  );
+}
+
+function renderReportCharts() {
+  setTimeout(() => {
+    renderBarChart('report-chart-1',
+      ['A','M','J','J','A','S','O','N','D','J','F','M'],
+      [1.2,1.5,1.4,1.8,2.1,1.9,2.3,2.0,2.8,2.4,2.9,3.1],
+      'var(--accent)'
+    );
+    renderBarChart('report-chart-2',
+      ['A','M','J','J','A','S','O','N','D','J','F','M'],
+      [78,82,80,85,88,86,91,89,90,88,91,87],
+      'var(--green)',
+      100
+    );
+  }, 50);
+}
+
+function renderAdminCharts() {
+  setTimeout(() => {
+    renderBarChart('admin-chart-1',
+      ['A','M','J','J','A','S','O','N','D','J','F','M'],
+      [48,62,55,71,88,76,94,82,105,97,110,48],
+      'var(--accent2)'
+    );
+  }, 50);
+}
+
+function renderBarChart(id, labels, values, color, maxVal) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const max = maxVal || Math.max(...values) * 1.1;
+  const lastIdx = labels.length - 1;
+  el.innerHTML = `<div class="bar-chart">${labels.map((l,i) => {
+    const h = Math.round((values[i]/max)*140);
+    const isLast = i === lastIdx;
+    return `<div class="bar-group">
+      <div class="bar-val">${typeof values[i] === 'number' && values[i] < 10 ? values[i]+'M' : values[i]+''}</div>
+      <div class="bar" style="height:${h}px;background:${isLast?'var(--accent2)':color};opacity:${isLast?1:0.65}" title="${l}: ${values[i]}"></div>
+      <div class="bar-label">${l}</div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ── Modals ─────────────────────────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) {
+      overlay.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  });
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+function showToast(message, type = 'default') {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  const icons = { success: '✓', error: '✕', info: 'ℹ', default: '·' };
+  toast.innerHTML = `<span style="font-size:16px">${icons[type]||'·'}</span> ${message}`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(20px)';
+    toast.style.transition = 'all 0.3s ease';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
+
+// ── Signature Pad ──────────────────────────────────────────────────────────
+let sigDrawing = false;
+let sigCtx = null;
+
+document.addEventListener('mousedown', e => {
+  if (e.target.id === 'sig-canvas') {
+    sigDrawing = true;
+    sigCtx = e.target.getContext('2d');
+    sigCtx.strokeStyle = '#1A1916';
+    sigCtx.lineWidth = 2;
+    sigCtx.lineCap = 'round';
+    sigCtx.beginPath();
+    const rect = e.target.getBoundingClientRect();
+    sigCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    document.getElementById('sig-hint').style.display = 'none';
+  }
+});
+document.addEventListener('mousemove', e => {
+  if (!sigDrawing || !sigCtx) return;
+  const canvas = document.getElementById('sig-canvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  sigCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+  sigCtx.stroke();
+});
+document.addEventListener('mouseup', () => { sigDrawing = false; });
+
+function clearSignature() {
+  const canvas = document.getElementById('sig-canvas');
+  if (!canvas) return;
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  document.getElementById('sig-hint').style.display = 'block';
+}
+
+// ── Keyboard shortcut: Escape closes modals ────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m => {
+      m.classList.remove('open');
+      document.body.style.overflow = '';
+    });
+  }
+});
+</script>
+</body>
+</html>

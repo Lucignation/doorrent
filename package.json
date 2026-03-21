@@ -1,0 +1,22 @@
+{
+  "name": "resuply-tenant",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:api": "npm --prefix api run dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "^14.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.37",
+    "@types/react": "18.3.28",
+    "@types/react-dom": "18.3.7",
+    "typescript": "5.9.3"
+  }
+}
