@@ -11,6 +11,14 @@ import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import type { BadgeTone, LandlordUnitRow, TableColumn } from "../../types/app";
 
+interface LandlordUnitRecord extends LandlordUnitRow {
+  id: string;
+  propertyId: string;
+  leaseEndIso?: string | null;
+  monthlyRent?: number;
+  canAssignTenant?: boolean;
+}
+
 interface UnitsResponse {
   count: number;
   summary: {
@@ -26,7 +34,17 @@ interface UnitsResponse {
     statuses: Array<{ value: string; label: string }>;
     types: string[];
   };
-  units: Array<LandlordUnitRow & { id: string }>;
+  units: LandlordUnitRecord[];
+}
+
+function monthlyEquivalentFromAnnualRent(value: string) {
+  const annualRent = Number(value);
+
+  if (!Number.isFinite(annualRent) || annualRent <= 0) {
+    return "—";
+  }
+
+  return `₦${Math.round(annualRent / 12).toLocaleString("en-NG")}`;
 }
 
 function statusTone(status: LandlordUnitRow["status"]): BadgeTone {
@@ -50,7 +68,7 @@ function statusTone(status: LandlordUnitRow["status"]): BadgeTone {
 }
 
 export default function LandlordUnitsPage() {
-  const { openModal } = usePrototypeUI();
+  const { openModal, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [unitsData, setUnitsData] = useState<UnitsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +77,17 @@ export default function LandlordUnitsPage() {
   const [propertyId, setPropertyId] = useState("");
   const [status, setStatus] = useState("");
   const [type, setType] = useState("");
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [editingUnit, setEditingUnit] = useState<LandlordUnitRecord | null>(null);
+  const [editForm, setEditForm] = useState({
+    unitNumber: "",
+    type: "",
+    annualRent: "",
+    leaseEnd: "",
+    status: "VACANT",
+  });
+  const [editError, setEditError] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     if (!landlordSession?.token) {
@@ -121,9 +150,81 @@ export default function LandlordUnitsPage() {
     return () => {
       cancelled = true;
     };
-  }, [landlordSession?.token, propertyId, search, status, type]);
+  }, [landlordSession?.token, propertyId, refreshNonce, search, status, type]);
 
-  const unitColumns: TableColumn<LandlordUnitRow & { id: string }>[] = useMemo(
+  function openEditUnit(unit: LandlordUnitRecord) {
+    setEditingUnit(unit);
+    setEditError("");
+    setEditForm({
+      unitNumber: unit.unit,
+      type: unit.type,
+      annualRent: unit.annualRent ? String(unit.annualRent) : "",
+      leaseEnd: unit.leaseEndIso ? unit.leaseEndIso.slice(0, 10) : "",
+      status: unit.status.toUpperCase(),
+    });
+  }
+
+  function closeEditUnit() {
+    if (savingEdit) {
+      return;
+    }
+
+    setEditingUnit(null);
+    setEditError("");
+  }
+
+  async function submitUnitEdit() {
+    if (!landlordSession?.token || !editingUnit) {
+      return;
+    }
+
+    setSavingEdit(true);
+    setEditError("");
+
+    try {
+      await apiRequest(`/landlord/units/${editingUnit.id}`, {
+        method: "PATCH",
+        token: landlordSession.token,
+        body: {
+          unitNumber: editForm.unitNumber,
+          type: editForm.type,
+          annualRent: Number(editForm.annualRent),
+          leaseEnd: editForm.leaseEnd || null,
+          status: editForm.status,
+        },
+      });
+
+      setEditingUnit(null);
+      setRefreshNonce((current) => current + 1);
+      showToast("Unit updated successfully", "success");
+    } catch (requestError) {
+      setEditError(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not update this unit.",
+      );
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  const editStatusOptions = useMemo(() => {
+    const options = unitsData?.filters.statuses ?? [];
+
+    if (!editingUnit) {
+      return options;
+    }
+
+    if (editingUnit.tenant !== "—") {
+      return options.filter((option) => option.value !== "VACANT");
+    }
+
+    return options.filter(
+      (option) => !["OCCUPIED", "EXPIRING", "OVERDUE"].includes(option.value),
+    );
+  }, [editingUnit, unitsData?.filters.statuses]);
+
+  const unitColumns: TableColumn<LandlordUnitRecord>[] = useMemo(
     () => [
       {
         key: "unit",
@@ -175,7 +276,11 @@ export default function LandlordUnitsPage() {
         label: "Actions",
         render: (row) => (
           <div style={{ display: "flex", gap: 4 }}>
-            <button type="button" className="btn btn-ghost btn-xs">
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => openEditUnit(row)}
+            >
               Edit
             </button>
             {row.status === "vacant" ? (
@@ -272,6 +377,151 @@ export default function LandlordUnitsPage() {
             </span>
           </div>
         </div>
+
+        {editingUnit ? (
+          <div
+            className="modal-overlay open"
+            onClick={(event) => {
+              if (event.target === event.currentTarget) {
+                closeEditUnit();
+              }
+            }}
+          >
+            <div className="modal">
+              <div className="modal-header">
+                <div className="modal-title">Edit Unit</div>
+                <button type="button" className="modal-close" onClick={closeEditUnit}>
+                  ✕
+                </button>
+              </div>
+              <div className="modal-body">
+                {editError ? (
+                  <div
+                    style={{
+                      marginBottom: 14,
+                      padding: 12,
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--red-light)",
+                      border: "1px solid rgba(192,57,43,0.18)",
+                      color: "var(--red)",
+                      fontSize: 12,
+                    }}
+                  >
+                    {editError}
+                  </div>
+                ) : null}
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Property</label>
+                    <input className="form-input" value={editingUnit.property} disabled />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Current Tenant</label>
+                    <input className="form-input" value={editingUnit.tenant} disabled />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Unit Number *</label>
+                    <input
+                      className="form-input"
+                      value={editForm.unitNumber}
+                      onChange={(event) =>
+                        setEditForm((current) => ({
+                          ...current,
+                          unitNumber: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Type *</label>
+                    <input
+                      className="form-input"
+                      value={editForm.type}
+                      onChange={(event) =>
+                        setEditForm((current) => ({
+                          ...current,
+                          type: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Annual Rent (₦) *</label>
+                    <input
+                      className="form-input"
+                      type="number"
+                      min="1"
+                      step="1000"
+                      value={editForm.annualRent}
+                      onChange={(event) =>
+                        setEditForm((current) => ({
+                          ...current,
+                          annualRent: event.target.value,
+                        }))
+                      }
+                    />
+                    <div className="helper-text">
+                      Monthly equivalent: {monthlyEquivalentFromAnnualRent(editForm.annualRent)}
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Lease End</label>
+                    <input
+                      className="form-input"
+                      type="date"
+                      value={editForm.leaseEnd}
+                      onChange={(event) =>
+                        setEditForm((current) => ({
+                          ...current,
+                          leaseEnd: event.target.value,
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select
+                    className="form-input"
+                    value={editForm.status}
+                    onChange={(event) =>
+                      setEditForm((current) => ({
+                        ...current,
+                        status: event.target.value,
+                      }))
+                    }
+                  >
+                    {editStatusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="helper-text">
+                    Vacant is only allowed when no tenant is assigned to the unit.
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={closeEditUnit}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => void submitUnitEdit()}
+                  disabled={savingEdit}
+                >
+                  {savingEdit ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </LandlordPortalShell>
     </>
   );
