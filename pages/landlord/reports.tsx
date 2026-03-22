@@ -1,25 +1,18 @@
-import AppShell from "../../components/layout/AppShell";
+import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import BarChart from "../../components/ui/BarChart";
 import PageHeader from "../../components/ui/PageHeader";
 import {
   landlordCollection,
-  landlordNav,
   landlordOccupancyTrend,
   landlordRevenueByProperty,
-  landlordUser,
 } from "../../data/landlord";
 
 export default function LandlordReportsPage() {
   return (
     <>
       <PageMeta title="DoorRent — Reports" />
-      <AppShell
-        user={landlordUser}
-        topbarTitle="Reports"
-        breadcrumb="Dashboard → Reports"
-        navSections={landlordNav}
-      >
+      <LandlordPortalShell topbarTitle="Reports" breadcrumb="Dashboard → Reports">
         <PageHeader
           title="Reports & Analytics"
           description="Portfolio performance insights"
@@ -99,7 +92,7 @@ export default function LandlordReportsPage() {
             ))}
           </div>
         </div>
-      </AppShell>
+      </LandlordPortalShell>
     </>
   );
 }

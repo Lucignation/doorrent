@@ -20,7 +20,10 @@ export type NavIconName =
 
 export type ModalId =
   | "add-property"
+  | "add-unit"
   | "add-tenant"
+  | "add-agreement"
+  | "upload-template"
   | "send-notice"
   | "sign-agreement"
   | "notifications";
@@ -122,6 +125,16 @@ export interface TenantLedgerRow {
   status: "current" | "expiring" | "overdue";
 }
 
+export interface TenantInviteRow {
+  email: string;
+  property: string;
+  unit: string;
+  rent: string;
+  lease: string;
+  expires: string;
+  status: "pending" | "completed" | "expired";
+}
+
 export interface ArrearsRow {
   tenant: string;
   unit: string;
@@ -217,6 +230,16 @@ export interface LandlordProfile {
   nextBilling: string;
 }
 
+export interface LandlordPayoutSettings {
+  bankName: string;
+  bankCode: string;
+  accountNumber: string;
+  accountName: string;
+  subaccountCode: string;
+  platformFeePercent: number;
+  verified: boolean;
+}
+
 export interface AdminActivityRow {
   landlord: string;
   plan: "Starter" | "Pro" | "Enterprise";
@@ -233,6 +256,32 @@ export interface AdminLandlordRow {
   mrr: string;
   status: "active" | "trial" | "suspended";
   joined: string;
+}
+
+export interface AdminPropertyRow {
+  property: string;
+  landlord: string;
+  location: string;
+  units: number;
+  occupancy: string;
+  revenue: string;
+  status: "active" | "trial" | "suspended";
+}
+
+export interface AdminSettingsProfile {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface AdminPlatformSettings {
+  supportEmail: string;
+  billingEmail: string;
+  alertsEmail: string;
+  maintenanceMode: boolean;
+  allowLandlordRegistration: boolean;
+  defaultTrialDays: number;
 }
 
 export interface AdminTicketRow {

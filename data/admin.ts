@@ -2,6 +2,9 @@ import type {
   AdminActivityRow,
   AdminAuditRow,
   AdminLandlordRow,
+  AdminPlatformSettings,
+  AdminPropertyRow,
+  AdminSettingsProfile,
   AdminTicketRow,
   AppUser,
   ChartPoint,
@@ -185,6 +188,61 @@ export const adminLandlords: AdminLandlordRow[] = [
     joined: "Aug 2024",
   },
 ];
+
+export const adminProperties: AdminPropertyRow[] = [
+  {
+    property: "Lekki Gardens Estate",
+    landlord: "Babatunde Adeyemi",
+    location: "Lagos, Lagos State",
+    units: 3,
+    occupancy: "67%",
+    revenue: "₦385,000",
+    status: "active",
+  },
+  {
+    property: "VI Towers",
+    landlord: "Babatunde Adeyemi",
+    location: "Lagos, Lagos State",
+    units: 3,
+    occupancy: "67%",
+    revenue: "₦820,000",
+    status: "active",
+  },
+  {
+    property: "Abuja Starter Homes",
+    landlord: "Grace Nwosu",
+    location: "Abuja, FCT",
+    units: 1,
+    occupancy: "0%",
+    revenue: "₦120,000",
+    status: "trial",
+  },
+  {
+    property: "Kano Central Apartments",
+    landlord: "Ibrahim Musa",
+    location: "Kano, Kano State",
+    units: 1,
+    occupancy: "100%",
+    revenue: "₦110,000",
+    status: "suspended",
+  },
+];
+
+export const adminSettingsProfile: AdminSettingsProfile = {
+  firstName: "DoorRent",
+  lastName: "Admin",
+  email: "admin@doorrent.com",
+  phone: "+234 801 234 5678",
+};
+
+export const adminPlatformSettings: AdminPlatformSettings = {
+  supportEmail: "support@doorrent.com",
+  billingEmail: "billing@doorrent.com",
+  alertsEmail: "alerts@doorrent.com",
+  maintenanceMode: false,
+  allowLandlordRegistration: true,
+  defaultTrialDays: 14,
+};
 
 export const adminSupportStats: StatItem[] = [
   { label: "Critical", value: "5", subtext: "", accent: "red" },

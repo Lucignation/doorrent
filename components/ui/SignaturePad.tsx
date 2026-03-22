@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 
-export default function SignaturePad() {
+interface SignaturePadProps {
+  onChange?: (signatureData: string) => void;
+}
+
+export default function SignaturePad({ onChange }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const [hasInk, setHasInk] = useState(false);
@@ -49,6 +53,9 @@ export default function SignaturePad() {
     }
 
     function stopDrawing() {
+      if (drawingRef.current && onChange && hasInk) {
+        onChange(canvasElement.toDataURL("image/png"));
+      }
       drawingRef.current = false;
     }
 
@@ -73,6 +80,7 @@ export default function SignaturePad() {
 
     context.clearRect(0, 0, canvas.width, canvas.height);
     setHasInk(false);
+    onChange?.("");
   }
 
   return (

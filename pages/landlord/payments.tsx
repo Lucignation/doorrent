@@ -1,4 +1,4 @@
-import AppShell from "../../components/layout/AppShell";
+import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import DataTable from "../../components/ui/DataTable";
@@ -7,9 +7,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import {
   landlordArrears,
-  landlordNav,
   landlordPaymentHistory,
-  landlordUser,
 } from "../../data/landlord";
 import type {
   ArrearsRow,
@@ -83,12 +81,7 @@ export default function LandlordPaymentsPage() {
   return (
     <>
       <PageMeta title="DoorRent — Payments" />
-      <AppShell
-        user={landlordUser}
-        topbarTitle="Payments"
-        breadcrumb="Dashboard → Payments"
-        navSections={landlordNav}
-      >
+      <LandlordPortalShell topbarTitle="Payments" breadcrumb="Dashboard → Payments">
         <PageHeader
           title="Payments"
           description="Invoices, history & arrears management"
@@ -163,7 +156,7 @@ export default function LandlordPaymentsPage() {
             </div>
           </div>
         </div>
-      </AppShell>
+      </LandlordPortalShell>
     </>
   );
 }

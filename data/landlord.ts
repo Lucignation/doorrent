@@ -6,6 +6,7 @@ import type {
   LandlordAgreementRow,
   LandlordNotificationPreference,
   LandlordNoticeRow,
+  LandlordPayoutSettings,
   LandlordProfile,
   LandlordQuickNoticeAction,
   LandlordReceiptRow,
@@ -19,6 +20,7 @@ import type {
   RevenueBreakdownRow,
   StatItem,
   TenantLedgerRow,
+  TenantInviteRow,
   TeamMember,
 } from "../types/app";
 
@@ -307,6 +309,27 @@ export const landlordTenants: TenantLedgerRow[] = [
     leaseEnd: "Aug 2026",
     balance: "—",
     status: "current",
+  },
+];
+
+export const landlordPendingInvites: TenantInviteRow[] = [
+  {
+    email: "amina.james@email.com",
+    property: "Lekki Gardens Estate",
+    unit: "C2",
+    rent: "₦85,000",
+    lease: "Apr 2026 → Mar 2027",
+    expires: "Apr 15 2026",
+    status: "pending",
+  },
+  {
+    email: "segun.adeyemi@email.com",
+    property: "VI Towers",
+    unit: "9A",
+    rent: "₦260,000",
+    lease: "Apr 2026 → Mar 2027",
+    expires: "Apr 10 2026",
+    status: "pending",
   },
 ];
 
@@ -754,6 +777,16 @@ export const landlordProfile: LandlordProfile = {
   planDescription: "Up to 30 properties · 200 units · 3 team members",
   price: "₦25,000/mo",
   nextBilling: "April 1, 2026",
+};
+
+export const landlordPayoutSettings: LandlordPayoutSettings = {
+  bankName: "Guaranty Trust Bank",
+  bankCode: "058",
+  accountNumber: "0123456789",
+  accountName: "Lekki Property Holdings Ltd",
+  subaccountCode: "ACCT_x7k9pq2nd1y4ezz",
+  platformFeePercent: 3,
+  verified: true,
 };
 
 export const landlordNotificationPreferences: LandlordNotificationPreference[] = [

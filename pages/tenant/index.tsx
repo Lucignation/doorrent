@@ -1,5 +1,5 @@
 import Link from "next/link";
-import AppShell from "../../components/layout/AppShell";
+import TenantPortalShell from "../../components/auth/TenantPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import AlertBanner from "../../components/ui/AlertBanner";
 import DataTable from "../../components/ui/DataTable";
@@ -7,11 +7,9 @@ import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import {
   tenantAgreementAlert,
-  tenantNav,
   tenantPaymentHistory,
   tenantQuickActions,
   tenantStats,
-  tenantUser,
 } from "../../data/tenant";
 import type { TableColumn, TenantPaymentHistoryRow } from "../../types/app";
 
@@ -30,12 +28,7 @@ export default function TenantDashboardPage() {
   return (
     <>
       <PageMeta title="DoorRent — Tenant Dashboard" />
-      <AppShell
-        user={tenantUser}
-        topbarTitle="My Dashboard"
-        breadcrumb="Dashboard → My Dashboard"
-        navSections={tenantNav}
-      >
+      <TenantPortalShell topbarTitle="My Dashboard" breadcrumb="Dashboard → My Dashboard">
         <PageHeader
           title="Good morning, Amaka 👋"
           description="Unit A3 · Lekki Gardens Estate · Lekki Phase 1, Lagos"
@@ -116,7 +109,7 @@ export default function TenantDashboardPage() {
             </div>
           </div>
         </div>
-      </AppShell>
+      </TenantPortalShell>
     </>
   );
 }

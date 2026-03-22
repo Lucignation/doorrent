@@ -30,7 +30,7 @@ export default function Sidebar({
     <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
       <div className="sidebar-header">
         <Link href="/" className="sidebar-logo" onClick={onNavigate}>
-          <div className="logo-mark">P</div>
+          <div className="logo-mark">D</div>
           <span className="logo-name">DoorRent</span>
         </Link>
         <button

@@ -1,11 +1,11 @@
-import AppShell from "../../components/layout/AppShell";
+import AdminPortalShell from "../../components/auth/AdminPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
 import IdentityCell from "../../components/ui/IdentityCell";
 import { SearchIcon } from "../../components/ui/Icons";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
-import { adminAuditLogs, adminNav, adminUser } from "../../data/admin";
+import { adminAuditLogs } from "../../data/admin";
 import type { AdminAuditRow, BadgeTone, TableColumn } from "../../types/app";
 
 function roleTone(role: AdminAuditRow["role"]): BadgeTone {
@@ -69,12 +69,7 @@ export default function AdminAuditPage() {
   return (
     <>
       <PageMeta title="DoorRent — Audit Logs" />
-      <AppShell
-        user={adminUser}
-        topbarTitle="Audit Logs"
-        breadcrumb="Dashboard → Audit Logs"
-        navSections={adminNav}
-      >
+      <AdminPortalShell topbarTitle="Audit Logs" breadcrumb="Dashboard → Audit Logs">
         <PageHeader
           title="Audit Logs"
           description="Full platform activity trail"
@@ -119,7 +114,7 @@ export default function AdminAuditPage() {
             </div>
           </div>
         </div>
-      </AppShell>
+      </AdminPortalShell>
     </>
   );
 }

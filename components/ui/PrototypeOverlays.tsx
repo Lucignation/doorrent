@@ -133,7 +133,7 @@ export default function PrototypeOverlays() {
       <ModalFrame
         modalId="add-tenant"
         size="modal-lg"
-        title="Add New Tenant"
+        title="Invite Tenant"
         footer={(
           <>
             <button type="button" className="btn btn-secondary" onClick={closeModal}>
@@ -144,58 +144,46 @@ export default function PrototypeOverlays() {
               className="btn btn-primary"
               onClick={() => {
                 closeModal();
-                showToast("Tenant added & invite sent", "success");
+                showToast("Onboarding invite email sent", "success");
               }}
             >
-              Add Tenant
+              Send Invite
             </button>
           </>
         )}
       >
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-            Personal Information
+            Invite Recipient
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">First Name *</label>
-              <input className="form-input" placeholder="First name" />
+              <label className="form-label">Tenant Full Name</label>
+              <input className="form-input" placeholder="Amina James" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Last Name *</label>
-              <input className="form-input" placeholder="Last name" />
-            </div>
-          </div>
-          <div className="form-row">
             <div className="form-group">
               <label className="form-label">Email Address *</label>
               <input className="form-input" type="email" placeholder="tenant@email.com" />
             </div>
-            <div className="form-group">
-              <label className="form-label">Phone Number *</label>
-              <input className="form-input" placeholder="+234 800 000 0000" />
-            </div>
           </div>
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">ID Type</label>
-              <select className="form-input" defaultValue="National ID">
-                <option>National ID</option>
-                <option>International Passport</option>
-                <option>Driver&apos;s License</option>
-                <option>Voter&apos;s Card</option>
+              <label className="form-label">Agreement Template</label>
+              <select className="form-input" defaultValue="Standard Residential Template">
+                <option>Standard Residential Template</option>
+                <option>Commercial Lease Template</option>
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">ID Number</label>
-              <input className="form-input" placeholder="ID number" />
+              <label className="form-label">Invite Expires</label>
+              <input className="form-input" type="date" defaultValue="2026-04-15" />
             </div>
           </div>
         </div>
         <div className="form-divider" />
         <div style={{ marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 600, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>
-            Unit Assignment & Lease
+            Property, Unit & Lease
           </div>
           <div className="form-row">
             <div className="form-group">
@@ -238,13 +226,41 @@ export default function PrototypeOverlays() {
           </div>
         </div>
         <div className="form-divider" />
-        <div className="checkbox-wrap" style={{ marginBottom: 8 }}>
-          <input type="checkbox" id="send-invite" defaultChecked />
-          <label htmlFor="send-invite">Send portal invitation email to tenant</label>
+        <div
+          style={{
+            padding: 14,
+            border: "1px solid var(--border)",
+            borderRadius: "var(--radius-sm)",
+            background: "var(--bg)",
+            marginBottom: 12,
+          }}
+        >
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
+            Tenant completes the rest
+          </div>
+          <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.7 }}>
+            The tenant will open the onboarding link from their email, upload their ID, provide their guarantor&apos;s full name, job, workplace, phone, email, and relationship, then both the tenant and guarantor will sign before submission.
+          </div>
+        </div>
+        <div className="form-group">
+          <label className="form-label">Onboarding Link Preview</label>
+          <div
+            style={{
+              padding: "10px 12px",
+              borderRadius: 10,
+              background: "var(--surface2)",
+              border: "1px solid var(--border)",
+              fontSize: 12,
+              color: "var(--ink2)",
+              wordBreak: "break-all",
+            }}
+          >
+            /tenant/onboarding/demo-tenant-onboarding-token
+          </div>
         </div>
         <div className="checkbox-wrap">
-          <input type="checkbox" id="gen-agreement" defaultChecked />
-          <label htmlFor="gen-agreement">Generate tenancy agreement from template</label>
+          <input type="checkbox" id="send-invite" defaultChecked />
+          <label htmlFor="send-invite">Email the onboarding link to the tenant immediately</label>
         </div>
       </ModalFrame>
 

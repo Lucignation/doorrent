@@ -1,18 +1,13 @@
-import AppShell from "../../components/layout/AppShell";
+import TenantPortalShell from "../../components/auth/TenantPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import PageHeader from "../../components/ui/PageHeader";
-import { tenantNav, tenantNotices, tenantUser } from "../../data/tenant";
+import { tenantNotices } from "../../data/tenant";
 
 export default function TenantNoticesPage() {
   return (
     <>
       <PageMeta title="DoorRent — Notices" />
-      <AppShell
-        user={tenantUser}
-        topbarTitle="Notices"
-        breadcrumb="Dashboard → Notices"
-        navSections={tenantNav}
-      >
+      <TenantPortalShell topbarTitle="Notices" breadcrumb="Dashboard → Notices">
         <PageHeader title="Notices" description="Messages from your landlord" />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -75,7 +70,7 @@ export default function TenantNoticesPage() {
             </div>
           ))}
         </div>
-      </AppShell>
+      </TenantPortalShell>
     </>
   );
 }

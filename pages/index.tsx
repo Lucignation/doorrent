@@ -1,516 +1,2088 @@
-import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import Link from "next/link";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
-import {
-  defaultDemoRequest,
-  fallbackLandingContent,
-  fetchLandingContent,
-  type DemoRequestInput,
-  type LandingAction,
-  type LandingPageData,
-} from "../lib/landing-content";
 
-interface LandingPageProps {
-  content: LandingPageData;
-  apiBaseUrl: string;
-  source: "api" | "fallback";
-}
+type RoleKey = "landlord" | "tenant";
 
-function resolveAction(content: LandingPageData, actionId: string) {
-  return content.actions.find((action) => action.id === actionId) ?? null;
-}
+const trustedLogos = [
+  "Lekki Realty",
+  "Abuja Estates",
+  "VI Holdings",
+  "BuildRight NG",
+  "GreenCourt",
+  "Ikoyi Premium",
+];
 
-function ActionLink({
-  action,
-  onOpenModal,
-}: {
-  action: LandingAction;
-  onOpenModal: (action: LandingAction) => void;
-}) {
-  const className = `landing-button landing-button-${action.variant}`;
+const features = [
+  {
+    icon: "💳",
+    tone: "default",
+    title: "Smart Rent Collection",
+    description:
+      "Automated invoicing, payment reminders, and real-time tracking for every rent cycle and every naira.",
+  },
+  {
+    icon: "📋",
+    tone: "gold",
+    title: "Digital Agreements",
+    description:
+      "Create, send, and track tenancy agreements with tenant and guarantor signatures in one workflow.",
+  },
+  {
+    icon: "👥",
+    tone: "blue",
+    title: "Tenant Management",
+    description:
+      "Keep tenant profiles, onboarding records, guarantor details, and communication history in one place.",
+  },
+  {
+    icon: "🏢",
+    tone: "gold",
+    title: "Property Portfolio",
+    description:
+      "Manage multiple properties and units from one dashboard with occupancy and rent visibility at portfolio level.",
+  },
+  {
+    icon: "🔔",
+    tone: "default",
+    title: "Automated Notices",
+    description:
+      "Send reminders, lease updates, and operational notices to a single tenant or your full portfolio in minutes.",
+  },
+  {
+    icon: "📊",
+    tone: "blue",
+    title: "Financial Reports",
+    description:
+      "Track arrears, portfolio performance, and property-level revenue with clean, landlord-friendly reporting.",
+  },
+];
 
-  if (action.modalId) {
-    return (
-      <button type="button" className={className} onClick={() => onOpenModal(action)}>
-        {action.label}
-      </button>
-    );
+const rolePanels: Record<
+  RoleKey,
+  {
+    title: string;
+    body: string;
+    badge: string;
+    badgeClass: string;
+    features: Array<{ icon: string; title: string; body: string }>;
+    stats: Array<{ label: string; value: string; sub: string; subClass?: string }>;
+    items: Array<{
+      initials: string;
+      name: string;
+      meta: string;
+      amount?: string;
+      status: string;
+      statusClass: string;
+    }>;
   }
+> = {
+  landlord: {
+    title: "Everything a landlord needs",
+    body:
+      "Manage your portfolio, invite tenants, collect rent, track arrears, issue agreements, and stay on top of renewals without spreadsheet drift.",
+    badge: "4 Properties",
+    badgeClass: "is-green",
+    features: [
+      {
+        icon: "📈",
+        title: "Portfolio overview",
+        body: "See properties, occupancy, collections, and overdue rent from one surface.",
+      },
+      {
+        icon: "💸",
+        title: "Rent and arrears tracking",
+        body: "Know exactly who has paid, who is due, and who needs follow-up.",
+      },
+      {
+        icon: "✍️",
+        title: "Digital agreements",
+        body: "Send agreements, receive signatures, and manage template uploads online.",
+      },
+      {
+        icon: "📣",
+        title: "Bulk communication",
+        body: "Send notices and reminders across your units without switching tools.",
+      },
+    ],
+    stats: [
+      { label: "Collected (Mar)", value: "₦3.12M", sub: "↑ 12% vs Feb" },
+      { label: "Overdue", value: "₦780K", sub: "3 tenants", subClass: "is-red" },
+      { label: "Occupancy", value: "87.5%", sub: "21 of 24" },
+      { label: "Agreements", value: "2", sub: "Pending sign", subClass: "is-gold" },
+    ],
+    items: [
+      {
+        initials: "CE",
+        name: "Chidinma Eze",
+        meta: "Unit 5A · Ikoyi",
+        amount: "₦320,000",
+        status: "Paid",
+        statusClass: "is-paid",
+      },
+      {
+        initials: "TA",
+        name: "Tunde Adeola",
+        meta: "Unit B1 · Lekki",
+        amount: "₦150,000",
+        status: "21d late",
+        statusClass: "is-late",
+      },
+      {
+        initials: "AO",
+        name: "Amaka Obi",
+        meta: "Unit A3 · Lekki",
+        amount: "₦150,000",
+        status: "Due Apr 1",
+        statusClass: "is-due",
+      },
+    ],
+  },
+  tenant: {
+    title: "A simple, clear portal for tenants",
+    body:
+      "Tenants sign in with their email and a one-time code, then pay rent, view agreements, download receipts, and read landlord notices without an app download.",
+    badge: "Unit A3 · Lekki",
+    badgeClass: "is-gold",
+    features: [
+      {
+        icon: "💳",
+        title: "Pay rent online",
+        body: "Card, bank transfer, or USSD-ready flows for quick rent payment.",
+      },
+      {
+        icon: "🧾",
+        title: "Instant receipts",
+        body: "Download receipts the moment a payment lands in the portal.",
+      },
+      {
+        icon: "📄",
+        title: "Agreement review",
+        body: "Review and sign tenancy agreements from any phone or laptop.",
+      },
+      {
+        icon: "🔔",
+        title: "Notices from landlord",
+        body: "Receive rent updates, maintenance alerts, and renewal notices in one inbox.",
+      },
+    ],
+    stats: [
+      { label: "Monthly Rent", value: "₦150K", sub: "Due Apr 1" },
+      { label: "Lease Ends", value: "Mar '27", sub: "12 months left" },
+    ],
+    items: [
+      {
+        initials: "💸",
+        name: "March 2026 Rent",
+        meta: "Paid Mar 1, 2026",
+        status: "Paid",
+        statusClass: "is-paid",
+      },
+      {
+        initials: "📋",
+        name: "Tenancy Agreement",
+        meta: "Pending your signature",
+        status: "Sign",
+        statusClass: "is-due",
+      },
+      {
+        initials: "🔔",
+        name: "Notice: Rent Increase",
+        meta: "Effective July 1, 2026",
+        status: "New",
+        statusClass: "is-late",
+      },
+    ],
+  },
+};
 
-  if (!action.href) {
-    return (
-      <button type="button" className={className}>
-        {action.label}
-      </button>
-    );
-  }
+const steps = [
+  {
+    step: "1",
+    title: "Create your account",
+    body: "Sign up as a landlord and get a full-featured free trial to start setting up your portfolio.",
+  },
+  {
+    step: "2",
+    title: "Add properties and tenants",
+    body: "Import properties, add units, invite tenants, and let them complete their own onboarding online.",
+  },
+  {
+    step: "3",
+    title: "Collect and manage",
+    body: "Send your first agreement, collect rent, and keep every notice, payment, and renewal visible.",
+  },
+];
 
-  if (action.href.startsWith("http")) {
-    return (
-      <a className={className} href={action.href} target="_blank" rel="noreferrer">
-        {action.label}
-      </a>
-    );
-  }
+const pricing = [
+  {
+    name: "Starter",
+    price: "₦9,900",
+    sub: "per month",
+    description:
+      "For landlords starting to digitize a smaller portfolio.",
+    features: [
+      "Up to 5 properties",
+      "20 tenants",
+      "Rent collection and invoicing",
+      "Digital agreements",
+      "Email notices and reminders",
+      "PDF receipts",
+    ],
+    featured: false,
+  },
+  {
+    name: "Pro",
+    price: "₦24,900",
+    sub: "per month",
+    description:
+      "For active landlords who need automation, reporting, and strong day-to-day control.",
+    features: [
+      "Up to 20 properties",
+      "Unlimited tenants",
+      "Everything in Starter",
+      "Advanced analytics and reports",
+      "Bulk notices and reminders",
+      "Custom agreement templates",
+      "Priority support",
+    ],
+    featured: true,
+  },
+  {
+    name: "Enterprise",
+    price: "Custom",
+    sub: "contact us for pricing",
+    description:
+      "For estate firms and institutional landlords managing large portfolios.",
+    features: [
+      "Unlimited properties",
+      "Multi-user and team roles",
+      "Everything in Pro",
+      "Dedicated account manager",
+      "API access and integrations",
+      "Custom onboarding",
+      "SLA and uptime support",
+    ],
+    featured: false,
+  },
+];
 
-  return (
-    <Link href={action.href} className={className}>
-      {action.label}
-    </Link>
-  );
-}
+const testimonials = [
+  {
+    quote:
+      "Before DoorRent I was managing everything on WhatsApp and Excel. Now I can see all my units, know who owes me what, and send reminders with one click.",
+    name: "Babatunde Adeyemi",
+    role: "Landlord · 8 units · Lekki",
+    initials: "BA",
+  },
+  {
+    quote:
+      "The digital agreement feature alone is worth the subscription. My lawyer drafts the template once and I reuse it for every tenant.",
+    name: "Funke Oyelaran",
+    role: "Property investor · 14 units · Abuja",
+    initials: "FO",
+  },
+  {
+    quote:
+      "My tenants love the portal. They can see their balance, download receipts, and pay without calling me. The overdue notifications have cut my chase-up calls down massively.",
+    name: "Chike Uzodinma",
+    role: "Estate manager · 22 units · Port Harcourt",
+    initials: "CU",
+  },
+];
 
-export default function LandingPage({
-  content,
-  apiBaseUrl,
-  source,
-}: InferGetServerSidePropsType<typeof getServerSideProps>) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [formState, setFormState] = useState<DemoRequestInput>(defaultDemoRequest);
-  const [submitState, setSubmitState] = useState<"idle" | "submitting" | "success" | "preview">("idle");
-  const [feedback, setFeedback] = useState("");
+export default function LandingPage() {
+  const [activeRole, setActiveRole] = useState<RoleKey>("landlord");
+  const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
+    const onScroll = () => setIsScrolled(window.scrollY > 40);
+    onScroll();
+    window.addEventListener("scroll", onScroll);
 
-    const savedDraft = window.localStorage.getItem("propos-demo-request-draft");
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.12 },
+    );
 
-    if (!savedDraft) {
-      return;
-    }
+    document
+      .querySelectorAll(".marketing-home .reveal")
+      .forEach((element) => observer.observe(element));
 
-    try {
-      const parsed = JSON.parse(savedDraft) as Partial<DemoRequestInput>;
-      setFormState((current) => ({ ...current, ...parsed }));
-    } catch {
-      window.localStorage.removeItem("propos-demo-request-draft");
-    }
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      observer.disconnect();
+    };
   }, []);
 
-  const primaryAction = useMemo(
-    () => resolveAction(content, content.hero.primaryActionId),
-    [content],
-  );
-  const secondaryAction = useMemo(
-    () => resolveAction(content, content.hero.secondaryActionId),
-    [content],
-  );
-  const footerActions = useMemo(
-    () =>
-      content.footerActionIds
-        .map((actionId) => resolveAction(content, actionId))
-        .filter((item): item is LandingAction => Boolean(item)),
-    [content],
-  );
-  const requestDemoModal = useMemo(
-    () => content.modals.find((modal) => modal.id === "request-demo") ?? null,
-    [content],
-  );
-
-  const handleFieldChange = (field: keyof DemoRequestInput, value: string) => {
-    setFormState((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  };
-
-  const handleOpenModal = (action: LandingAction) => {
-    if (action.modalId === "request-demo") {
-      setIsModalOpen(true);
-    }
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSubmitState("submitting");
-    setFeedback("");
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/modals/request-demo/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formState,
-          pageSlug: "landing",
-        }),
-      });
-
-      const payload = (await response.json()) as { message?: string };
-
-      if (!response.ok) {
-        throw new Error(payload.message ?? "Request could not be sent");
-      }
-
-      setSubmitState("success");
-      setFeedback(payload.message ?? "Demo request received.");
-      setFormState(defaultDemoRequest);
-
-      if (typeof window !== "undefined") {
-        window.localStorage.removeItem("propos-demo-request-draft");
-      }
-    } catch {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(
-          "propos-demo-request-draft",
-          JSON.stringify(formState),
-        );
-      }
-
-      setSubmitState("preview");
-      setFeedback("API unavailable right now, so the request was saved locally in preview mode.");
-    }
-  };
+  const activePanel = rolePanels[activeRole];
 
   return (
     <>
       <PageMeta
-        title="DoorRent — Property Management Platform"
-        description="Landing page for the multi-role property management experience powered by the new Express and Prisma API."
+        title="DoorRent — Property Management, Reimagined"
+        description="Collect rent, manage tenants, send agreements, and track every property workflow in one elegant platform built for Nigerian landlords."
       />
 
-      <main className="landing-shell">
-        <div className="landing-backdrop" />
-
-        <section className="landing-nav-wrap">
-          <nav className="landing-nav">
-            <Link href="/" className="landing-brand">
-              <span className="landing-brand-mark">P</span>
-              <span>{content.brand}</span>
-            </Link>
-
-            <div className="landing-nav-links">
-              <a href="#workflow">Workflow</a>
-              <a href="#roles">Portals</a>
-              <a href="#faq">FAQ</a>
-            </div>
-
-            <div className="landing-nav-actions">
-              <Link href="/portal" className="landing-mini-link">
-                Sign in
+      <div className="marketing-home">
+        <nav className={`marketing-nav ${isScrolled ? "is-scrolled" : ""}`}>
+          <div className="marketing-container">
+            <div className="marketing-nav-inner">
+              <Link href="/" className="marketing-brand">
+                <div className="marketing-brand-mark">D</div>
+                <span className="marketing-brand-name">DoorRent</span>
               </Link>
-              {primaryAction ? (
-                <ActionLink action={primaryAction} onOpenModal={handleOpenModal} />
-              ) : null}
+
+              <div className="marketing-nav-links">
+                <a href="#features">Features</a>
+                <a href="#roles">For Landlords</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#testimonials">Testimonials</a>
+              </div>
+
+              <div className="marketing-nav-cta">
+                <Link href="/portal" className="btn btn-secondary">
+                  Sign in
+                </Link>
+                <Link href="/portal" className="btn btn-primary">
+                  Get started →
+                </Link>
+              </div>
             </div>
-          </nav>
+          </div>
+        </nav>
+
+        <section className="marketing-hero">
+          <div className="marketing-hero-bg" />
+          <div className="marketing-hero-arcs">
+            <div className="marketing-arc arc-1" />
+            <div className="marketing-arc arc-2" />
+            <div className="marketing-arc arc-3" />
+          </div>
+
+          <div className="marketing-hero-body">
+            <div className="marketing-badge">
+              <span className="marketing-badge-dot" />
+              Built for Nigerian Property Owners
+            </div>
+
+            <h1 className="marketing-hero-title">
+              Property management
+              <br />
+              <em>built for how</em>
+              <span>Nigeria rents.</span>
+            </h1>
+
+            <p className="marketing-hero-copy">
+              Collect rent, manage tenants, send agreements, and track every
+              naira in one elegant platform designed for landlords and their
+              teams.
+            </p>
+
+            <div className="marketing-hero-actions">
+              <Link href="/portal" className="btn btn-gold marketing-btn-lg">
+                Start free trial
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                >
+                  <path d="M3 8h10M9 4l4 4-4 4" />
+                </svg>
+              </Link>
+              <Link href="/portal" className="btn btn-ghost-light marketing-btn-lg">
+                View live demo
+              </Link>
+            </div>
+
+            <div className="marketing-proof">
+              <div>
+                <strong>12,000+</strong>
+                <span>Properties managed</span>
+              </div>
+              <div className="marketing-proof-divider" />
+              <div>
+                <strong>₦4.2B+</strong>
+                <span>Rent collected</span>
+              </div>
+              <div className="marketing-proof-divider" />
+              <div>
+                <strong>98.3%</strong>
+                <span>Platform uptime</span>
+              </div>
+              <div className="marketing-proof-divider" />
+              <div>
+                <strong>5,200+</strong>
+                <span>Active landlords</span>
+              </div>
+            </div>
+
+            <div className="marketing-hero-visual">
+              <div className="marketing-dashboard">
+                <div className="marketing-dashboard-topbar">
+                  <div className="marketing-dots">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                  <div className="marketing-dashboard-title">
+                    DoorRent — Landlord Dashboard
+                  </div>
+                </div>
+
+                <div className="marketing-dashboard-body">
+                  <div className="marketing-dashboard-sidebar">
+                    <div className="marketing-dashboard-logo">
+                      <span>D</span>
+                      <strong>DoorRent</strong>
+                    </div>
+                    <div className="marketing-dashboard-section">Main</div>
+                    {["Overview", "Properties", "Tenants", "Agreements"].map(
+                      (item, index) => (
+                        <div
+                          key={item}
+                          className={`marketing-dashboard-item ${
+                            index === 0 ? "is-active" : ""
+                          }`}
+                        >
+                          <span />
+                          {item}
+                        </div>
+                      ),
+                    )}
+                    <div className="marketing-dashboard-section">Finance</div>
+                    {["Payments", "Receipts"].map((item) => (
+                      <div key={item} className="marketing-dashboard-item">
+                        <span />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="marketing-dashboard-content">
+                    <div className="marketing-dashboard-stats">
+                      <div className="marketing-mini-stat">
+                        <label>Properties</label>
+                        <strong>4</strong>
+                        <span>24 units</span>
+                      </div>
+                      <div className="marketing-mini-stat">
+                        <label>Collected</label>
+                        <strong>₦3.1M</strong>
+                        <span>↑ 12%</span>
+                      </div>
+                      <div className="marketing-mini-stat">
+                        <label>Occupancy</label>
+                        <strong>87%</strong>
+                        <span>21 / 24</span>
+                      </div>
+                    </div>
+
+                    <div className="marketing-chart-card">
+                      <div className="marketing-chart-title">
+                        Rent Collection · 12 months
+                      </div>
+                      <div className="marketing-chart-bars">
+                        {[30, 38, 35, 45, 52, 48, 58, 50, 70, 61, 73, 80].map(
+                          (height, index) => (
+                            <div
+                              key={height}
+                              className={`marketing-chart-bar ${
+                                index === 11 ? "is-highlight" : ""
+                              }`}
+                              style={{ height: `${height}%` }}
+                            />
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="marketing-floating-card left">
+                <div className="icon">✅</div>
+                <div>
+                  <strong>Payment received</strong>
+                  <span>Chidinma Eze · ₦320,000</span>
+                </div>
+              </div>
+
+              <div className="marketing-floating-card right dark">
+                <small>Overdue rent</small>
+                <strong>₦780K</strong>
+                <span>3 tenants · send reminders →</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="marketing-ticker">
+            <div className="marketing-ticker-track">
+              {[
+                "₦320,000 rent received",
+                "Kelechi Dike signed tenancy agreement",
+                "Unit A3 renewed for 12 months",
+                "Overdue notice sent to Tunde Adeola",
+                "₦1.2M disbursed to landlord",
+                "New property added — Banana Island Towers",
+                "Receipt generated for Ikoyi Residences",
+              ]
+                .concat([
+                  "₦320,000 rent received",
+                  "Kelechi Dike signed tenancy agreement",
+                  "Unit A3 renewed for 12 months",
+                  "Overdue notice sent to Tunde Adeola",
+                  "₦1.2M disbursed to landlord",
+                  "New property added — Banana Island Towers",
+                  "Receipt generated for Ikoyi Residences",
+                ])
+                .map((item, index) => (
+                  <span key={`${item}-${index}`} className="marketing-ticker-item">
+                    {item}
+                  </span>
+                ))}
+            </div>
+          </div>
         </section>
 
-        <section className="landing-hero">
-          <div className="landing-hero-copy">
-            <div className="landing-chip-row">
-              <span className="landing-chip">New marketing landing page</span>
-              <span className={`landing-chip ${source === "api" ? "is-live" : ""}`}>
-                {source === "api" ? "Live API data" : "Preview fallback"}
+        <section className="marketing-logos">
+          <p>Trusted by landlords across Lagos, Abuja and Port Harcourt</p>
+          <div className="marketing-logo-row">
+            {trustedLogos.map((logo) => (
+              <div key={logo} className="marketing-logo-pill">
+                <span className="marketing-logo-icon">◌</span>
+                {logo}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="features" className="marketing-section">
+          <div className="marketing-container">
+            <div className="marketing-section-head reveal">
+              <p>Everything you need</p>
+              <h2>
+                One platform.
+                <br />
+                <em>Every detail covered.</em>
+              </h2>
+              <span>
+                From collecting rent to managing agreements and communicating
+                with tenants, DoorRent handles the full day-to-day flow.
               </span>
             </div>
 
-            <p className="landing-eyebrow">{content.hero.eyebrow}</p>
-            <h1>{content.hero.title}</h1>
-            <p className="landing-subtitle">{content.hero.subtitle}</p>
-
-            <div className="landing-hero-actions">
-              {primaryAction ? (
-                <ActionLink action={primaryAction} onOpenModal={handleOpenModal} />
-              ) : null}
-              {secondaryAction ? (
-                <ActionLink action={secondaryAction} onOpenModal={handleOpenModal} />
-              ) : null}
-            </div>
-
-            <p className="landing-trust-note">{content.hero.trustNote}</p>
-          </div>
-
-          <div className="landing-hero-panel">
-            <div className="landing-panel">
-              <div className="landing-panel-label">Ops canvas</div>
-              <h2>One product surface, three role-specific experiences.</h2>
-              <div className="landing-panel-grid">
-                <div className="landing-surface-card">
-                  <span>Landlord</span>
-                  <strong>Portfolio, notices, agreements</strong>
-                  <p>Track occupancy, overdue rent, and renewal risk from one dashboard.</p>
-                </div>
-                <div className="landing-surface-card">
-                  <span>Admin</span>
-                  <strong>Back office, support, audit</strong>
-                  <p>Monitor landlords, ticket pressure, and system activity in one place.</p>
-                </div>
-                <div className="landing-surface-card is-accent">
-                  <span>Tenant</span>
-                  <strong>Payments, receipts, notices</strong>
-                  <p>Give tenants a clean self-serve path for rent and agreement actions.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="landing-stat-strip">
-          {content.statStrip.map((item) => (
-            <div key={item.label} className="landing-stat-card">
-              <div className="landing-stat-label">{item.label}</div>
-              <div className="landing-stat-value">{item.value}</div>
-              <div className="landing-stat-detail">{item.detail}</div>
-            </div>
-          ))}
-        </section>
-
-        <section className="landing-section">
-          <div className="landing-section-head">
-            <p>Product pillars</p>
-            <h2>Everything the current app prototype already does, organized into a sharper front door.</h2>
-          </div>
-          <div className="landing-feature-grid">
-            {content.featureBlocks.map((feature) => (
-              <article key={feature.title} className="landing-feature-card">
-                <h3>{feature.title}</h3>
-                <p>{feature.body}</p>
-                <ul>
-                  {feature.bullets.map((bullet) => (
-                    <li key={bullet}>{bullet}</li>
-                  ))}
-                </ul>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section id="workflow" className="landing-section landing-section-alt">
-          <div className="landing-section-head">
-            <p>Workflow</p>
-            <h2>From setup to collection to communication, the sequence stays visible.</h2>
-          </div>
-          <div className="landing-workflow">
-            {content.workflow.map((item) => (
-              <article key={item.step} className="landing-workflow-card">
-                <span>{item.step}</span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section id="roles" className="landing-section">
-          <div className="landing-section-head">
-            <p>Portal access</p>
-            <h2>Jump straight into the role-based pages that the new API now exposes.</h2>
-          </div>
-          <div className="landing-role-grid">
-            {content.roles.map((role) => (
-              <article key={role.name} className="landing-role-card">
-                <div className="landing-role-top">
-                  <div>
-                    <h3>{role.name}</h3>
-                    <p>{role.summary}</p>
+            <div className="marketing-feature-grid reveal">
+              {features.map((feature) => (
+                <article key={feature.title} className="marketing-feature-card">
+                  <div className={`marketing-feature-icon is-${feature.tone}`}>
+                    {feature.icon}
                   </div>
-                  <Link href={role.path} className="landing-role-link">
-                    Open
-                  </Link>
-                </div>
-                <ul>
-                  {role.highlights.map((highlight) => (
-                    <li key={highlight}>{highlight}</li>
-                  ))}
-                </ul>
-              </article>
-            ))}
+                  <h3>{feature.title}</h3>
+                  <p>{feature.description}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section className="landing-section landing-section-alt">
-          <div className="landing-section-head">
-            <p>Team feedback</p>
-            <h2>Designed for the people moving property operations every day.</h2>
-          </div>
-          <div className="landing-quote-grid">
-            {content.quotes.map((quote) => (
-              <blockquote key={quote.person} className="landing-quote-card">
-                <p>{quote.quote}</p>
-                <footer>
-                  <strong>{quote.person}</strong>
-                  <span>{quote.role}</span>
-                </footer>
-              </blockquote>
-            ))}
-          </div>
-        </section>
-
-        <section id="faq" className="landing-section">
-          <div className="landing-section-head">
-            <p>FAQ</p>
-            <h2>Implementation details the team will care about.</h2>
-          </div>
-          <div className="landing-faq-grid">
-            {content.faqs.map((item) => (
-              <article key={item.question} className="landing-faq-card">
-                <h3>{item.question}</h3>
-                <p>{item.answer}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="landing-cta-band">
-          <div>
-            <p>Ready to explore the build?</p>
-            <h2>Use the new landing page as the front door, then drop into the demo portal or the Swagger docs.</h2>
-          </div>
-          <div className="landing-cta-actions">
-            {footerActions.map((action) => (
-              <ActionLink
-                key={action.id}
-                action={action}
-                onOpenModal={handleOpenModal}
-              />
-            ))}
-          </div>
-        </section>
-      </main>
-
-      {isModalOpen && requestDemoModal ? (
-        <div
-          className="landing-modal-overlay"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) {
-              setIsModalOpen(false);
-            }
-          }}
-        >
-          <div className="landing-modal-card">
-            <div className="landing-modal-header">
-              <div>
-                <p className="landing-modal-kicker">Demo request</p>
-                <h2>{requestDemoModal.title}</h2>
-                <span>{requestDemoModal.description}</span>
-              </div>
-              <button
-                type="button"
-                className="landing-modal-close"
-                onClick={() => setIsModalOpen(false)}
-              >
-                x
-              </button>
+        <section id="roles" className="marketing-roles">
+          <div className="marketing-container">
+            <div className="marketing-section-head reveal light">
+              <p>Two experiences. One workflow.</p>
+              <h2>
+                Built for every role
+                <br />
+                <em>in the chain.</em>
+              </h2>
+              <span>
+                DoorRent gives landlords and tenants their own focused
+                experience without breaking the workflow between them.
+              </span>
             </div>
 
-            <form className="landing-modal-form" onSubmit={handleSubmit}>
-              <div className="landing-form-grid">
-                <label>
-                  <span>Full name</span>
-                  <input
-                    value={formState.name}
-                    onChange={(event) => handleFieldChange("name", event.target.value)}
-                    required
-                    placeholder="Adaeze Okafor"
-                  />
-                </label>
-                <label>
-                  <span>Work email</span>
-                  <input
-                    type="email"
-                    value={formState.email}
-                    onChange={(event) => handleFieldChange("email", event.target.value)}
-                    required
-                    placeholder="adaeze@company.com"
-                  />
-                </label>
-                <label>
-                  <span>Company</span>
-                  <input
-                    value={formState.company}
-                    onChange={(event) => handleFieldChange("company", event.target.value)}
-                    required
-                    placeholder="Urban Oak Residences"
-                  />
-                </label>
-                <label>
-                  <span>Phone</span>
-                  <input
-                    value={formState.phone}
-                    onChange={(event) => handleFieldChange("phone", event.target.value)}
-                    placeholder="+234 800 000 0000"
-                  />
-                </label>
-              </div>
-
-              <label>
-                <span>Portfolio size</span>
-                <input
-                  value={formState.portfolioSize}
-                  onChange={(event) => handleFieldChange("portfolioSize", event.target.value)}
-                  placeholder="52 units across 3 properties"
-                />
-              </label>
-
-              <label>
-                <span>What should we cover?</span>
-                <textarea
-                  value={formState.message}
-                  onChange={(event) => handleFieldChange("message", event.target.value)}
-                  placeholder="Show rent collection, notices, and e-signatures."
-                />
-              </label>
-
-              {feedback ? (
-                <div className={`landing-form-feedback ${submitState}`}>
-                  {feedback}
-                </div>
-              ) : null}
-
-              <div className="landing-modal-actions">
+            <div className="marketing-role-tabs reveal">
+              {[
+                { key: "landlord", label: "🏠 Landlord" },
+                { key: "tenant", label: "🔑 Tenant" },
+              ].map((tab) => (
                 <button
+                  key={tab.key}
                   type="button"
-                  className="landing-button landing-button-secondary"
-                  onClick={() => setIsModalOpen(false)}
+                  className={activeRole === tab.key ? "is-active" : ""}
+                  onClick={() => setActiveRole(tab.key as RoleKey)}
                 >
-                  Cancel
+                  {tab.label}
                 </button>
-                <button
-                  type="submit"
-                  className="landing-button landing-button-primary"
-                  disabled={submitState === "submitting"}
-                >
-                  {submitState === "submitting"
-                    ? "Sending..."
-                    : requestDemoModal.submitLabel ?? "Send request"}
-                </button>
+              ))}
+            </div>
+
+            <div className="marketing-role-panel">
+              <div className="reveal">
+                <h3>{activePanel.title}</h3>
+                <p>{activePanel.body}</p>
+
+                <div className="marketing-role-feature-list">
+                  {activePanel.features.map((feature) => (
+                    <div key={feature.title} className="marketing-role-feature">
+                      <div className="icon">{feature.icon}</div>
+                      <div>
+                        <strong>{feature.title}</strong>
+                        <span>{feature.body}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </form>
+
+              <div className="marketing-role-screen reveal">
+                <div className="marketing-role-screen-head">
+                  <div className="title">
+                    {activeRole === "landlord"
+                      ? "Babatunde's Dashboard"
+                      : "Amaka's Portal"}
+                  </div>
+                  <span className={`marketing-role-badge ${activePanel.badgeClass}`}>
+                    {activePanel.badge}
+                  </span>
+                </div>
+
+                <div
+                  className={`marketing-role-stats ${
+                    activeRole === "tenant" ? "is-compact" : ""
+                  }`}
+                >
+                  {activePanel.stats.map((stat) => (
+                    <div key={stat.label} className="marketing-role-stat">
+                      <label>{stat.label}</label>
+                      <strong>{stat.value}</strong>
+                      <span className={stat.subClass}>{stat.sub}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="marketing-role-items">
+                  {activePanel.items.map((item) => (
+                    <div key={item.name} className="marketing-role-item">
+                      <div className="left">
+                        <div className="avatar">{item.initials}</div>
+                        <div>
+                          <strong>{item.name}</strong>
+                          <span>{item.meta}</span>
+                        </div>
+                      </div>
+                      <div className="right">
+                        {item.amount ? <strong>{item.amount}</strong> : null}
+                        <span className={`status ${item.statusClass}`}>{item.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      ) : null}
+        </section>
+
+        <section className="marketing-section">
+          <div className="marketing-container">
+            <div className="marketing-section-head centered reveal">
+              <p>Simple to get started</p>
+              <h2>
+                Up and running
+                <br />
+                <em>in under 10 minutes.</em>
+              </h2>
+            </div>
+
+            <div className="marketing-steps reveal">
+              {steps.map((step) => (
+                <article key={step.step} className="marketing-step">
+                  <div className="step-num">{step.step}</div>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="pricing" className="marketing-pricing">
+          <div className="marketing-container">
+            <div className="marketing-section-head centered reveal">
+              <p>Simple pricing</p>
+              <h2>
+                Start free.
+                <br />
+                <em>Scale as you grow.</em>
+              </h2>
+              <span>
+                No hidden charges. No setup fees. Just pricing that grows with
+                your portfolio.
+              </span>
+            </div>
+
+            <div className="marketing-pricing-grid reveal">
+              {pricing.map((plan) => (
+                <article
+                  key={plan.name}
+                  className={`marketing-pricing-card ${
+                    plan.featured ? "is-featured" : ""
+                  }`}
+                >
+                  {plan.featured ? (
+                    <div className="marketing-pricing-badge">Most popular</div>
+                  ) : null}
+                  <p className="plan-name">{plan.name}</p>
+                  <div className="plan-price">{plan.price}</div>
+                  <div className="plan-sub">{plan.sub}</div>
+                  <p className="plan-description">{plan.description}</p>
+                  <div className="plan-divider" />
+                  <ul>
+                    {plan.features.map((item) => (
+                      <li key={item}>
+                        <span>✓</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                  {plan.name === "Enterprise" ? (
+                    <a href="mailto:sales@doorrent.com" className="btn btn-secondary btn-full">
+                      Contact sales
+                    </a>
+                  ) : (
+                    <Link
+                      href="/portal"
+                      className={`btn btn-full ${plan.featured ? "btn-gold" : "btn-secondary"}`}
+                    >
+                      {plan.featured ? "Start Pro trial" : "Get started free"}
+                    </Link>
+                  )}
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="testimonials" className="marketing-section">
+          <div className="marketing-container">
+            <div className="marketing-section-head centered reveal">
+              <p>What landlords say</p>
+              <h2>
+                Real people.
+                <br />
+                <em>Real results.</em>
+              </h2>
+            </div>
+
+            <div className="marketing-testimonial-grid reveal">
+              {testimonials.map((testimonial) => (
+                <article key={testimonial.name} className="marketing-testimonial-card">
+                  <div className="stars">★★★★★</div>
+                  <p>{testimonial.quote}</p>
+                  <div className="author">
+                    <div className="avatar">{testimonial.initials}</div>
+                    <div>
+                      <strong>{testimonial.name}</strong>
+                      <span>{testimonial.role}</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="marketing-cta">
+          <div className="marketing-container">
+            <div className="marketing-cta-inner reveal">
+              <h2>
+                Ready to run your
+                <br />
+                properties <em>properly?</em>
+              </h2>
+              <p>
+                Join Nigerian landlords moving from WhatsApp and spreadsheets to
+                DoorRent. Your first 14 days are completely free.
+              </p>
+              <div className="marketing-cta-actions">
+                <Link href="/portal" className="btn btn-gold marketing-btn-lg">
+                  Start free trial →
+                </Link>
+                <Link href="/portal" className="btn btn-ghost-light marketing-btn-lg">
+                  View demo
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer className="marketing-footer">
+          <div className="marketing-container">
+            <div className="marketing-footer-top">
+              <div className="marketing-footer-brand">
+                <div className="marketing-footer-logo">
+                  <div className="marketing-footer-logo-mark">D</div>
+                  <span>DoorRent</span>
+                </div>
+                <p>
+                  The complete property management platform for Nigerian
+                  landlords. Collect rent, manage tenants, and grow your
+                  portfolio.
+                </p>
+              </div>
+
+              <div>
+                <h4>Product</h4>
+                <ul>
+                  <li><a href="#features">Features</a></li>
+                  <li><a href="#pricing">Pricing</a></li>
+                  <li><a href="#roles">For Landlords</a></li>
+                  <li><a href="#roles">For Tenants</a></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4>Company</h4>
+                <ul>
+                  <li><a href="#testimonials">Testimonials</a></li>
+                  <li><Link href="/portal">Live Demo</Link></li>
+                  <li><a href="mailto:hello@doorrent.com">Contact</a></li>
+                </ul>
+              </div>
+
+              <div>
+                <h4>Legal</h4>
+                <ul>
+                  <li><a href="/">Privacy Policy</a></li>
+                  <li><a href="/">Terms of Service</a></li>
+                  <li><a href="/">Security</a></li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="marketing-footer-bottom">
+              <p>© 2026 DoorRent – Subsidiary of ReSuply Technologies Limited. All rights reserved.</p>
+              <div className="links">
+                <a href="https://x.com" target="_blank" rel="noreferrer">
+                  Twitter / X
+                </a>
+                <a href="https://linkedin.com" target="_blank" rel="noreferrer">
+                  LinkedIn
+                </a>
+                <a href="https://instagram.com" target="_blank" rel="noreferrer">
+                  Instagram
+                </a>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+
+      <style jsx global>{`
+        .marketing-home {
+          background: var(--bg);
+          color: var(--ink);
+        }
+
+        .marketing-container {
+          max-width: 1160px;
+          margin: 0 auto;
+          padding: 0 40px;
+        }
+
+        .marketing-home .marketing-btn-lg {
+          padding: 15px 32px;
+          font-size: 15px;
+          border-radius: var(--radius);
+        }
+
+        .marketing-home .btn-ghost-light {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+          border-color: rgba(255, 255, 255, 0.2);
+          backdrop-filter: blur(8px);
+        }
+
+        .marketing-home .btn-ghost-light:hover {
+          background: rgba(255, 255, 255, 0.18);
+          border-color: rgba(255, 255, 255, 0.32);
+        }
+
+        .marketing-home .reveal {
+          opacity: 0;
+          transform: translateY(24px);
+          transition: opacity 0.65s ease, transform 0.65s ease;
+        }
+
+        .marketing-home .reveal.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .marketing-nav {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          z-index: 90;
+          transition: all 0.3s ease;
+        }
+
+        .marketing-nav.is-scrolled {
+          background: rgba(245, 244, 240, 0.92);
+          backdrop-filter: blur(16px);
+          border-bottom: 1px solid var(--border);
+          box-shadow: var(--shadow);
+        }
+
+        .marketing-nav-inner {
+          height: 68px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .marketing-brand {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .marketing-brand-mark,
+        .marketing-footer-logo-mark {
+          width: 36px;
+          height: 36px;
+          border-radius: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: var(--font-display);
+          font-size: 18px;
+        }
+
+        .marketing-brand-mark {
+          background: var(--accent);
+          color: #fff;
+        }
+
+        .marketing-brand-name,
+        .marketing-footer-logo span {
+          font-family: var(--font-display);
+          font-size: 21px;
+          letter-spacing: -0.02em;
+        }
+
+        .marketing-nav-links,
+        .marketing-nav-cta {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .marketing-nav-links a {
+          padding: 7px 14px;
+          border-radius: var(--radius-sm);
+          color: var(--ink2);
+          transition: var(--transition);
+        }
+
+        .marketing-nav-links a:hover {
+          background: rgba(26, 25, 22, 0.05);
+          color: var(--ink);
+        }
+
+        .marketing-hero {
+          min-height: 100vh;
+          position: relative;
+          background: var(--ink);
+          overflow: hidden;
+        }
+
+        .marketing-hero-bg {
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(ellipse at 15% 60%, rgba(26, 58, 42, 0.75) 0%, transparent 55%),
+            radial-gradient(ellipse at 85% 15%, rgba(200, 169, 110, 0.12) 0%, transparent 50%),
+            radial-gradient(ellipse at 70% 80%, rgba(26, 74, 122, 0.08) 0%, transparent 45%);
+        }
+
+        .marketing-hero-arcs .marketing-arc {
+          position: absolute;
+          border-radius: 50%;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .marketing-arc.arc-1 {
+          width: 700px;
+          height: 700px;
+          top: -200px;
+          right: -200px;
+        }
+
+        .marketing-arc.arc-2 {
+          width: 500px;
+          height: 500px;
+          top: -100px;
+          right: -100px;
+          border-color: rgba(200, 169, 110, 0.08);
+        }
+
+        .marketing-arc.arc-3 {
+          width: 300px;
+          height: 300px;
+          top: 0;
+          right: 0;
+          border-color: rgba(200, 169, 110, 0.12);
+        }
+
+        .marketing-hero-body {
+          max-width: 1160px;
+          margin: 0 auto;
+          width: 100%;
+          min-height: calc(100vh - 46px);
+          padding: 120px 40px 80px;
+          position: relative;
+        }
+
+        .marketing-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 14px;
+          border: 1px solid rgba(200, 169, 110, 0.35);
+          background: rgba(200, 169, 110, 0.08);
+          border-radius: 40px;
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--accent2);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          margin-bottom: 28px;
+        }
+
+        .marketing-badge-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--accent2);
+          box-shadow: 0 0 0 6px rgba(200, 169, 110, 0.16);
+        }
+
+        .marketing-hero-title {
+          font-family: var(--font-display);
+          font-size: clamp(46px, 6vw, 80px);
+          line-height: 1;
+          letter-spacing: -0.035em;
+          color: #fff;
+          max-width: 820px;
+          margin-bottom: 28px;
+        }
+
+        .marketing-hero-title em {
+          color: var(--accent2);
+          font-style: italic;
+        }
+
+        .marketing-hero-title span {
+          display: block;
+          color: rgba(255, 255, 255, 0.45);
+        }
+
+        .marketing-hero-copy {
+          max-width: 480px;
+          font-size: 17px;
+          line-height: 1.7;
+          color: rgba(255, 255, 255, 0.58);
+          margin-bottom: 44px;
+        }
+
+        .marketing-hero-actions,
+        .marketing-cta-actions {
+          display: flex;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+
+        .marketing-proof {
+          display: flex;
+          align-items: center;
+          gap: 24px;
+          margin-top: 56px;
+          flex-wrap: wrap;
+        }
+
+        .marketing-proof strong {
+          display: block;
+          color: #fff;
+          font-size: 26px;
+          line-height: 1;
+        }
+
+        .marketing-proof span {
+          font-size: 12px;
+          color: rgba(255, 255, 255, 0.45);
+        }
+
+        .marketing-proof-divider {
+          width: 1px;
+          height: 36px;
+          background: rgba(255, 255, 255, 0.12);
+        }
+
+        .marketing-hero-visual {
+          position: absolute;
+          right: -20px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 520px;
+        }
+
+        .marketing-dashboard {
+          background: var(--surface);
+          border-radius: 24px;
+          box-shadow: 0 24px 64px rgba(26, 25, 22, 0.18), 0 8px 24px rgba(26, 25, 22, 0.08);
+          overflow: hidden;
+          border: 1px solid rgba(26, 25, 22, 0.08);
+        }
+
+        .marketing-dashboard-topbar {
+          padding: 12px 16px;
+          border-bottom: 1px solid var(--border);
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .marketing-dots {
+          display: flex;
+          gap: 5px;
+        }
+
+        .marketing-dots span {
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+        }
+
+        .marketing-dots span:nth-child(1) { background: #fc5f57; }
+        .marketing-dots span:nth-child(2) { background: #fdbc2c; }
+        .marketing-dots span:nth-child(3) { background: #33c748; }
+
+        .marketing-dashboard-title {
+          font-size: 12px;
+          color: var(--ink2);
+          font-weight: 500;
+        }
+
+        .marketing-dashboard-body {
+          display: flex;
+          height: 320px;
+        }
+
+        .marketing-dashboard-sidebar {
+          width: 140px;
+          border-right: 1px solid var(--border);
+          padding: 12px 8px;
+        }
+
+        .marketing-dashboard-logo {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 10px;
+          margin-bottom: 8px;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .marketing-dashboard-logo span {
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 5px;
+          background: var(--accent);
+          color: #fff;
+          font-size: 10px;
+          font-family: var(--font-display);
+        }
+
+        .marketing-dashboard-section {
+          padding: 8px 10px 4px;
+          font-size: 9px;
+          font-weight: 600;
+          color: var(--ink3);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
+        .marketing-dashboard-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 10px;
+          color: var(--ink3);
+          font-size: 11px;
+          border-radius: 6px;
+        }
+
+        .marketing-dashboard-item span {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          opacity: 0.5;
+        }
+
+        .marketing-dashboard-item.is-active {
+          background: var(--accent-light);
+          color: var(--accent);
+          font-weight: 500;
+        }
+
+        .marketing-dashboard-content {
+          flex: 1;
+          background: var(--bg);
+          padding: 14px;
+        }
+
+        .marketing-dashboard-stats {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .marketing-mini-stat,
+        .marketing-chart-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 10px;
+        }
+
+        .marketing-mini-stat label {
+          display: block;
+          font-size: 9px;
+          font-weight: 600;
+          color: var(--ink3);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 4px;
+        }
+
+        .marketing-mini-stat strong {
+          display: block;
+          font-size: 16px;
+          line-height: 1;
+        }
+
+        .marketing-mini-stat span {
+          font-size: 9px;
+          color: var(--green);
+        }
+
+        .marketing-chart-title {
+          font-size: 11px;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .marketing-chart-bars {
+          display: flex;
+          align-items: flex-end;
+          gap: 4px;
+          height: 60px;
+        }
+
+        .marketing-chart-bar {
+          flex: 1;
+          background: var(--accent);
+          opacity: 0.5;
+          border-radius: 3px 3px 0 0;
+        }
+
+        .marketing-chart-bar.is-highlight {
+          background: var(--accent2);
+          opacity: 1;
+        }
+
+        .marketing-floating-card {
+          position: absolute;
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: var(--radius-lg);
+          box-shadow: var(--shadow-lg);
+          padding: 14px 18px;
+        }
+
+        .marketing-floating-card.left {
+          left: -50px;
+          bottom: -20px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .marketing-floating-card.right {
+          top: 30px;
+          right: -40px;
+          min-width: 170px;
+        }
+
+        .marketing-floating-card.right.dark {
+          background: var(--accent);
+          border-color: transparent;
+          color: #fff;
+        }
+
+        .marketing-floating-card .icon {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--green-light);
+        }
+
+        .marketing-floating-card strong {
+          display: block;
+          font-size: 13px;
+        }
+
+        .marketing-floating-card span,
+        .marketing-floating-card small {
+          font-size: 11px;
+          color: var(--ink3);
+        }
+
+        .marketing-floating-card.dark span,
+        .marketing-floating-card.dark small {
+          color: rgba(255, 255, 255, 0.62);
+        }
+
+        .marketing-floating-card.right.dark strong {
+          font-size: 22px;
+          margin: 4px 0;
+        }
+
+        .marketing-ticker {
+          background: var(--accent);
+          border-top: 1px solid rgba(255, 255, 255, 0.07);
+          overflow: hidden;
+          padding: 11px 0;
+        }
+
+        .marketing-ticker-track {
+          display: flex;
+          gap: 32px;
+          min-width: max-content;
+          animation: marketingTicker 32s linear infinite;
+        }
+
+        .marketing-ticker-item {
+          color: rgba(255, 255, 255, 0.65);
+          font-size: 12px;
+          white-space: nowrap;
+        }
+
+        .marketing-logos {
+          padding: 56px 40px;
+          text-align: center;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .marketing-logos p,
+        .marketing-section-head p {
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+        }
+
+        .marketing-logos p {
+          color: var(--ink3);
+          margin-bottom: 28px;
+        }
+
+        .marketing-logo-row {
+          display: flex;
+          justify-content: center;
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+
+        .marketing-logo-pill {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-family: var(--font-display);
+          color: var(--ink3);
+          opacity: 0.62;
+        }
+
+        .marketing-section {
+          padding: 100px 0;
+        }
+
+        .marketing-section-head {
+          margin-bottom: 60px;
+          max-width: 560px;
+        }
+
+        .marketing-section-head.centered {
+          text-align: center;
+          margin-left: auto;
+          margin-right: auto;
+        }
+
+        .marketing-section-head.light p {
+          color: var(--accent2);
+        }
+
+        .marketing-section-head p {
+          color: var(--accent);
+          margin-bottom: 14px;
+        }
+
+        .marketing-section-head h2 {
+          font-family: var(--font-display);
+          font-size: clamp(32px, 4vw, 50px);
+          line-height: 1.1;
+          letter-spacing: -0.03em;
+          margin-bottom: 16px;
+        }
+
+        .marketing-section-head.light h2 {
+          color: #fff;
+        }
+
+        .marketing-section-head h2 em {
+          color: var(--accent);
+          font-style: italic;
+        }
+
+        .marketing-section-head.light h2 em {
+          color: var(--accent2);
+        }
+
+        .marketing-section-head span {
+          font-size: 16px;
+          line-height: 1.7;
+          color: var(--ink2);
+        }
+
+        .marketing-section-head.light span {
+          color: rgba(255, 255, 255, 0.48);
+        }
+
+        .marketing-feature-grid,
+        .marketing-pricing-grid,
+        .marketing-testimonial-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+        }
+
+        .marketing-feature-card,
+        .marketing-pricing-card,
+        .marketing-testimonial-card {
+          background: var(--surface);
+          border: 1px solid var(--border);
+          border-radius: 24px;
+          padding: 32px;
+        }
+
+        .marketing-feature-icon {
+          width: 48px;
+          height: 48px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 14px;
+          margin-bottom: 20px;
+          background: var(--accent-light);
+        }
+
+        .marketing-feature-icon.is-gold { background: var(--accent2-light); }
+        .marketing-feature-icon.is-blue { background: var(--blue-light); }
+
+        .marketing-feature-card h3,
+        .marketing-step h3,
+        .marketing-testimonial-card strong {
+          font-size: 16px;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+
+        .marketing-feature-card p,
+        .marketing-step p,
+        .marketing-testimonial-card p {
+          color: var(--ink2);
+          line-height: 1.65;
+        }
+
+        .marketing-roles {
+          background: var(--ink);
+          padding: 100px 0;
+        }
+
+        .marketing-role-tabs {
+          display: inline-flex;
+          gap: 3px;
+          padding: 4px;
+          background: rgba(255, 255, 255, 0.06);
+          border-radius: var(--radius);
+          margin-bottom: 32px;
+        }
+
+        .marketing-role-tabs button {
+          padding: 10px 22px;
+          border: none;
+          background: transparent;
+          color: rgba(255, 255, 255, 0.45);
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+        }
+
+        .marketing-role-tabs button.is-active {
+          background: var(--surface);
+          color: var(--ink);
+          box-shadow: var(--shadow);
+        }
+
+        .marketing-role-panel {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 64px;
+          align-items: center;
+        }
+
+        .marketing-role-panel h3 {
+          font-family: var(--font-display);
+          font-size: 30px;
+          color: #fff;
+          letter-spacing: -0.02em;
+          margin-bottom: 10px;
+        }
+
+        .marketing-role-panel > div > p {
+          color: rgba(255, 255, 255, 0.45);
+          font-size: 15px;
+          line-height: 1.65;
+        }
+
+        .marketing-role-feature-list {
+          display: grid;
+          gap: 16px;
+          margin-top: 28px;
+        }
+
+        .marketing-role-feature {
+          display: flex;
+          gap: 14px;
+        }
+
+        .marketing-role-feature .icon,
+        .marketing-role-item .avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: rgba(255, 255, 255, 0.07);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          flex-shrink: 0;
+        }
+
+        .marketing-role-feature strong,
+        .marketing-role-item strong {
+          display: block;
+          color: #fff;
+          margin-bottom: 3px;
+        }
+
+        .marketing-role-feature span,
+        .marketing-role-item span {
+          color: rgba(255, 255, 255, 0.45);
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .marketing-role-screen {
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 24px;
+          padding: 24px;
+        }
+
+        .marketing-role-screen-head,
+        .marketing-role-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .marketing-role-screen-head {
+          margin-bottom: 20px;
+        }
+
+        .marketing-role-screen-head .title {
+          font-family: var(--font-display);
+          font-size: 18px;
+          color: #fff;
+        }
+
+        .marketing-role-badge {
+          padding: 4px 10px;
+          border-radius: 20px;
+          font-size: 11px;
+          font-weight: 500;
+        }
+
+        .marketing-role-badge.is-green {
+          background: #e6f4ee;
+          color: #1a6b4a;
+        }
+
+        .marketing-role-badge.is-gold,
+        .marketing-role-badge.is-amber {
+          background: rgba(200, 169, 110, 0.2);
+          color: var(--accent2);
+        }
+
+        .marketing-role-stats {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+
+        .marketing-role-stats.is-compact {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .marketing-role-stat {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.07);
+          border-radius: 10px;
+          padding: 14px;
+        }
+
+        .marketing-role-stat label {
+          display: block;
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.35);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          margin-bottom: 6px;
+        }
+
+        .marketing-role-stat strong {
+          color: #fff;
+          font-size: 22px;
+          line-height: 1;
+        }
+
+        .marketing-role-stat span {
+          font-size: 11px;
+          color: var(--accent2);
+        }
+
+        .marketing-role-stat span.is-red {
+          color: #f07c72;
+        }
+
+        .marketing-role-items {
+          display: grid;
+        }
+
+        .marketing-role-item {
+          padding: 10px 0;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .marketing-role-item:last-child {
+          border-bottom: none;
+        }
+
+        .marketing-role-item .left,
+        .marketing-role-item .right {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .marketing-role-item .status {
+          padding: 3px 8px;
+          border-radius: 20px;
+          font-size: 10px;
+          font-weight: 600;
+        }
+
+        .marketing-role-item .status.is-paid {
+          background: rgba(26, 107, 74, 0.3);
+          color: #6adba8;
+        }
+
+        .marketing-role-item .status.is-due {
+          background: rgba(176, 125, 42, 0.3);
+          color: var(--accent2);
+        }
+
+        .marketing-role-item .status.is-late {
+          background: rgba(192, 57, 43, 0.3);
+          color: #f07c72;
+        }
+
+        .marketing-steps {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 40px;
+        }
+
+        .marketing-step .step-num {
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: var(--accent);
+          color: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-family: var(--font-display);
+          font-size: 18px;
+          margin-bottom: 20px;
+          box-shadow: 0 0 0 8px var(--accent-light);
+        }
+
+        .marketing-pricing {
+          background: var(--surface2);
+          border-top: 1px solid var(--border);
+          border-bottom: 1px solid var(--border);
+          padding: 100px 0;
+        }
+
+        .marketing-pricing-card {
+          position: relative;
+        }
+
+        .marketing-pricing-card.is-featured {
+          background: var(--accent);
+          border-color: var(--accent);
+          transform: scale(1.03);
+        }
+
+        .marketing-pricing-badge {
+          position: absolute;
+          top: -12px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: var(--accent2);
+          color: var(--ink);
+          font-size: 11px;
+          font-weight: 600;
+          padding: 4px 14px;
+          border-radius: 20px;
+        }
+
+        .marketing-pricing-card .plan-name {
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          font-size: 13px;
+          font-weight: 600;
+          color: var(--ink3);
+          margin-bottom: 8px;
+        }
+
+        .marketing-pricing-card.is-featured .plan-name,
+        .marketing-pricing-card.is-featured .plan-sub,
+        .marketing-pricing-card.is-featured .plan-description,
+        .marketing-pricing-card.is-featured ul li {
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .marketing-pricing-card .plan-price {
+          font-family: var(--font-display);
+          font-size: 44px;
+          letter-spacing: -0.04em;
+          line-height: 1;
+          margin-bottom: 4px;
+        }
+
+        .marketing-pricing-card.is-featured .plan-price {
+          color: #fff;
+        }
+
+        .marketing-pricing-card .plan-sub {
+          color: var(--ink3);
+          margin-bottom: 24px;
+        }
+
+        .marketing-pricing-card .plan-description {
+          color: var(--ink2);
+          margin-bottom: 28px;
+        }
+
+        .marketing-pricing-card .plan-divider {
+          height: 1px;
+          background: var(--border);
+          margin-bottom: 24px;
+        }
+
+        .marketing-pricing-card.is-featured .plan-divider {
+          background: rgba(255, 255, 255, 0.12);
+        }
+
+        .marketing-pricing-card ul {
+          list-style: none;
+          display: grid;
+          gap: 12px;
+          margin-bottom: 32px;
+        }
+
+        .marketing-pricing-card li {
+          display: flex;
+          gap: 10px;
+          color: var(--ink2);
+        }
+
+        .marketing-pricing-card li span {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--accent-light);
+          color: var(--accent);
+          font-size: 10px;
+          flex-shrink: 0;
+        }
+
+        .marketing-pricing-card.is-featured li span {
+          background: rgba(255, 255, 255, 0.15);
+          color: #fff;
+        }
+
+        .marketing-testimonial-card .stars {
+          color: var(--accent2);
+          margin-bottom: 18px;
+        }
+
+        .marketing-testimonial-card .author {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 24px;
+        }
+
+        .marketing-testimonial-card .avatar {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: var(--accent-light);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          color: var(--accent);
+        }
+
+        .marketing-testimonial-card .author span {
+          display: block;
+          font-size: 12px;
+          color: var(--ink3);
+          margin-top: 4px;
+        }
+
+        .marketing-cta {
+          background: var(--accent);
+          padding: 80px 0;
+          text-align: center;
+        }
+
+        .marketing-cta-inner {
+          max-width: 640px;
+          margin: 0 auto;
+        }
+
+        .marketing-cta-inner h2 {
+          font-family: var(--font-display);
+          color: #fff;
+          font-size: clamp(32px, 4vw, 50px);
+          line-height: 1.1;
+          letter-spacing: -0.03em;
+          margin-bottom: 16px;
+        }
+
+        .marketing-cta-inner h2 em {
+          color: var(--accent2);
+          font-style: italic;
+        }
+
+        .marketing-cta-inner p {
+          color: rgba(255, 255, 255, 0.55);
+          line-height: 1.6;
+          margin-bottom: 36px;
+        }
+
+        .marketing-footer {
+          background: var(--ink);
+          padding: 64px 0 40px;
+        }
+
+        .marketing-footer-top {
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr 1fr;
+          gap: 48px;
+          margin-bottom: 56px;
+        }
+
+        .marketing-footer-brand p,
+        .marketing-footer ul a,
+        .marketing-footer-bottom p,
+        .marketing-footer-bottom .links a {
+          color: rgba(255, 255, 255, 0.4);
+        }
+
+        .marketing-footer-logo {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 12px;
+        }
+
+        .marketing-footer-logo-mark {
+          background: var(--accent2);
+          color: var(--ink);
+        }
+
+        .marketing-footer h4 {
+          color: rgba(255, 255, 255, 0.55);
+          font-size: 12px;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          margin-bottom: 16px;
+        }
+
+        .marketing-footer ul {
+          list-style: none;
+          display: grid;
+          gap: 10px;
+        }
+
+        .marketing-footer-bottom {
+          border-top: 1px solid rgba(255, 255, 255, 0.07);
+          padding-top: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+        }
+
+        .marketing-footer-bottom .links {
+          display: flex;
+          gap: 20px;
+        }
+
+        @keyframes marketingTicker {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+
+        @media (max-width: 1024px) {
+          .marketing-hero-visual {
+            display: none;
+          }
+
+          .marketing-role-panel {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .marketing-container,
+          .marketing-hero-body {
+            padding-left: 20px;
+            padding-right: 20px;
+          }
+
+          .marketing-nav-links,
+          .marketing-nav-cta .btn-secondary {
+            display: none;
+          }
+
+          .marketing-hero-body {
+            padding-top: 100px;
+            padding-bottom: 60px;
+          }
+
+          .marketing-proof {
+            gap: 16px;
+          }
+
+          .marketing-proof-divider {
+            display: none;
+          }
+
+          .marketing-feature-grid,
+          .marketing-pricing-grid,
+          .marketing-testimonial-grid,
+          .marketing-steps,
+          .marketing-footer-top {
+            grid-template-columns: 1fr;
+          }
+
+          .marketing-pricing-card.is-featured {
+            transform: none;
+          }
+
+          .marketing-roles,
+          .marketing-pricing,
+          .marketing-section,
+          .marketing-cta {
+            padding-top: 64px;
+            padding-bottom: 64px;
+          }
+
+          .marketing-logos {
+            padding: 48px 20px;
+          }
+
+          .marketing-footer {
+            padding: 48px 0 32px;
+          }
+
+          .marketing-footer-bottom {
+            flex-direction: column;
+            text-align: center;
+          }
+
+          .marketing-footer-bottom .links {
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+
+          .marketing-role-tabs {
+            width: 100%;
+            flex-wrap: wrap;
+          }
+        }
+      `}</style>
     </>
   );
 }
-
-export const getServerSideProps: GetServerSideProps<LandingPageProps> = async () => {
-  const apiBaseUrl =
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    process.env.API_BASE_URL ??
-    "http://localhost:4000/api/v1";
-
-  try {
-    const content = await fetchLandingContent(apiBaseUrl);
-
-    return {
-      props: {
-        content,
-        apiBaseUrl,
-        source: "api",
-      },
-    };
-  } catch {
-    return {
-      props: {
-        content: fallbackLandingContent,
-        apiBaseUrl,
-        source: "fallback",
-      },
-    };
-  }
-};

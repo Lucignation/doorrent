@@ -218,7 +218,7 @@ export const fallbackLandingContent: LandingPageData = {
       label: "View API docs",
       kind: "navigate",
       variant: "ghost",
-      href: "http://localhost:4000/docs",
+      href: "https://doorrent-api.onrender.com/docs",
       description: "Open Swagger documentation for the separate Node API.",
     },
   ],

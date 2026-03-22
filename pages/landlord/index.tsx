@@ -1,4 +1,5 @@
-import AppShell from "../../components/layout/AppShell";
+import { useEffect, useState } from "react";
+import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import AlertBanner from "../../components/ui/AlertBanner";
 import BarChart from "../../components/ui/BarChart";
@@ -8,17 +9,101 @@ import PageHeader from "../../components/ui/PageHeader";
 import SectionCard from "../../components/ui/SectionCard";
 import StatCard from "../../components/ui/StatCard";
 import StatusBadge from "../../components/ui/StatusBadge";
-import {
-  landlordCollection,
-  landlordHighlights,
-  landlordNav,
-  landlordRecentPayments,
-  landlordStats,
-  landlordUser,
-} from "../../data/landlord";
-import type { PaymentRecord, TableColumn } from "../../types/app";
+import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { apiRequest } from "../../lib/api";
+import type {
+  HighlightBanner,
+  PaymentRecord,
+  StatItem,
+  TableColumn,
+} from "../../types/app";
+
+interface CollectionPoint {
+  label: string;
+  value: number;
+  display: string;
+}
+
+interface OccupancyBreakdown {
+  occupied: number;
+  expiring: number;
+  vacant: number;
+  maintenance: number;
+  total: number;
+  percent: number;
+}
+
+interface LandlordOverviewResponse {
+  hero: {
+    title: string;
+    description: string;
+  };
+  highlights: HighlightBanner[];
+  stats: StatItem[];
+  collectionSeries: CollectionPoint[];
+  occupancyBreakdown: OccupancyBreakdown;
+  recentPayments: Array<
+    PaymentRecord & {
+      id: string;
+      status: "paid" | "overdue";
+    }
+  >;
+}
+
+const circleRadius = 46;
+const circleCircumference = 2 * Math.PI * circleRadius;
 
 export default function LandlordDashboardPage() {
+  const { landlordSession } = useLandlordPortalSession();
+  const [overview, setOverview] = useState<LandlordOverviewResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!landlordSession?.token) {
+      return;
+    }
+
+    const landlordToken = landlordSession.token;
+    let cancelled = false;
+
+    async function loadOverview() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const { data } = await apiRequest<LandlordOverviewResponse>(
+          "/landlord/overview",
+          {
+            token: landlordToken,
+          },
+        );
+
+        if (!cancelled) {
+          setOverview(data);
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "We could not load your landlord overview.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadOverview();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [landlordSession?.token]);
+
   const paymentColumns: TableColumn<PaymentRecord>[] = [
     {
       key: "tenant",
@@ -49,25 +134,37 @@ export default function LandlordDashboardPage() {
     },
   ];
 
+  const occupiedPercent = overview?.occupancyBreakdown.percent ?? 0;
+  const occupiedDash = (occupiedPercent / 100) * circleCircumference;
+
   return (
     <>
       <PageMeta title="DoorRent — Landlord Overview" />
-      <AppShell
-        user={landlordUser}
+      <LandlordPortalShell
         topbarTitle="Overview"
         breadcrumb="Dashboard → Overview"
-        navSections={landlordNav}
       >
         <PageHeader
-          title="Good morning, Babatunde 👋"
-          description="Saturday, March 21, 2026 · Here's your portfolio at a glance"
+          title={overview?.hero.title ?? "Loading overview..."}
+          description={
+            overview?.hero.description ??
+            "Fetching your live portfolio summary from DoorRent."
+          }
           actions={[
             { label: "Send Notice", modal: "send-notice", variant: "secondary" },
             { label: "Add Property", modal: "add-property", variant: "primary" },
           ]}
         />
 
-        {landlordHighlights.map((item) => (
+        {error ? (
+          <AlertBanner
+            tone="red"
+            title="Overview unavailable"
+            description={error}
+          />
+        ) : null}
+
+        {overview?.highlights.map((item) => (
           <AlertBanner
             key={item.title}
             tone={item.tone}
@@ -79,7 +176,7 @@ export default function LandlordDashboardPage() {
         ))}
 
         <div className="stats-grid">
-          {landlordStats.map((stat) => (
+          {(overview?.stats ?? []).map((stat) => (
             <StatCard key={stat.label} {...stat} />
           ))}
         </div>
@@ -87,11 +184,11 @@ export default function LandlordDashboardPage() {
         <div className="grid-2" style={{ marginBottom: 20 }}>
           <SectionCard
             title="Rent Collection (12 months)"
-            subtitle="Monthly rent received in ₦M"
+            subtitle="Monthly rent received from live payments"
             actionLabel="Full report →"
             actionHref="/landlord/payments"
           >
-            <BarChart data={landlordCollection} accent="forest" />
+            <BarChart data={overview?.collectionSeries ?? []} accent="forest" />
           </SectionCard>
 
           <div className="card">
@@ -104,57 +201,46 @@ export default function LandlordDashboardPage() {
             <div className="card-body" style={{ display: "flex", alignItems: "center", gap: 24 }}>
               <div className="donut-wrap">
                 <svg width="120" height="120" viewBox="0 0 120 120">
-                  <circle cx="60" cy="60" r="46" fill="none" stroke="var(--border)" strokeWidth="14" />
                   <circle
                     cx="60"
                     cy="60"
-                    r="46"
+                    r={circleRadius}
+                    fill="none"
+                    stroke="var(--border)"
+                    strokeWidth="14"
+                  />
+                  <circle
+                    cx="60"
+                    cy="60"
+                    r={circleRadius}
                     fill="none"
                     stroke="var(--green)"
                     strokeWidth="14"
-                    strokeDasharray="248 40"
-                    transform="rotate(-90 60 60)"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="46"
-                    fill="none"
-                    stroke="var(--accent2)"
-                    strokeWidth="14"
-                    strokeDasharray="17 271"
-                    strokeDashoffset="-248"
-                    transform="rotate(-90 60 60)"
-                  />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="46"
-                    fill="none"
-                    stroke="var(--border2)"
-                    strokeWidth="14"
-                    strokeDasharray="23 265"
-                    strokeDashoffset="-265"
+                    strokeDasharray={`${occupiedDash} ${circleCircumference}`}
                     transform="rotate(-90 60 60)"
                   />
                 </svg>
                 <div className="donut-center">
-                  <div className="donut-pct">87%</div>
+                  <div className="donut-pct">{occupiedPercent}%</div>
                   <div className="donut-sub">Occupied</div>
                 </div>
               </div>
               <div className="legend-list">
                 <div className="legend-item">
                   <div className="legend-dot" style={{ background: "var(--green)" }} />
-                  Occupied — 21 units
+                  Occupied — {overview?.occupancyBreakdown.occupied ?? 0} units
                 </div>
                 <div className="legend-item">
                   <div className="legend-dot" style={{ background: "var(--accent2)" }} />
-                  Expiring soon — 2 units
+                  Expiring soon — {overview?.occupancyBreakdown.expiring ?? 0} units
                 </div>
                 <div className="legend-item">
                   <div className="legend-dot" style={{ background: "var(--border2)" }} />
-                  Vacant — 3 units
+                  Vacant — {overview?.occupancyBreakdown.vacant ?? 0} units
+                </div>
+                <div className="legend-item">
+                  <div className="legend-dot" style={{ background: "var(--blue)" }} />
+                  Maintenance — {overview?.occupancyBreakdown.maintenance ?? 0} units
                 </div>
               </div>
             </div>
@@ -166,9 +252,13 @@ export default function LandlordDashboardPage() {
           actionLabel="View all"
           actionHref="/landlord/payments"
         >
-          <DataTable columns={paymentColumns} rows={landlordRecentPayments} />
+          <DataTable
+            columns={paymentColumns}
+            rows={overview?.recentPayments ?? []}
+            emptyMessage={loading ? "Loading payments..." : "No payments yet."}
+          />
         </SectionCard>
-      </AppShell>
+      </LandlordPortalShell>
     </>
   );
 }

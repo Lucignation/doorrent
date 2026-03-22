@@ -1,20 +1,15 @@
-import AppShell from "../../components/layout/AppShell";
+import TenantPortalShell from "../../components/auth/TenantPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import PageHeader from "../../components/ui/PageHeader";
-import { tenantAgreementTimeline, tenantNav, tenantUser } from "../../data/tenant";
+import { tenantAgreementTimeline } from "../../data/tenant";
 
 export default function TenantAgreementPage() {
   const { openModal, showToast } = usePrototypeUI();
   return (
     <>
       <PageMeta title="DoorRent — My Agreement" />
-      <AppShell
-        user={tenantUser}
-        topbarTitle="My Agreement"
-        breadcrumb="Dashboard → My Agreement"
-        navSections={tenantNav}
-      >
+      <TenantPortalShell topbarTitle="My Agreement" breadcrumb="Dashboard → My Agreement">
         <PageHeader
           title="My Agreement"
           description="Tenancy agreement for Unit A3, Lekki Gardens"
@@ -99,7 +94,7 @@ export default function TenantAgreementPage() {
             </div>
           </div>
         </div>
-      </AppShell>
+      </TenantPortalShell>
     </>
   );
 }

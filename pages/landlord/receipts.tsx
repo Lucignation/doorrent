@@ -1,11 +1,11 @@
-import AppShell from "../../components/layout/AppShell";
+import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import DataTable from "../../components/ui/DataTable";
 import IdentityCell from "../../components/ui/IdentityCell";
 import { SearchIcon } from "../../components/ui/Icons";
 import PageHeader from "../../components/ui/PageHeader";
-import { landlordNav, landlordReceipts, landlordUser } from "../../data/landlord";
+import { landlordReceipts } from "../../data/landlord";
 import type { LandlordReceiptRow, TableColumn } from "../../types/app";
 
 export default function LandlordReceiptsPage() {
@@ -59,12 +59,7 @@ export default function LandlordReceiptsPage() {
   return (
     <>
       <PageMeta title="DoorRent — Receipts" />
-      <AppShell
-        user={landlordUser}
-        topbarTitle="Receipts"
-        breadcrumb="Dashboard → Receipts"
-        navSections={landlordNav}
-      >
+      <LandlordPortalShell topbarTitle="Receipts" breadcrumb="Dashboard → Receipts">
         <PageHeader
           title="Receipts"
           description="All generated payment receipts"
@@ -97,7 +92,7 @@ export default function LandlordReceiptsPage() {
             </div>
           </div>
         </div>
-      </AppShell>
+      </LandlordPortalShell>
     </>
   );
 }

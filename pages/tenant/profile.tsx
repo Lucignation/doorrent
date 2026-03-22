@@ -1,20 +1,14 @@
-import AppShell from "../../components/layout/AppShell";
+import TenantPortalShell from "../../components/auth/TenantPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import EmptyState from "../../components/ui/EmptyState";
-import { tenantNav, tenantUser } from "../../data/tenant";
 
 export default function TenantProfilePage() {
   return (
     <>
       <PageMeta title="DoorRent — Profile" />
-      <AppShell
-        user={tenantUser}
-        topbarTitle="Profile"
-        breadcrumb="Dashboard → Profile"
-        navSections={tenantNav}
-      >
+      <TenantPortalShell topbarTitle="Profile" breadcrumb="Dashboard → Profile">
         <EmptyState title="Profile" />
-      </AppShell>
+      </TenantPortalShell>
     </>
   );
 }

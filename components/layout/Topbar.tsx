@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { useRouter } from "next/router";
+import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { BellIcon, MenuIcon, MessageIcon } from "../ui/Icons";
 
@@ -16,6 +18,20 @@ export default function Topbar({
   onToggleSidebar,
 }: TopbarProps) {
   const { openModal, showToast } = usePrototypeUI();
+  const router = useRouter();
+  const {
+    clearAdminSession,
+    clearLandlordSession,
+    clearTenantSession,
+  } = useTenantPortalSession();
+
+  const isTenantRoute = router.pathname.startsWith("/tenant");
+  const isAdminRoute = router.pathname.startsWith("/admin");
+  const signOutHref = isTenantRoute
+    ? "/tenant/login"
+    : isAdminRoute
+      ? "/admin/login"
+      : "/portal";
 
   return (
     <header className="topbar">
@@ -44,7 +60,23 @@ export default function Topbar({
         >
           {initials}
         </div>
-        <Link href="/portal" className="btn btn-ghost btn-sm">
+        <Link
+          href={signOutHref}
+          className="btn btn-ghost btn-sm"
+          onClick={() => {
+            if (isTenantRoute) {
+              clearTenantSession();
+              return;
+            }
+
+            if (isAdminRoute) {
+              clearAdminSession();
+              return;
+            }
+
+            clearLandlordSession();
+          }}
+        >
           Sign out
         </Link>
       </div>

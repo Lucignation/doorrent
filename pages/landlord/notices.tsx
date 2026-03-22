@@ -1,14 +1,12 @@
-import AppShell from "../../components/layout/AppShell";
+import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import DataTable from "../../components/ui/DataTable";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import {
-  landlordNav,
   landlordNoticeTemplates,
   landlordNotices,
-  landlordUser,
 } from "../../data/landlord";
 import type {
   BadgeTone,
@@ -100,12 +98,7 @@ export default function LandlordNoticesPage() {
   return (
     <>
       <PageMeta title="DoorRent — Notices" />
-      <AppShell
-        user={landlordUser}
-        topbarTitle="Notices"
-        breadcrumb="Dashboard → Notices"
-        navSections={landlordNav}
-      >
+      <LandlordPortalShell topbarTitle="Notices" breadcrumb="Dashboard → Notices">
         <PageHeader
           title="Notices & Communication"
           description="Send notices, announcements & rent increase letters"
@@ -186,7 +179,7 @@ export default function LandlordNoticesPage() {
             })}
           </div>
         </div>
-      </AppShell>
+      </LandlordPortalShell>
     </>
   );
 }

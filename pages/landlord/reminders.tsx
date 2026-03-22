@@ -1,12 +1,10 @@
-import AppShell from "../../components/layout/AppShell";
+import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import PageHeader from "../../components/ui/PageHeader";
 import {
-  landlordNav,
   landlordReminderLog,
   landlordReminderRules,
-  landlordUser,
 } from "../../data/landlord";
 
 export default function LandlordRemindersPage() {
@@ -14,12 +12,7 @@ export default function LandlordRemindersPage() {
   return (
     <>
       <PageMeta title="DoorRent — Reminders" />
-      <AppShell
-        user={landlordUser}
-        topbarTitle="Reminders"
-        breadcrumb="Dashboard → Reminders"
-        navSections={landlordNav}
-      >
+      <LandlordPortalShell topbarTitle="Reminders" breadcrumb="Dashboard → Reminders">
         <PageHeader
           title="Reminders & Automations"
           description="Configure automatic notification rules"
@@ -111,7 +104,7 @@ export default function LandlordRemindersPage() {
             </div>
           </div>
         </div>
-      </AppShell>
+      </LandlordPortalShell>
     </>
   );
 }

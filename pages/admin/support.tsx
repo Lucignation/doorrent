@@ -1,9 +1,9 @@
-import AppShell from "../../components/layout/AppShell";
+import AdminPortalShell from "../../components/auth/AdminPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
-import { adminNav, adminSupportStats, adminTickets, adminUser } from "../../data/admin";
+import { adminSupportStats, adminTickets } from "../../data/admin";
 import type { AdminTicketRow, BadgeTone, TableColumn } from "../../types/app";
 
 function priorityTone(priority: AdminTicketRow["priority"]): BadgeTone {
@@ -69,11 +69,9 @@ export default function AdminSupportPage() {
   return (
     <>
       <PageMeta title="DoorRent — Support Center" />
-      <AppShell
-        user={adminUser}
+      <AdminPortalShell
         topbarTitle="Support Center"
         breadcrumb="Dashboard → Support Center"
-        navSections={adminNav}
       >
         <PageHeader
           title="Support Center"
@@ -92,7 +90,7 @@ export default function AdminSupportPage() {
         <div className="card">
           <DataTable columns={ticketColumns} rows={adminTickets} />
         </div>
-      </AppShell>
+      </AdminPortalShell>
     </>
   );
 }
