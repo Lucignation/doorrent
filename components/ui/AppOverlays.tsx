@@ -495,6 +495,26 @@ export default function AppOverlays() {
       return;
     }
 
+    if (!unitForm.propertyId) {
+      setModalError("Select the property for this unit.");
+      return;
+    }
+
+    if (!unitForm.unitNumber.trim()) {
+      setModalError("Enter the unit number.");
+      return;
+    }
+
+    if (!unitForm.type.trim()) {
+      setModalError("Enter the unit type, for example 1 Bed, 2 Bed, Self Contain, or Shop.");
+      return;
+    }
+
+    if (!unitForm.annualRent || Number(unitForm.annualRent) <= 0) {
+      setModalError("Enter the yearly rent for this unit.");
+      return;
+    }
+
     setSavingUnit(true);
     setModalError("");
 
@@ -504,8 +524,8 @@ export default function AppOverlays() {
         token: landlordSession.token,
         body: {
           propertyId: unitForm.propertyId,
-          unitNumber: unitForm.unitNumber,
-          type: unitForm.type,
+          unitNumber: unitForm.unitNumber.trim(),
+          type: unitForm.type.trim(),
           annualRent: Number(unitForm.annualRent),
           leaseEnd: unitForm.leaseEnd || undefined,
           status: unitForm.status,
@@ -900,12 +920,15 @@ export default function AppOverlays() {
                 <label className="form-label">Unit Type *</label>
                 <input
                   className="form-input"
-                  placeholder="2 Bedroom"
+                  placeholder="e.g. 2 Bed, Self Contain, Shop"
                   value={unitForm.type}
                   onChange={(event) =>
                     setUnitForm((current) => ({ ...current, type: event.target.value }))
                   }
                 />
+                <div className="td-muted" style={{ marginTop: 6 }}>
+                  You can use short labels like 1 Bed, 2 Bed, 3 Bed, Shop, or Office.
+                </div>
               </div>
             </div>
             <div className="form-row">
