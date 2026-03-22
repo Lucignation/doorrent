@@ -24,7 +24,7 @@ interface AdminSettingsResponse {
 }
 
 export default function AdminSettingsPage() {
-  const { showToast } = usePrototypeUI();
+  const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
   const { adminSession } = useAdminPortalSession();
   const [settings, setSettings] = useState<AdminSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +71,7 @@ export default function AdminSettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [adminSession?.token]);
+  }, [adminSession?.token, dataRefreshVersion]);
 
   async function submitSettings(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -100,6 +100,7 @@ export default function AdminSettingsPage() {
       });
 
       setSettings(data);
+      refreshData();
       showToast("System settings saved", "success");
     } catch (requestError) {
       showToast(

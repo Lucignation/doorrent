@@ -8,6 +8,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import SectionCard from "../../components/ui/SectionCard";
 import StatCard from "../../components/ui/StatCard";
 import StatusBadge from "../../components/ui/StatusBadge";
+import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import type { AdminActivityRow, BadgeTone, ChartPoint, StatItem, TableColumn } from "../../types/app";
@@ -47,6 +48,7 @@ function statusTone(status: AdminActivityRow["status"]): BadgeTone {
 }
 
 export default function AdminDashboardPage() {
+  const { dataRefreshVersion } = usePrototypeUI();
   const { adminSession } = useAdminPortalSession();
   const [overview, setOverview] = useState<AdminOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +96,7 @@ export default function AdminDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [adminSession?.token]);
+  }, [adminSession?.token, dataRefreshVersion]);
 
   const activityColumns: TableColumn<RecentActivityRow>[] = [
     {

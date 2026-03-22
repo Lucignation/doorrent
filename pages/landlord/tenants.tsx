@@ -70,7 +70,7 @@ function statusTone(status: TenantLedgerRow["status"]): BadgeTone {
 }
 
 export default function LandlordTenantsPage() {
-  const { openModal } = usePrototypeUI();
+  const { dataRefreshVersion, openModal } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [tenantData, setTenantData] = useState<TenantResponse | null>(null);
   const [inviteData, setInviteData] = useState<InvitationResponse | null>(null);
@@ -143,7 +143,7 @@ export default function LandlordTenantsPage() {
     return () => {
       cancelled = true;
     };
-  }, [landlordSession?.token, propertyId, search, status]);
+  }, [dataRefreshVersion, landlordSession?.token, propertyId, search, status]);
 
   const tenantColumns: TableColumn<TenantLedgerRow & { id: string }>[] = useMemo(
     () => [

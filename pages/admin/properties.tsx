@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminPortalShell from "../../components/auth/AdminPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
+import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import DataTable from "../../components/ui/DataTable";
@@ -46,6 +47,7 @@ function statusTone(status: AdminPropertyRow["status"]): BadgeTone {
 }
 
 export default function AdminPropertiesPage() {
+  const { dataRefreshVersion } = usePrototypeUI();
   const { adminSession } = useAdminPortalSession();
   const [propertyData, setPropertyData] = useState<AdminPropertiesResponse | null>(
     null,
@@ -108,7 +110,7 @@ export default function AdminPropertiesPage() {
     return () => {
       cancelled = true;
     };
-  }, [adminSession?.token, search, state]);
+  }, [adminSession?.token, dataRefreshVersion, search, state]);
 
   const propertyRows: Array<AdminPropertyRow & { id: string }> = (propertyData?.properties ?? []).map(
     (property) => ({

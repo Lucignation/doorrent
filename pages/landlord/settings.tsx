@@ -68,7 +68,7 @@ const initialTeamInviteForm: TeamInviteForm = {
 };
 
 export default function LandlordSettingsPage() {
-  const { showToast } = usePrototypeUI();
+  const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [settings, setSettings] = useState<LandlordSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -123,7 +123,7 @@ export default function LandlordSettingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [landlordSession?.token]);
+  }, [dataRefreshVersion, landlordSession?.token]);
 
   function updateProfileField(
     field: keyof LandlordSettingsResponse["profile"],
@@ -195,6 +195,7 @@ export default function LandlordSettingsPage() {
             }
           : current,
       );
+      refreshData();
       showToast("Profile saved", "success");
     } catch (requestError) {
       showToast(
@@ -243,6 +244,7 @@ export default function LandlordSettingsPage() {
             }
           : current,
       );
+      refreshData();
       showToast("Payout settings saved", "success");
     } catch (requestError) {
       showToast(
@@ -296,6 +298,7 @@ export default function LandlordSettingsPage() {
             }
           : current,
       );
+      refreshData();
       showToast("Preference saved", "success");
     } catch (requestError) {
       showToast(
@@ -335,6 +338,7 @@ export default function LandlordSettingsPage() {
           : current,
       );
       setTeamInviteForm(initialTeamInviteForm);
+      refreshData();
       showToast("Invite sent", "success");
     } catch (requestError) {
       showToast(

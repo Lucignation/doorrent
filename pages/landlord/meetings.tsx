@@ -75,7 +75,7 @@ function toDateTimeInputValue(value: string) {
 
 export default function LandlordMeetingsPage() {
   const { landlordSession } = useLandlordPortalSession();
-  const { showToast } = usePrototypeUI();
+  const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
   const [meetingData, setMeetingData] = useState<LandlordMeetingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -148,7 +148,7 @@ export default function LandlordMeetingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [landlordSession?.token]);
+  }, [dataRefreshVersion, landlordSession?.token]);
 
   function updateDraft(
     meetingId: string,
@@ -228,6 +228,7 @@ export default function LandlordMeetingsPage() {
           landlordNotes: data.meeting.landlordNotes ?? "",
         },
       }));
+      refreshData();
       showToast("Meeting updated", "success");
     } catch (requestError) {
       showToast(

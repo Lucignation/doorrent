@@ -68,7 +68,7 @@ function statusTone(status: LandlordUnitRow["status"]): BadgeTone {
 }
 
 export default function LandlordUnitsPage() {
-  const { openModal, showToast } = usePrototypeUI();
+  const { dataRefreshVersion, openModal, refreshData, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [unitsData, setUnitsData] = useState<UnitsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -150,7 +150,7 @@ export default function LandlordUnitsPage() {
     return () => {
       cancelled = true;
     };
-  }, [landlordSession?.token, propertyId, refreshNonce, search, status, type]);
+  }, [dataRefreshVersion, landlordSession?.token, propertyId, refreshNonce, search, status, type]);
 
   function openEditUnit(unit: LandlordUnitRecord) {
     setEditingUnit(unit);
@@ -196,6 +196,7 @@ export default function LandlordUnitsPage() {
 
       setEditingUnit(null);
       setRefreshNonce((current) => current + 1);
+      refreshData();
       showToast("Unit updated successfully", "success");
     } catch (requestError) {
       setEditError(

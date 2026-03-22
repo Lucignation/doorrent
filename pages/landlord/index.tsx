@@ -9,6 +9,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import SectionCard from "../../components/ui/SectionCard";
 import StatCard from "../../components/ui/StatCard";
 import StatusBadge from "../../components/ui/StatusBadge";
+import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import type {
@@ -54,6 +55,7 @@ const circleRadius = 46;
 const circleCircumference = 2 * Math.PI * circleRadius;
 
 export default function LandlordDashboardPage() {
+  const { dataRefreshVersion } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [overview, setOverview] = useState<LandlordOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +104,7 @@ export default function LandlordDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [landlordSession?.token]);
+  }, [dataRefreshVersion, landlordSession?.token]);
 
   const paymentColumns: TableColumn<PaymentRecord>[] = [
     {

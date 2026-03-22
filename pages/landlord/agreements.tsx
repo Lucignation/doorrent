@@ -51,7 +51,7 @@ const tabs: Array<{
 ];
 
 export default function LandlordAgreementsPage() {
-  const { showToast } = usePrototypeUI();
+  const { dataRefreshVersion, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [agreementData, setAgreementData] = useState<AgreementsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,7 +103,7 @@ export default function LandlordAgreementsPage() {
     return () => {
       cancelled = true;
     };
-  }, [landlordSession?.token, statusFilter]);
+  }, [dataRefreshVersion, landlordSession?.token, statusFilter]);
 
   const agreementColumns: TableColumn<LandlordAgreementRow & { id: string }>[] =
     useMemo(

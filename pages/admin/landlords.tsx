@@ -45,7 +45,7 @@ function statusTone(status: AdminLandlordRow["status"]): BadgeTone {
 }
 
 export default function AdminLandlordsPage() {
-  const { showToast } = usePrototypeUI();
+  const { dataRefreshVersion, showToast } = usePrototypeUI();
   const { adminSession } = useAdminPortalSession();
   const [landlordData, setLandlordData] = useState<AdminLandlordsResponse | null>(
     null,
@@ -118,7 +118,7 @@ export default function AdminLandlordsPage() {
     return () => {
       cancelled = true;
     };
-  }, [adminSession?.token, plan, search, state, status]);
+  }, [adminSession?.token, dataRefreshVersion, plan, search, state, status]);
 
   const landlordColumns: TableColumn<AdminLandlordRow & { id: string; companyName: string }>[] =
     useMemo(

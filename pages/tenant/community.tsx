@@ -92,7 +92,7 @@ function readFileAsDataUrl(file: File) {
 
 export default function TenantCommunityPage() {
   const { tenantSession } = useTenantPortalSession();
-  const { showToast } = usePrototypeUI();
+  const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
   const [groupData, setGroupData] = useState<CommunityGroupsResponse | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [messageData, setMessageData] = useState<CommunityMessagesResponse | null>(null);
@@ -174,7 +174,7 @@ export default function TenantCommunityPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenantSession?.token]);
+  }, [dataRefreshVersion, tenantSession?.token]);
 
   useEffect(() => {
     const tenantToken = tenantSession?.token;
@@ -229,7 +229,7 @@ export default function TenantCommunityPage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedGroup?.joined, selectedGroupId, showToast, tenantSession?.token]);
+  }, [dataRefreshVersion, selectedGroup?.joined, selectedGroupId, showToast, tenantSession?.token]);
 
   async function reloadGroups() {
     const tenantToken = tenantSession?.token;
@@ -274,6 +274,7 @@ export default function TenantCommunityPage() {
       await reloadGroups();
       setSelectedGroupId(data.group.id);
       setGroupForm({ name: "", description: "" });
+      refreshData();
       showToast("Community group created", "success");
     } catch (requestError) {
       showToast(
@@ -305,6 +306,7 @@ export default function TenantCommunityPage() {
 
       await reloadGroups();
       setSelectedGroupId(groupId);
+      refreshData();
       showToast("You joined the group", "success");
     } catch (requestError) {
       showToast(
@@ -340,6 +342,7 @@ export default function TenantCommunityPage() {
           groupData?.groups.find((group) => group.id !== groupId && group.joined)?.id ?? "",
         );
       }
+      refreshData();
       showToast("You left the group", "success");
     } catch (requestError) {
       showToast(
@@ -423,6 +426,7 @@ export default function TenantCommunityPage() {
         imageMimeType: "",
       });
       await reloadGroups();
+      refreshData();
     } catch (requestError) {
       showToast(
         requestError instanceof Error

@@ -24,7 +24,7 @@ interface LandlordPropertiesResponse {
 
 export default function LandlordPropertiesPage() {
   const router = useRouter();
-  const { openModal } = usePrototypeUI();
+  const { dataRefreshVersion, openModal } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [propertyData, setPropertyData] = useState<LandlordPropertiesResponse | null>(
     null,
@@ -75,7 +75,7 @@ export default function LandlordPropertiesPage() {
     return () => {
       cancelled = true;
     };
-  }, [landlordSession?.token]);
+  }, [dataRefreshVersion, landlordSession?.token]);
 
   const description = propertyData
     ? `${propertyData.summary.properties} properties · ${propertyData.summary.units} units · ${

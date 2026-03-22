@@ -19,8 +19,10 @@ interface ToastItem {
 interface PrototypeUIValue {
   activeModal: ModalId | null;
   toasts: ToastItem[];
+  dataRefreshVersion: number;
   openModal: (modal: ModalId) => void;
   closeModal: () => void;
+  refreshData: () => void;
   showToast: (message: string, tone?: ToastTone) => void;
 }
 
@@ -29,6 +31,7 @@ const PrototypeUIContext = createContext<PrototypeUIValue | null>(null);
 export function PrototypeUIProvider({ children }: { children: ReactNode }) {
   const [activeModal, setActiveModal] = useState<ModalId | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [dataRefreshVersion, setDataRefreshVersion] = useState(0);
   const nextToastId = useRef(0);
 
   const openModal = useCallback((modal: ModalId) => {
@@ -37,6 +40,10 @@ export function PrototypeUIProvider({ children }: { children: ReactNode }) {
 
   const closeModal = useCallback(() => {
     setActiveModal(null);
+  }, []);
+
+  const refreshData = useCallback(() => {
+    setDataRefreshVersion((current) => current + 1);
   }, []);
 
   const showToast = useCallback((message: string, tone: ToastTone = "default") => {
@@ -73,8 +80,16 @@ export function PrototypeUIProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ activeModal, toasts, openModal, closeModal, showToast }),
-    [activeModal, closeModal, openModal, showToast, toasts],
+    () => ({
+      activeModal,
+      toasts,
+      dataRefreshVersion,
+      openModal,
+      closeModal,
+      refreshData,
+      showToast,
+    }),
+    [activeModal, closeModal, dataRefreshVersion, openModal, refreshData, showToast, toasts],
   );
 
   return <PrototypeUIContext.Provider value={value}>{children}</PrototypeUIContext.Provider>;

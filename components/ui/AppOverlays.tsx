@@ -1,6 +1,5 @@
 import type { ChangeEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/router";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
@@ -186,8 +185,7 @@ function LandlordAccessHint() {
 }
 
 export default function AppOverlays() {
-  const router = useRouter();
-  const { activeModal, closeModal, showToast, toasts } = usePrototypeUI();
+  const { activeModal, closeModal, refreshData, showToast, toasts } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
 
   const [modalError, setModalError] = useState("");
@@ -379,10 +377,6 @@ export default function AppOverlays() {
     }
   }, [activeModal]);
 
-  function refreshCurrentPage() {
-    void router.replace(router.asPath);
-  }
-
   function resetPropertyForm() {
     setPropertyForm({
       name: "",
@@ -477,7 +471,7 @@ export default function AppOverlays() {
 
       closeModal();
       resetPropertyForm();
-      refreshCurrentPage();
+      refreshData();
       showToast("Property created successfully", "success");
     } catch (requestError) {
       setModalError(
@@ -534,7 +528,7 @@ export default function AppOverlays() {
 
       closeModal();
       resetUnitForm();
-      refreshCurrentPage();
+      refreshData();
       showToast("Unit created successfully", "success");
     } catch (requestError) {
       setModalError(
@@ -580,7 +574,7 @@ export default function AppOverlays() {
 
       closeModal();
       resetInvitationForm();
-      refreshCurrentPage();
+      refreshData();
       showToast(
         data.onboardingUrl
           ? "Onboarding invite email sent"
@@ -629,7 +623,7 @@ export default function AppOverlays() {
 
       closeModal();
       resetAgreementForm();
-      refreshCurrentPage();
+      refreshData();
       showToast("Agreement created successfully", "success");
     } catch (requestError) {
       setModalError(
@@ -666,7 +660,7 @@ export default function AppOverlays() {
 
       closeModal();
       resetTemplateForm();
-      refreshCurrentPage();
+      refreshData();
       showToast("Agreement template uploaded successfully", "success");
     } catch (requestError) {
       setModalError(

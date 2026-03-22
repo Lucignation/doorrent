@@ -94,7 +94,7 @@ function createDefaultMeetingTime() {
 
 export default function TenantMeetingsPage() {
   const { tenantSession } = useTenantPortalSession();
-  const { showToast } = usePrototypeUI();
+  const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
   const [meetingData, setMeetingData] = useState<TenantMeetingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -149,7 +149,7 @@ export default function TenantMeetingsPage() {
     return () => {
       cancelled = true;
     };
-  }, [tenantSession?.token]);
+  }, [dataRefreshVersion, tenantSession?.token]);
 
   async function submitMeeting(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -201,6 +201,7 @@ export default function TenantMeetingsPage() {
         scheduledFor: createDefaultMeetingTime(),
         durationMinutes: "30",
       });
+      refreshData();
       showToast("Meeting request sent to your landlord", "success");
     } catch (requestError) {
       showToast(
@@ -251,6 +252,7 @@ export default function TenantMeetingsPage() {
             }
           : current,
       );
+      refreshData();
       showToast("Meeting cancelled", "success");
     } catch (requestError) {
       showToast(

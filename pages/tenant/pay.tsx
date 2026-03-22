@@ -44,7 +44,7 @@ function formatNaira(amount: number) {
 
 export default function TenantPayPage() {
   const router = useRouter();
-  const { showToast } = usePrototypeUI();
+  const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
   const { tenantSession } = useTenantPortalSession();
   const [tenantProfile, setTenantProfile] = useState<TenantPortalIdentity | null>(
     tenantSession?.tenant ?? null,
@@ -122,7 +122,7 @@ export default function TenantPayPage() {
     return () => {
       active = false;
     };
-  }, [showToast, tenantSession?.token]);
+  }, [dataRefreshVersion, showToast, tenantSession?.token]);
 
   useEffect(() => {
     const reference =
@@ -157,6 +157,7 @@ export default function TenantPayPage() {
         setVerificationMessage(
           `Payment confirmed. Receipt ${data.payment.reference} was recorded successfully.`,
         );
+        refreshData();
         showToast("Payment verified successfully", "success");
         void router.replace("/tenant/pay", undefined, { shallow: true });
       } catch (error) {
