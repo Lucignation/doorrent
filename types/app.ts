@@ -91,6 +91,8 @@ export interface PropertyPortfolioItem {
   units: number;
   occupied: number;
   monthly: string;
+  annualRevenue?: string;
+  monthlyRevenue?: string;
   occupancy: number;
   index: number;
 }
@@ -102,6 +104,8 @@ export interface LandlordUnitRow {
   tenant: string;
   tenantEmail?: string;
   rent: string;
+  annualRent?: number;
+  monthlyEquivalent?: string;
   leaseEnd: string;
   status: "occupied" | "vacant" | "maintenance" | "expiring" | "overdue";
 }
@@ -120,6 +124,8 @@ export interface TenantLedgerRow {
   email: string;
   unit: string;
   rent: string;
+  annualRent?: number;
+  monthlyEquivalent?: string;
   leaseEnd: string;
   balance: string;
   status: "current" | "expiring" | "overdue";
@@ -130,6 +136,7 @@ export interface TenantInviteRow {
   property: string;
   unit: string;
   rent: string;
+  monthlyEquivalent?: string;
   lease: string;
   expires: string;
   status: "pending" | "completed" | "expired";

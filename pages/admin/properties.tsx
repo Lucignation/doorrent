@@ -24,6 +24,8 @@ interface AdminPropertiesResponse {
     location: string;
     units: number;
     occupancy: string;
+    annualRevenue?: string;
+    monthlyEquivalent?: string;
     monthlyRevenue: string;
     status: AdminPropertyRow["status"];
     type: string;
@@ -116,7 +118,7 @@ export default function AdminPropertiesPage() {
       location: property.location,
       units: property.units,
       occupancy: property.occupancy,
-      revenue: property.monthlyRevenue,
+      revenue: property.annualRevenue ?? property.monthlyRevenue,
       status: property.status,
     }),
   );
@@ -128,7 +130,7 @@ export default function AdminPropertiesPage() {
       { key: "location", label: "Location" },
       { key: "units", label: "Units" },
       { key: "occupancy", label: "Occupancy" },
-      { key: "revenue", label: "Potential Revenue" },
+      { key: "revenue", label: "Potential Annual Rent" },
       {
         key: "status",
         label: "Landlord Status",

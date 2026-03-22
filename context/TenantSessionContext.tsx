@@ -17,8 +17,15 @@ export interface TenantPortalIdentity {
   email: string;
   propertyName: string;
   unitNumber: string | null;
+  unitType?: string | null;
   landlordCompany: string;
   landlordName: string;
+  annualRent?: number;
+  annualRentFormatted?: string;
+  monthlyEquivalent?: number;
+  monthlyEquivalentFormatted?: string;
+  leaseStart?: string;
+  leaseEnd?: string;
 }
 
 export interface TenantPortalSession {

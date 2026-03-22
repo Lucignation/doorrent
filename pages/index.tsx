@@ -167,7 +167,7 @@ const rolePanels: Record<
       },
     ],
     stats: [
-      { label: "Monthly Rent", value: "₦150K", sub: "Due Apr 1" },
+      { label: "Annual Rent", value: "₦1.8M", sub: "≈ ₦150K monthly equivalent" },
       { label: "Lease Ends", value: "Mar '27", sub: "12 months left" },
     ],
     items: [

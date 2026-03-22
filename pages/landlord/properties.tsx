@@ -15,6 +15,8 @@ interface LandlordPropertiesResponse {
     properties: number;
     units: number;
     occupiedUnits: number;
+    potentialAnnualRevenue?: string;
+    potentialMonthlyEquivalent?: string;
     potentialMonthlyRevenue: string;
   };
   properties: Array<PropertyPortfolioItem & { id: string }>;
@@ -76,7 +78,9 @@ export default function LandlordPropertiesPage() {
   }, [landlordSession?.token]);
 
   const description = propertyData
-    ? `${propertyData.summary.properties} properties · ${propertyData.summary.units} units · ${propertyData.summary.potentialMonthlyRevenue} potential monthly revenue`
+    ? `${propertyData.summary.properties} properties · ${propertyData.summary.units} units · ${
+        propertyData.summary.potentialAnnualRevenue ?? propertyData.summary.potentialMonthlyRevenue
+      } potential yearly rent`
     : loading
       ? "Loading your property portfolio..."
       : error || "No properties yet.";

@@ -4,6 +4,7 @@ import TenantPortalShell from "../../components/auth/TenantPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { CardIcon } from "../../components/ui/Icons";
 import PageHeader from "../../components/ui/PageHeader";
+import type { TenantPortalIdentity } from "../../context/TenantSessionContext";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
@@ -33,17 +34,95 @@ interface VerifiedPaymentResponse {
   };
 }
 
+interface TenantMeResponse {
+  tenant: TenantPortalIdentity;
+}
+
+function formatNaira(amount: number) {
+  return `₦${amount.toLocaleString("en-NG")}`;
+}
+
 export default function TenantPayPage() {
   const router = useRouter();
   const { showToast } = usePrototypeUI();
   const { tenantSession } = useTenantPortalSession();
-  const [amount, setAmount] = useState("150000");
+  const [tenantProfile, setTenantProfile] = useState<TenantPortalIdentity | null>(
+    tenantSession?.tenant ?? null,
+  );
+  const [amount, setAmount] = useState("");
   const [paymentMode, setPaymentMode] = useState<"full" | "partial">("full");
   const [isInitializing, setIsInitializing] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
   const [verifiedPayment, setVerifiedPayment] =
     useState<VerifiedPaymentResponse["payment"] | null>(null);
+
+  const annualRentAmount = tenantProfile?.annualRent ?? 0;
+  const monthlyEquivalentAmount =
+    tenantProfile?.monthlyEquivalent ??
+    (annualRentAmount ? Math.round(annualRentAmount / 12) : 0);
+  const propertyName = tenantProfile?.propertyName ?? "Assigned property";
+  const unitLabel = tenantProfile?.unitNumber
+    ? `${tenantProfile.unitNumber}${tenantProfile.unitType ? ` — ${tenantProfile.unitType}` : ""}`
+    : "Assigned unit";
+  const paymentPeriodLabel =
+    paymentMode === "full" ? "Annual Rent Payment" : "Monthly Equivalent Payment";
+
+  useEffect(() => {
+    const tenantToken = tenantSession?.token;
+
+    if (!tenantToken) {
+      return;
+    }
+
+    let active = true;
+
+    async function loadTenantProfile() {
+      setIsLoadingProfile(true);
+
+      try {
+        const { data } = await apiRequest<TenantMeResponse>("/tenant/auth/me", {
+          token: tenantToken,
+        });
+
+        if (!active) {
+          return;
+        }
+
+        setTenantProfile(data.tenant);
+        setPaymentMode("full");
+        setAmount(
+          data.tenant.annualRent
+            ? `${data.tenant.annualRent}`
+            : data.tenant.monthlyEquivalent
+              ? `${data.tenant.monthlyEquivalent}`
+              : "",
+        );
+      } catch (error) {
+        if (!active) {
+          return;
+        }
+
+        showToast(
+          error instanceof Error
+            ? error.message
+            : "We could not load your current rent details.",
+          "error",
+        );
+      } finally {
+        if (active) {
+          setIsLoadingProfile(false);
+        }
+      }
+    }
+
+    void loadTenantProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [showToast, tenantSession?.token]);
 
   useEffect(() => {
     const reference =
@@ -121,7 +200,7 @@ export default function TenantPayPage() {
           token: tenantSession.token,
           body: {
             amount: Number(amount),
-            periodLabel: "April 2026 Rent",
+            periodLabel: paymentPeriodLabel,
           },
         },
       );
@@ -140,11 +219,16 @@ export default function TenantPayPage() {
     }
   }
 
+  const checkoutAmount = Number(amount || 0);
+
   return (
     <>
       <PageMeta title="DoorRent — Pay Rent" />
       <TenantPortalShell topbarTitle="Pay Rent" breadcrumb="Dashboard → Pay Rent">
-        <PageHeader title="Pay Rent" description="Secure payment powered by Paystack" />
+        <PageHeader
+          title="Pay Rent"
+          description="Secure annual-rent payment powered by Paystack"
+        />
 
         {verificationMessage ? (
           <div
@@ -210,28 +294,42 @@ export default function TenantPayPage() {
             <div className="card-body">
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <span style={{ color: "var(--ink2)" }}>Property</span>
-                <span style={{ fontWeight: 500 }}>Lekki Gardens Estate</span>
+                <span style={{ fontWeight: 500 }}>{propertyName}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <span style={{ color: "var(--ink2)" }}>Unit</span>
-                <span style={{ fontWeight: 500 }}>A3 — 2 Bedroom</span>
+                <span style={{ fontWeight: 500 }}>{unitLabel}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
-                <span style={{ color: "var(--ink2)" }}>Period</span>
-                <span style={{ fontWeight: 500 }}>April 2026</span>
+                <span style={{ color: "var(--ink2)" }}>Annual Rent</span>
+                <span style={{ fontWeight: 500 }}>
+                  {tenantProfile?.annualRentFormatted ?? "—"}
+                </span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
-                <span style={{ color: "var(--ink2)" }}>Due Date</span>
-                <span style={{ fontWeight: 500 }}>April 1, 2026</span>
+                <span style={{ color: "var(--ink2)" }}>Monthly Equivalent</span>
+                <span style={{ fontWeight: 500 }}>
+                  {tenantProfile?.monthlyEquivalentFormatted ?? "—"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+                <span style={{ color: "var(--ink2)" }}>Lease Term</span>
+                <span style={{ fontWeight: 500 }}>
+                  {tenantProfile?.leaseStart ?? "—"} → {tenantProfile?.leaseEnd ?? "—"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+                <span style={{ color: "var(--ink2)" }}>Checkout Type</span>
+                <span style={{ fontWeight: 500 }}>{paymentPeriodLabel}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
                 <span style={{ color: "var(--ink2)" }}>DoorRent platform fee</span>
                 <span style={{ fontWeight: 500 }}>3%</span>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "14px 0", marginTop: 4 }}>
-                <span style={{ fontSize: 15, fontWeight: 600 }}>Total Due</span>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>Current Checkout</span>
                 <span style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)" }}>
-                  ₦150,000
+                  {checkoutAmount ? formatNaira(checkoutAmount) : "—"}
                 </span>
               </div>
             </div>
@@ -247,7 +345,7 @@ export default function TenantPayPage() {
                   type="button"
                   onClick={() => {
                     setPaymentMode("full");
-                    setAmount("150000");
+                    setAmount(annualRentAmount ? `${annualRentAmount}` : amount);
                   }}
                   style={{
                     flex: 1,
@@ -260,15 +358,20 @@ export default function TenantPayPage() {
                   }}
                 >
                   <div style={{ fontSize: 12, fontWeight: 600, color: paymentMode === "full" ? "var(--accent)" : "var(--ink2)" }}>
-                    Full Payment
+                    Annual Payment
                   </div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: paymentMode === "full" ? "var(--accent)" : "var(--ink2)" }}>
-                    ₦150,000
+                    {annualRentAmount ? formatNaira(annualRentAmount) : "—"}
                   </div>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaymentMode("partial")}
+                  onClick={() => {
+                    setPaymentMode("partial");
+                    setAmount(
+                      monthlyEquivalentAmount ? `${monthlyEquivalentAmount}` : amount,
+                    );
+                  }}
                   style={{
                     flex: 1,
                     padding: 12,
@@ -280,10 +383,10 @@ export default function TenantPayPage() {
                   }}
                 >
                   <div style={{ fontSize: 12, fontWeight: 600, color: paymentMode === "partial" ? "var(--accent)" : "var(--ink2)" }}>
-                    Partial Payment
+                    Monthly Equivalent
                   </div>
                   <div style={{ fontSize: 18, fontWeight: 700, color: paymentMode === "partial" ? "var(--accent)" : "var(--ink2)" }}>
-                    Custom
+                    {monthlyEquivalentAmount ? formatNaira(monthlyEquivalentAmount) : "Custom"}
                   </div>
                 </button>
               </div>
@@ -297,6 +400,11 @@ export default function TenantPayPage() {
                   onChange={(event) => setAmount(event.target.value)}
                 />
               </div>
+              <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.6 }}>
+                {isLoadingProfile
+                  ? "Loading your rent details..."
+                  : "Rent is stored yearly. The monthly figure here is only a helper calculation from your annual rent."}
+              </div>
             </div>
           </div>
 
@@ -308,7 +416,9 @@ export default function TenantPayPage() {
             disabled={isInitializing || !amount}
           >
             <CardIcon />
-            {isInitializing ? "Connecting to Paystack..." : `Pay ₦${Number(amount || 0).toLocaleString("en-NG")} via Paystack`}
+            {isInitializing
+              ? "Connecting to Paystack..."
+              : `Pay ${checkoutAmount ? formatNaira(checkoutAmount) : "₦0"} via Paystack`}
           </button>
           <div style={{ textAlign: "center", marginTop: 12, fontSize: 11, color: "var(--ink3)" }}>
             🔒 Secured by Paystack · DoorRent keeps 3% and the landlord settlement is tracked automatically

@@ -23,6 +23,8 @@ export const tenantNav: NavSection[] = [
       { label: "Dashboard", href: "/tenant", icon: "grid" },
       { label: "My Rent", href: "/tenant/rent", icon: "card" },
       { label: "Pay Rent", href: "/tenant/pay", icon: "pay" },
+      { label: "Meetings", href: "/tenant/meetings", icon: "clock" },
+      { label: "Community", href: "/tenant/community", icon: "chat" },
       { label: "Receipts", href: "/tenant/receipts", icon: "receipt" },
       {
         label: "My Agreement",
@@ -49,9 +51,9 @@ export const tenantAgreementAlert: HighlightBanner = {
 
 export const tenantStats: StatItem[] = [
   {
-    label: "Monthly Rent",
-    value: "₦150,000",
-    subtext: "Due 1st of each month",
+    label: "Annual Rent",
+    value: "₦1,800,000",
+    subtext: "≈ ₦150,000 monthly equivalent",
     accent: "gold",
   },
   {
@@ -72,8 +74,20 @@ export const tenantQuickActions: TenantQuickAction[] = [
   {
     icon: "💳",
     label: "Pay Rent Now",
-    description: "Next due Apr 1, 2026",
+    description: "Annual due available in portal",
     href: "/tenant/pay",
+  },
+  {
+    icon: "📅",
+    label: "Book Meeting",
+    description: "Request time with your landlord",
+    href: "/tenant/meetings",
+  },
+  {
+    icon: "🗨",
+    label: "Community Chat",
+    description: "Join or create a compound group",
+    href: "/tenant/community",
   },
   {
     icon: "📄",
@@ -178,7 +192,7 @@ export const tenantNotices: TenantNoticeRow[] = [
     type: "Rent Increase",
     title: "Rent Increase Notice — Q3 2026",
     body:
-      "Dear Amaka, we wish to inform you that your monthly rent will increase from ₦150,000 to ₦165,000 effective July 1, 2026. This adjustment reflects current market rates. Please contact us if you have any questions.",
+      "Dear Amaka, we wish to inform you that your annual rent will increase from ₦1,800,000 to ₦1,980,000 effective July 1, 2026. A monthly equivalent breakdown will still be shared for planning. Please contact us if you have any questions.",
     date: "Mar 1, 2026",
     read: false,
     badge: "amber",

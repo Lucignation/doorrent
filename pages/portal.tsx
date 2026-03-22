@@ -50,6 +50,15 @@ type AdminAuthResult = {
   };
 };
 
+type PasswordResetRequestResult = {
+  email: string;
+  expiresAt?: string;
+  expiresInMinutes: number;
+  delivery: "sent" | "failed" | "preview";
+  resetLinkPreview?: string;
+  resetTokenPreview?: string;
+};
+
 const roles: Record<RoleKey, { label: string; href: string; button: string }> = {
   landlord: {
     label: "Landlord",
@@ -102,6 +111,10 @@ function buildQueryString(query: Record<string, string | string[] | undefined>) 
   return params.toString();
 }
 
+function getWorkspaceLoginPath(role: RoleKey) {
+  return role === "admin" ? "/admin/login" : "/portal";
+}
+
 export function PortalExperience({ forcedRole }: PortalExperienceProps) {
   const router = useRouter();
   const { showToast } = usePrototypeUI();
@@ -118,9 +131,13 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
   } = useTenantPortalSession();
   const [role, setRole] = useState<RoleKey>(forcedRole);
   const [landlordMode, setLandlordMode] = useState<"login" | "register">("login");
+  const [workspaceAuthView, setWorkspaceAuthView] = useState<
+    "auth" | "forgot" | "reset"
+  >("auth");
   const [authBusy, setAuthBusy] = useState(false);
   const [authFeedback, setAuthFeedback] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showResetPasswords, setShowResetPasswords] = useState(false);
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [landlordFirstName, setLandlordFirstName] = useState("");
@@ -138,6 +155,16 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
   const [tenantPreview, setTenantPreview] = useState<TenantRequestResult | null>(
     null,
   );
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
+  const [forgotPasswordBusy, setForgotPasswordBusy] = useState(false);
+  const [forgotPasswordFeedback, setForgotPasswordFeedback] = useState("");
+  const [forgotPasswordPreview, setForgotPasswordPreview] =
+    useState<PasswordResetRequestResult | null>(null);
+  const [resetToken, setResetToken] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState("");
 
   useEffect(() => {
     if (!router.isReady) {
@@ -146,10 +173,10 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
 
     setRole(forcedRole);
 
-    const requestedRole =
-      typeof router.query.role === "string" ? router.query.role : null;
-    const loginToken =
-      typeof router.query.token === "string" ? router.query.token : null;
+    const requestedRole = typeof router.query.role === "string" ? router.query.role : null;
+    const loginToken = typeof router.query.token === "string" ? router.query.token : null;
+    const passwordResetToken =
+      typeof router.query.resetToken === "string" ? router.query.resetToken : "";
     const forwardQuery = buildQueryString(router.query);
 
     if (forcedRole === "landlord" && requestedRole && requestedRole !== "landlord") {
@@ -185,13 +212,37 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
       setTenantStep("verify");
       void handleTenantVerification({ token: loginToken });
     }
-  }, [forcedRole, router, router.isReady, router.query]);
+    if (forcedRole !== "tenant") {
+      setResetToken(passwordResetToken);
+      if (passwordResetToken) {
+        setWorkspaceAuthView("reset");
+        setResetFeedback("");
+      } else {
+        setWorkspaceAuthView((current) => (current === "reset" ? "auth" : current));
+      }
+    }
+  }, [
+    forcedRole,
+    router.isReady,
+    router.query,
+    router.query.resetToken,
+    router.query.role,
+    router.query.token,
+  ]);
 
   useEffect(() => {
     if (role === "admin") {
       setLandlordMode("login");
     }
   }, [role]);
+
+  useEffect(() => {
+    if (workspaceAuthView === "auth") {
+      setForgotPasswordFeedback("");
+      setForgotPasswordPreview(null);
+      setResetFeedback("");
+    }
+  }, [workspaceAuthView]);
 
   async function handleTenantRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -352,6 +403,75 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
     }
   }
 
+  async function handleForgotPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setForgotPasswordBusy(true);
+    setForgotPasswordFeedback("");
+    setForgotPasswordPreview(null);
+
+    try {
+      const path =
+        role === "admin" ? "/admin/auth/forgot-password" : "/auth/forgot-password";
+      const { data } = await apiRequest<PasswordResetRequestResult>(path, {
+        method: "POST",
+        body: {
+          email: forgotPasswordEmail,
+        },
+      });
+
+      setForgotPasswordPreview(data);
+      setForgotPasswordFeedback(
+        data.delivery === "sent"
+          ? `A password reset link was sent to ${data.email}. It expires in ${data.expiresInMinutes} minutes.`
+          : "Email delivery is unavailable right now, so a preview reset link is shown below for local testing.",
+      );
+      showToast("Password reset link prepared", "success");
+    } catch (error) {
+      setForgotPasswordFeedback(
+        error instanceof Error
+          ? error.message
+          : "We could not prepare a password reset link.",
+      );
+    } finally {
+      setForgotPasswordBusy(false);
+    }
+  }
+
+  async function handlePasswordReset(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setResetBusy(true);
+    setResetFeedback("");
+
+    try {
+      const path =
+        role === "admin" ? "/admin/auth/reset-password" : "/auth/reset-password";
+      await apiRequest<{ email: string }>(path, {
+        method: "POST",
+        body: {
+          token: resetToken,
+          password: resetPassword,
+          confirmPassword: resetPasswordConfirm,
+        },
+      });
+
+      setResetPassword("");
+      setResetPasswordConfirm("");
+      setShowResetPasswords(false);
+      setWorkspaceAuthView("auth");
+      setAuthFeedback("Password reset successful. Sign in with your new password.");
+      showToast("Password reset successful", "success");
+      await router.replace(getWorkspaceLoginPath(role));
+    } catch (error) {
+      setResetFeedback(
+        error instanceof Error
+          ? error.message
+          : "We could not reset that password.",
+      );
+    } finally {
+      setResetBusy(false);
+    }
+  }
+
   function renderWorkspaceAccess() {
     const currentSession =
       role === "landlord" ? landlordSession : role === "admin" ? adminSession : null;
@@ -361,7 +481,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
         ? landlordSession?.landlord.fullName
         : adminSession?.superAdmin.fullName;
 
-    if (currentSession && currentName) {
+    if (currentSession && currentName && workspaceAuthView === "auth") {
       return (
         <div className="tenant-auth-panel">
           <div className="tenant-auth-panel-title">Signed in on this device</div>
@@ -385,6 +505,144 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
             </button>
           </div>
         </div>
+      );
+    }
+
+    if (workspaceAuthView === "forgot") {
+      return (
+        <>
+          <form onSubmit={handleForgotPassword}>
+            <div className="form-group">
+              <label className="form-label">Email address</label>
+              <input
+                className="form-input"
+                type="email"
+                placeholder={
+                  role === "admin"
+                    ? ADMIN_PLACEHOLDERS.email
+                    : LANDLORD_PLACEHOLDERS.email
+                }
+                value={forgotPasswordEmail}
+                onChange={(event) => setForgotPasswordEmail(event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="tenant-auth-actions">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={forgotPasswordBusy || !forgotPasswordEmail}
+              >
+                {forgotPasswordBusy ? "Sending reset link..." : "Send reset link"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setWorkspaceAuthView("auth")}
+              >
+                Back to sign in
+              </button>
+            </div>
+          </form>
+
+          {forgotPasswordFeedback ? (
+            <div className="tenant-auth-feedback">{forgotPasswordFeedback}</div>
+          ) : null}
+
+          {forgotPasswordPreview ? (
+            <div className="tenant-auth-preview">
+              <div className="tenant-auth-preview-title">
+                {forgotPasswordPreview.delivery === "sent"
+                  ? "Reset email sent"
+                  : "Local preview access"}
+              </div>
+              <div className="tenant-auth-preview-copy">
+                {forgotPasswordPreview.delivery === "sent"
+                  ? "Open the link from your inbox to continue."
+                  : "Email is not configured in this environment, so you can keep testing with the reset link below."}
+              </div>
+              {forgotPasswordPreview.resetLinkPreview ? (
+                <div className="tenant-auth-preview-line">
+                  <strong>Reset link:</strong>{" "}
+                  <a href={forgotPasswordPreview.resetLinkPreview}>
+                    Open password reset
+                  </a>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          <div className="auth-link">
+            We&apos;ll email a one-time reset link to the account owner.
+          </div>
+        </>
+      );
+    }
+
+    if (workspaceAuthView === "reset") {
+      return (
+        <>
+          <form onSubmit={handlePasswordReset}>
+            <div className="form-group">
+              <label className="form-label">New password</label>
+              <div className="password-input-wrap">
+                <input
+                  className="form-input"
+                  type={showResetPasswords ? "text" : "password"}
+                  placeholder="Create a new password"
+                  value={resetPassword}
+                  onChange={(event) => setResetPassword(event.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowResetPasswords((current) => !current)}
+                  aria-label={showResetPasswords ? "Hide password" : "Show password"}
+                  aria-pressed={showResetPasswords}
+                >
+                  {showResetPasswords ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Confirm new password</label>
+              <input
+                className="form-input"
+                type={showResetPasswords ? "text" : "password"}
+                placeholder="Repeat your new password"
+                value={resetPasswordConfirm}
+                onChange={(event) => setResetPasswordConfirm(event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="tenant-auth-actions">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={resetBusy || !resetToken || !resetPassword || !resetPasswordConfirm}
+              >
+                {resetBusy ? "Updating password..." : "Set new password"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => void router.replace(getWorkspaceLoginPath(role))}
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+
+          {resetFeedback ? <div className="tenant-auth-feedback">{resetFeedback}</div> : null}
+
+          <div className="auth-link">
+            This reset link expires shortly for security. If it has expired, request a fresh one.
+          </div>
+        </>
       );
     }
 
@@ -517,10 +775,24 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
               <label htmlFor="remember">Remember me</label>
             </div>
             <span
+              role={role === "landlord" && landlordMode === "register" ? undefined : "button"}
+              tabIndex={role === "landlord" && landlordMode === "register" ? -1 : 0}
               style={{
                 fontSize: 12,
                 color: "var(--accent)",
                 fontWeight: 500,
+                cursor:
+                  role === "landlord" && landlordMode === "register"
+                    ? "default"
+                    : "pointer",
+              }}
+              onClick={() => {
+                if (role === "landlord" && landlordMode === "register") {
+                  return;
+                }
+
+                setForgotPasswordEmail(authEmail);
+                setWorkspaceAuthView("forgot");
               }}
             >
               {role === "landlord" && landlordMode === "register"
@@ -808,6 +1080,10 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
             <h2>
               {role === "tenant"
                 ? "Tenant access"
+                : workspaceAuthView === "forgot"
+                  ? "Forgot password"
+                  : workspaceAuthView === "reset"
+                    ? "Set a new password"
                 : role === "admin"
                   ? "Internal admin access"
                   : "Welcome back"}
@@ -815,6 +1091,10 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
             <p>
               {role === "tenant"
                 ? "Passwordless sign-in built for quick, low-friction access."
+                : workspaceAuthView === "forgot"
+                  ? "Enter your account email and we will send you a one-time reset link."
+                  : workspaceAuthView === "reset"
+                    ? "Create a fresh password for your DoorRent account."
                 : role === "admin"
                   ? "Internal DoorRent operations access."
                   : "Sign in to your DoorRent landlord workspace"}

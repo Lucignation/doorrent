@@ -45,7 +45,7 @@ export default function TenantAgreementPage() {
                 <p><strong>Tenant:</strong> Amaka Obi</p><br />
                 <p><strong>1. PROPERTY:</strong> Unit A3, Lekki Gardens Estate, Lekki Phase 1, Lagos State, Nigeria.</p><br />
                 <p><strong>2. TERM:</strong> 12 months commencing April 1, 2026 and ending March 31, 2027.</p><br />
-                <p><strong>3. RENT:</strong> ₦150,000 per month, payable on the 1st of each month without demand.</p><br />
+                <p><strong>3. RENT:</strong> ₦1,800,000 per annum for the tenancy term, with a monthly equivalent of ₦150,000 shown for planning only.</p><br />
                 <p><strong>4. DEPOSIT:</strong> Security deposit of ₦300,000 (equivalent to 2 months rent) held by Landlord.</p><br />
                 <p><strong>5. USE:</strong> Residential purposes only. Sub-letting is prohibited without written consent.</p><br />
                 <p><strong>6. UTILITIES:</strong> Tenant is responsible for all electricity (EKEDC) and water bills.</p><br />

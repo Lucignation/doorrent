@@ -63,17 +63,19 @@ interface TenantInvitationLookupResponse {
 interface AgreementsLookupResponse {
   formOptions: {
     properties: Array<{ id: string; name: string }>;
-    tenants: Array<{
-      id: string;
-      name: string;
-      propertyId: string;
-      property: string;
-      unitId?: string | null;
-      unit: string;
-      rentAmount: number;
-      leaseStart: string;
-      leaseEnd: string;
-    }>;
+      tenants: Array<{
+        id: string;
+        name: string;
+        propertyId: string;
+        property: string;
+        unitId?: string | null;
+        unit: string;
+        annualRent?: number;
+        monthlyRent?: number;
+        rentAmount?: number;
+        leaseStart: string;
+        leaseEnd: string;
+      }>;
     units: Array<{ id: string; propertyId: string; label: string }>;
     templates: Array<{ id: string; name: string; fileName?: string | null }>;
   };
@@ -89,6 +91,7 @@ interface PayoutTemplateUploadForm {
   fileName: string;
   mimeType: string;
   content: string;
+  fileDataUrl: string;
 }
 
 const amenityOptions = [
@@ -99,6 +102,16 @@ const amenityOptions = [
   "Gym",
   "Borehole",
 ];
+
+function calculateMonthlyEquivalent(annualRentValue: string) {
+  const parsed = Number(annualRentValue);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return "";
+  }
+
+  return Math.round(parsed / 12).toLocaleString("en-NG");
+}
 
 function readTextFile(file: File) {
   return new Promise<string>((resolve, reject) => {
@@ -113,6 +126,22 @@ function readTextFile(file: File) {
     };
     reader.onerror = () => reject(new Error("We could not read the selected file."));
     reader.readAsText(file);
+  });
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+        return;
+      }
+
+      reject(new Error("We could not read the selected file."));
+    };
+    reader.onerror = () => reject(new Error("We could not read the selected file."));
+    reader.readAsDataURL(file);
   });
 }
 
@@ -180,7 +209,7 @@ export default function AppOverlays() {
     propertyId: "",
     unitNumber: "",
     type: "",
-    monthlyRent: "",
+    annualRent: "",
     leaseEnd: "",
     status: "VACANT",
   });
@@ -196,7 +225,7 @@ export default function AppOverlays() {
     agreementTemplateId: "",
     leaseStart: "",
     leaseEnd: "",
-    rentAmount: "",
+    annualRent: "",
     depositAmount: "",
     message: "",
   });
@@ -212,7 +241,7 @@ export default function AppOverlays() {
     title: "",
     leaseStart: "",
     leaseEnd: "",
-    rentAmount: "",
+    annualRent: "",
     depositAmount: "",
     notes: "",
     sendNow: true,
@@ -225,6 +254,7 @@ export default function AppOverlays() {
     fileName: "",
     mimeType: "",
     content: "",
+    fileDataUrl: "",
   });
   const [savingTemplate, setSavingTemplate] = useState(false);
 
@@ -272,7 +302,13 @@ export default function AppOverlays() {
         }`,
       leaseStart: current.leaseStart || selectedAgreementTenant.leaseStart.slice(0, 10),
       leaseEnd: current.leaseEnd || selectedAgreementTenant.leaseEnd.slice(0, 10),
-      rentAmount: current.rentAmount || `${selectedAgreementTenant.rentAmount}`,
+      annualRent:
+        current.annualRent ||
+        `${
+          selectedAgreementTenant.annualRent ??
+          (selectedAgreementTenant.monthlyRent ?? selectedAgreementTenant.rentAmount ?? 0) *
+            12
+        }`,
     }));
   }, [selectedAgreementTenant]);
 
@@ -365,7 +401,7 @@ export default function AppOverlays() {
       propertyId: "",
       unitNumber: "",
       type: "",
-      monthlyRent: "",
+      annualRent: "",
       leaseEnd: "",
       status: "VACANT",
     });
@@ -380,7 +416,7 @@ export default function AppOverlays() {
       agreementTemplateId: "",
       leaseStart: "",
       leaseEnd: "",
-      rentAmount: "",
+      annualRent: "",
       depositAmount: "",
       message: "",
     });
@@ -395,7 +431,7 @@ export default function AppOverlays() {
       title: "",
       leaseStart: "",
       leaseEnd: "",
-      rentAmount: "",
+      annualRent: "",
       depositAmount: "",
       notes: "",
       sendNow: true,
@@ -409,6 +445,7 @@ export default function AppOverlays() {
       fileName: "",
       mimeType: "",
       content: "",
+      fileDataUrl: "",
     });
   }
 
@@ -469,7 +506,7 @@ export default function AppOverlays() {
           propertyId: unitForm.propertyId,
           unitNumber: unitForm.unitNumber,
           type: unitForm.type,
-          monthlyRent: Number(unitForm.monthlyRent),
+          annualRent: Number(unitForm.annualRent),
           leaseEnd: unitForm.leaseEnd || undefined,
           status: unitForm.status,
         },
@@ -512,7 +549,7 @@ export default function AppOverlays() {
             agreementTemplateId: invitationForm.agreementTemplateId || undefined,
             leaseStart: invitationForm.leaseStart,
             leaseEnd: invitationForm.leaseEnd,
-            rentAmount: Number(invitationForm.rentAmount),
+            annualRent: Number(invitationForm.annualRent),
             depositAmount: invitationForm.depositAmount
               ? Number(invitationForm.depositAmount)
               : undefined,
@@ -561,7 +598,7 @@ export default function AppOverlays() {
           title: agreementForm.title,
           leaseStart: agreementForm.leaseStart,
           leaseEnd: agreementForm.leaseEnd,
-          rentAmount: Number(agreementForm.rentAmount),
+          annualRent: Number(agreementForm.annualRent),
           depositAmount: agreementForm.depositAmount
             ? Number(agreementForm.depositAmount)
             : undefined,
@@ -603,6 +640,7 @@ export default function AppOverlays() {
           fileName: templateForm.fileName || undefined,
           mimeType: templateForm.mimeType || undefined,
           content: templateForm.content,
+          fileDataUrl: templateForm.fileDataUrl || undefined,
         },
       });
 
@@ -629,15 +667,21 @@ export default function AppOverlays() {
     }
 
     try {
-      const content = await readTextFile(file);
+      const [fileDataUrl, content] = await Promise.all([
+        readFileAsDataUrl(file),
+        file.type.startsWith("text/") || /\.(txt|html?|md)$/i.test(file.name)
+          ? readTextFile(file)
+          : Promise.resolve(`Uploaded template file: ${file.name}`),
+      ]);
       setTemplateForm((current) => ({
         ...current,
         fileName: file.name,
         mimeType: file.type || "text/plain",
+        fileDataUrl,
         content,
         name: current.name || file.name.replace(/\.[^/.]+$/, ""),
       }));
-      showToast("Template file loaded", "success");
+      showToast("Template file loaded and ready for upload", "success");
     } catch (requestError) {
       setModalError(
         requestError instanceof Error
@@ -866,15 +910,20 @@ export default function AppOverlays() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Monthly Rent (₦) *</label>
+                <label className="form-label">Yearly Rent (₦) *</label>
                 <input
                   className="form-input"
                   type="number"
-                  value={unitForm.monthlyRent}
+                  value={unitForm.annualRent}
                   onChange={(event) =>
-                    setUnitForm((current) => ({ ...current, monthlyRent: event.target.value }))
+                    setUnitForm((current) => ({ ...current, annualRent: event.target.value }))
                   }
                 />
+                {unitForm.annualRent ? (
+                  <div className="td-muted" style={{ marginTop: 6 }}>
+                    Monthly equivalent: ₦{calculateMonthlyEquivalent(unitForm.annualRent)}
+                  </div>
+                ) : null}
               </div>
               <div className="form-group">
                 <label className="form-label">Lease End</label>
@@ -1085,19 +1134,24 @@ export default function AppOverlays() {
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Rent Amount (₦) *</label>
+                  <label className="form-label">Yearly Rent (₦) *</label>
                   <input
                     className="form-input"
                     type="number"
-                    placeholder="180000"
-                    value={invitationForm.rentAmount}
+                    placeholder="2160000"
+                    value={invitationForm.annualRent}
                     onChange={(event) =>
                       setInvitationForm((current) => ({
                         ...current,
-                        rentAmount: event.target.value,
+                        annualRent: event.target.value,
                       }))
                     }
                   />
+                  {invitationForm.annualRent ? (
+                    <div className="td-muted" style={{ marginTop: 6 }}>
+                      Monthly equivalent: ₦{calculateMonthlyEquivalent(invitationForm.annualRent)}
+                    </div>
+                  ) : null}
                 </div>
                 <div className="form-group">
                   <label className="form-label">Deposit Amount (₦)</label>
@@ -1174,7 +1228,7 @@ export default function AppOverlays() {
                     title: "",
                     leaseStart: "",
                     leaseEnd: "",
-                    rentAmount: "",
+                    annualRent: "",
                   }))
                 }
               >
@@ -1290,18 +1344,23 @@ export default function AppOverlays() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Rent Amount (₦) *</label>
+                <label className="form-label">Yearly Rent (₦) *</label>
                 <input
                   className="form-input"
                   type="number"
-                  value={agreementForm.rentAmount}
+                  value={agreementForm.annualRent}
                   onChange={(event) =>
                     setAgreementForm((current) => ({
                       ...current,
-                      rentAmount: event.target.value,
+                      annualRent: event.target.value,
                     }))
                   }
                 />
+                {agreementForm.annualRent ? (
+                  <div className="td-muted" style={{ marginTop: 6 }}>
+                    Monthly equivalent: ₦{calculateMonthlyEquivalent(agreementForm.annualRent)}
+                  </div>
+                ) : null}
               </div>
               <div className="form-group">
                 <label className="form-label">Deposit Amount (₦)</label>
@@ -1492,8 +1551,7 @@ export default function AppOverlays() {
             style={{ minHeight: 120 }}
             defaultValue={`Dear Tenant,
 
-We wish to inform you that effective from July 1, 2026, your monthly rent will be adjusted in line with current market rates.
-
+We wish to inform you that effective from July 1, 2026, your annual rent will be adjusted in line with current market rates. A monthly equivalent breakdown will be shared for planning purposes.
 Please contact us if you have any questions.
 
 DoorRent Property Management`}
@@ -1532,7 +1590,7 @@ DoorRent Property Management`}
           <br />
           <p><strong>2. TERM:</strong> The tenancy shall commence on April 1, 2026 and expire on March 31, 2027 (12 months).</p>
           <br />
-          <p><strong>3. RENT:</strong> The Tenant shall pay a monthly rent of ₦150,000 payable in advance on the 1st of each month.</p>
+          <p><strong>3. RENT:</strong> The Tenant shall pay an annual rent of ₦1,800,000 for the tenancy term, with a monthly equivalent of ₦150,000 for reference only.</p>
         </div>
         <div className="form-group">
           <label className="form-label">Your Signature *</label>

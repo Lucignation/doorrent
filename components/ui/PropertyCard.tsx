@@ -84,7 +84,7 @@ export default function PropertyCard({
           </div>
           <div className="prop-stat">
             <strong>{property.monthly}</strong>
-            <span>Monthly</span>
+            <span>Yearly</span>
           </div>
         </div>
         <span

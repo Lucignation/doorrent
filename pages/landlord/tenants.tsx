@@ -33,6 +33,7 @@ interface InvitationResponse {
     property: string;
     unit: string;
     rent: string;
+    monthlyEquivalent?: string;
     leaseStart: string;
     leaseEnd: string;
     expiresAt: string;
@@ -152,7 +153,18 @@ export default function LandlordTenantsPage() {
         render: (row) => <IdentityCell primary={row.tenant} secondary={row.email} />,
       },
       { key: "unit", label: "Unit" },
-      { key: "rent", label: "Rent/mo" },
+      {
+        key: "rent",
+        label: "Rent/yr",
+        render: (row) => (
+          <div>
+            <span style={{ fontWeight: 600 }}>{row.rent}</span>
+            <div className="td-muted">
+              Monthly equivalent: {row.monthlyEquivalent ?? "—"}
+            </div>
+          </div>
+        ),
+      },
       { key: "leaseEnd", label: "Lease End" },
       {
         key: "balance",
@@ -211,6 +223,7 @@ export default function LandlordTenantsPage() {
       property: invitation.property,
       unit: invitation.unit,
       rent: invitation.rent,
+      monthlyEquivalent: invitation.monthlyEquivalent,
       lease: `${invitation.leaseStart} → ${invitation.leaseEnd}`,
       expires: invitation.expiresAt,
       status: invitation.status,
@@ -221,7 +234,18 @@ export default function LandlordTenantsPage() {
     { key: "email", label: "Invitee Email" },
     { key: "property", label: "Property" },
     { key: "unit", label: "Unit" },
-    { key: "rent", label: "Rent" },
+    {
+      key: "rent",
+      label: "Annual Rent",
+      render: (row) => (
+        <div>
+          <span style={{ fontWeight: 600 }}>{row.rent}</span>
+          <div className="td-muted">
+            Monthly equivalent: {row.monthlyEquivalent ?? "—"}
+          </div>
+        </div>
+      ),
+    },
     { key: "lease", label: "Lease" },
     { key: "expires", label: "Invite Expires" },
     {

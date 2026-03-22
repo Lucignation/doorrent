@@ -148,8 +148,15 @@ export default function LandlordUnitsPage() {
       },
       {
         key: "rent",
-        label: "Rent/mo",
-        render: (row) => <span style={{ fontWeight: 600 }}>{row.rent}</span>,
+        label: "Rent/yr",
+        render: (row) => (
+          <div>
+            <span style={{ fontWeight: 600 }}>{row.rent}</span>
+            <div className="td-muted">
+              Monthly equivalent: {row.monthlyEquivalent ?? "—"}
+            </div>
+          </div>
+        ),
       },
       {
         key: "leaseEnd",

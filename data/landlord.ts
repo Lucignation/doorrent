@@ -57,6 +57,7 @@ export const landlordNav: NavSection[] = [
   {
     section: "Communication",
     items: [
+      { label: "Meetings", href: "/landlord/meetings", icon: "clock" },
       { label: "Notices", href: "/landlord/notices", icon: "bell" },
       { label: "Reminders", href: "/landlord/reminders", icon: "clock" },
     ],

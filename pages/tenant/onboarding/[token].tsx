@@ -35,7 +35,8 @@ interface OnboardingInvitationResponse {
   lease: {
     leaseStart: string;
     leaseEnd: string;
-    rentAmount: string;
+    annualRent: string;
+    monthlyEquivalent: string;
     depositAmount: string;
   };
   agreementTemplate: {
@@ -596,9 +597,12 @@ export default function TenantOnboardingPage() {
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Monthly Rent</div>
+                      <div style={{ fontSize: 11, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Annual Rent</div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>
-                        {invitationData?.lease.rentAmount ?? "—"}
+                        {invitationData?.lease.annualRent ?? "—"}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--ink3)" }}>
+                        Monthly equivalent: {invitationData?.lease.monthlyEquivalent ?? "—"}
                       </div>
                     </div>
                     <div>

@@ -103,7 +103,7 @@ export default function LandlordPaymentsPage() {
             <div className="stat-sub stat-down">3 tenants</div>
           </div>
           <div className="stat-card accent-amber">
-            <div className="stat-label">Due This Month</div>
+            <div className="stat-label">Due This Year</div>
             <div className="stat-value">₦560K</div>
             <div className="stat-sub">7 invoices</div>
           </div>

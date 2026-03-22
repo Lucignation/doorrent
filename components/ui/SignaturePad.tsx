@@ -6,7 +6,9 @@ interface SignaturePadProps {
 
 export default function SignaturePad({ onChange }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const signatureDataRef = useRef("");
   const drawingRef = useRef(false);
+  const hasInkRef = useRef(false);
   const [hasInk, setHasInk] = useState(false);
 
   useEffect(() => {
@@ -24,10 +26,32 @@ export default function SignaturePad({ onChange }: SignaturePadProps) {
 
     const canvasElement = canvas;
     const drawingContext = context;
+    const devicePixelRatio = window.devicePixelRatio || 1;
 
-    drawingContext.strokeStyle = "#1A1916";
-    drawingContext.lineWidth = 2;
-    drawingContext.lineCap = "round";
+    function syncCanvasSize() {
+      const bounds = canvasElement.getBoundingClientRect();
+      const width = Math.max(1, Math.round(bounds.width));
+      const height = Math.max(1, Math.round(bounds.height));
+
+      canvasElement.width = Math.round(width * devicePixelRatio);
+      canvasElement.height = Math.round(height * devicePixelRatio);
+      drawingContext.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+      drawingContext.clearRect(0, 0, width, height);
+      drawingContext.strokeStyle = "#1A1916";
+      drawingContext.lineWidth = 2;
+      drawingContext.lineCap = "round";
+      drawingContext.lineJoin = "round";
+
+      if (signatureDataRef.current) {
+        const image = new Image();
+        image.onload = () => {
+          drawingContext.drawImage(image, 0, 0, width, height);
+        };
+        image.src = signatureDataRef.current;
+      }
+    }
+
+    syncCanvasSize();
 
     function pointFromEvent(event: PointerEvent) {
       const rect = canvasElement.getBoundingClientRect();
@@ -35,6 +59,8 @@ export default function SignaturePad({ onChange }: SignaturePadProps) {
     }
 
     function onPointerDown(event: PointerEvent) {
+      event.preventDefault();
+      canvasElement.setPointerCapture?.(event.pointerId);
       drawingRef.current = true;
       const point = pointFromEvent(event);
       drawingContext.beginPath();
@@ -46,29 +72,43 @@ export default function SignaturePad({ onChange }: SignaturePadProps) {
         return;
       }
 
+      event.preventDefault();
       const point = pointFromEvent(event);
       drawingContext.lineTo(point.x, point.y);
       drawingContext.stroke();
+      hasInkRef.current = true;
       setHasInk(true);
     }
 
-    function stopDrawing() {
-      if (drawingRef.current && onChange && hasInk) {
-        onChange(canvasElement.toDataURL("image/png"));
+    function stopDrawing(event?: PointerEvent) {
+      if (event) {
+        event.preventDefault();
+        canvasElement.releasePointerCapture?.(event.pointerId);
       }
+
+      if (drawingRef.current && hasInkRef.current) {
+        const signatureData = canvasElement.toDataURL("image/png");
+        signatureDataRef.current = signatureData;
+        onChange?.(signatureData);
+      }
+
       drawingRef.current = false;
     }
 
     canvasElement.addEventListener("pointerdown", onPointerDown);
     canvasElement.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", stopDrawing);
+    canvasElement.addEventListener("pointerup", stopDrawing);
+    canvasElement.addEventListener("pointercancel", stopDrawing);
+    window.addEventListener("resize", syncCanvasSize);
 
     return () => {
       canvasElement.removeEventListener("pointerdown", onPointerDown);
       canvasElement.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", stopDrawing);
+      canvasElement.removeEventListener("pointerup", stopDrawing);
+      canvasElement.removeEventListener("pointercancel", stopDrawing);
+      window.removeEventListener("resize", syncCanvasSize);
     };
-  }, []);
+  }, [onChange]);
 
   function clearSignature() {
     const canvas = canvasRef.current;
@@ -79,6 +119,8 @@ export default function SignaturePad({ onChange }: SignaturePadProps) {
     }
 
     context.clearRect(0, 0, canvas.width, canvas.height);
+    signatureDataRef.current = "";
+    hasInkRef.current = false;
     setHasInk(false);
     onChange?.("");
   }
@@ -86,7 +128,7 @@ export default function SignaturePad({ onChange }: SignaturePadProps) {
   return (
     <>
       <div className="sign-pad">
-        <canvas ref={canvasRef} id="sig-canvas" width="460" height="160" />
+        <canvas ref={canvasRef} id="sig-canvas" />
         {!hasInk ? <div className="sign-pad-hint">Sign here with your mouse or touch</div> : null}
       </div>
       <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 6 }}>
