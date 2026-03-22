@@ -49,6 +49,10 @@ interface LandlordMeetingMutationResponse {
   meeting: LandlordMeetingRecord;
 }
 
+interface MeetingInviteResponse {
+  inviteUrl: string;
+}
+
 function statusTone(status: LandlordMeetingRecord["status"]): BadgeTone {
   if (status === "confirmed") {
     return "green";
@@ -80,6 +84,7 @@ export default function LandlordMeetingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingMeetingId, setSavingMeetingId] = useState<string | null>(null);
+  const [inviteLoadingId, setInviteLoadingId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<
     Record<
       string,
@@ -239,6 +244,35 @@ export default function LandlordMeetingsPage() {
       );
     } finally {
       setSavingMeetingId(null);
+    }
+  }
+
+  async function openGoogleInvite(meetingId: string) {
+    if (!landlordSession?.token) {
+      return;
+    }
+
+    setInviteLoadingId(meetingId);
+
+    try {
+      const { data } = await apiRequest<MeetingInviteResponse>(
+        `/landlord/meetings/${meetingId}/google-invite`,
+        {
+          token: landlordSession.token,
+        },
+      );
+
+      window.open(data.inviteUrl, "_blank", "noopener,noreferrer");
+      showToast("Google Calendar invite opened", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not create the Google invite.",
+        "error",
+      );
+    } finally {
+      setInviteLoadingId(null);
     }
   }
 
@@ -412,6 +446,14 @@ export default function LandlordMeetingsPage() {
                       {meeting.audienceLabel} · {meeting.providerLabel} · {meeting.participantCount} participant(s)
                     </div>
                     <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => void openGoogleInvite(meeting.id)}
+                        disabled={inviteLoadingId === meeting.id}
+                      >
+                        {inviteLoadingId === meeting.id ? "Opening..." : "Google Invite"}
+                      </button>
                       {meeting.meetingLink ? (
                         <a
                           href={meeting.meetingLink}

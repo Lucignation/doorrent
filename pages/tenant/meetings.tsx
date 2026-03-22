@@ -65,6 +65,10 @@ interface MeetingCancelResponse {
   meeting: TenantMeetingRecord;
 }
 
+interface MeetingInviteResponse {
+  inviteUrl: string;
+}
+
 function statusTone(status: TenantMeetingRecord["status"]): BadgeTone {
   if (status === "confirmed") {
     return "green";
@@ -99,6 +103,7 @@ export default function TenantMeetingsPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [inviteLoadingId, setInviteLoadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     title: "",
@@ -263,6 +268,35 @@ export default function TenantMeetingsPage() {
       );
     } finally {
       setCancellingId(null);
+    }
+  }
+
+  async function openGoogleInvite(meetingId: string) {
+    if (!tenantSession?.token) {
+      return;
+    }
+
+    setInviteLoadingId(meetingId);
+
+    try {
+      const { data } = await apiRequest<MeetingInviteResponse>(
+        `/tenant/meetings/${meetingId}/google-invite`,
+        {
+          token: tenantSession.token,
+        },
+      );
+
+      window.open(data.inviteUrl, "_blank", "noopener,noreferrer");
+      showToast("Google Calendar invite opened", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not create the Google invite.",
+        "error",
+      );
+    } finally {
+      setInviteLoadingId(null);
     }
   }
 
@@ -470,6 +504,14 @@ export default function TenantMeetingsPage() {
                     ) : null}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 180 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => void openGoogleInvite(meeting.id)}
+                      disabled={inviteLoadingId === meeting.id}
+                    >
+                      {inviteLoadingId === meeting.id ? "Opening..." : "Google Invite"}
+                    </button>
                     {meeting.meetingLink ? (
                       <a
                         href={meeting.meetingLink}
