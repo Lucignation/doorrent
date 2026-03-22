@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
+import { LOGO_PATH } from "../lib/site";
 
 type RoleKey = "landlord" | "tenant";
 
@@ -335,7 +336,7 @@ export default function LandingPage() {
           <div className="marketing-container">
             <div className="marketing-nav-inner">
               <Link href="/" className="marketing-brand">
-                <div className="marketing-brand-mark">D</div>
+                <img src={LOGO_PATH} alt="DoorRent logo" className="marketing-brand-logo" />
                 <span className="marketing-brand-name">DoorRent</span>
               </Link>
 
@@ -442,7 +443,11 @@ export default function LandingPage() {
                 <div className="marketing-dashboard-body">
                   <div className="marketing-dashboard-sidebar">
                     <div className="marketing-dashboard-logo">
-                      <span>D</span>
+                      <img
+                        src={LOGO_PATH}
+                        alt="DoorRent logo"
+                        className="marketing-dashboard-logo-image"
+                      />
                       <strong>DoorRent</strong>
                     </div>
                     <div className="marketing-dashboard-section">Main</div>
@@ -830,7 +835,11 @@ export default function LandingPage() {
             <div className="marketing-footer-top">
               <div className="marketing-footer-brand">
                 <div className="marketing-footer-logo">
-                  <div className="marketing-footer-logo-mark">D</div>
+                  <img
+                    src={LOGO_PATH}
+                    alt="DoorRent logo"
+                    className="marketing-footer-logo-image"
+                  />
                   <span>DoorRent</span>
                 </div>
                 <p>
@@ -957,21 +966,15 @@ export default function LandingPage() {
           gap: 10px;
         }
 
-        .marketing-brand-mark,
-        .marketing-footer-logo-mark {
-          width: 36px;
-          height: 36px;
-          border-radius: 9px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-family: var(--font-display);
-          font-size: 18px;
+        .marketing-brand-logo,
+        .marketing-footer-logo-image {
+          width: 42px;
+          height: 42px;
+          object-fit: contain;
         }
 
-        .marketing-brand-mark {
-          background: var(--accent);
-          color: #fff;
+        .marketing-brand-logo {
+          filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.15));
         }
 
         .marketing-brand-name,
@@ -1204,17 +1207,10 @@ export default function LandingPage() {
           border-bottom: 1px solid var(--border);
         }
 
-        .marketing-dashboard-logo span {
+        .marketing-dashboard-logo-image {
           width: 20px;
           height: 20px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 5px;
-          background: var(--accent);
-          color: #fff;
-          font-size: 10px;
-          font-family: var(--font-display);
+          object-fit: contain;
         }
 
         .marketing-dashboard-section {
@@ -1963,11 +1959,6 @@ export default function LandingPage() {
           align-items: center;
           gap: 10px;
           margin-bottom: 12px;
-        }
-
-        .marketing-footer-logo-mark {
-          background: var(--accent2);
-          color: var(--ink);
         }
 
         .marketing-footer h4 {

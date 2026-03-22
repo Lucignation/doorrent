@@ -27,6 +27,14 @@ interface ReceiptRow {
   landlordSettlement: string;
 }
 
+interface LandlordReceiptDetailResponse {
+  landlord: {
+    id: string;
+    companyName: string;
+  };
+  receipt: ReceiptRow;
+}
+
 interface LandlordReceiptsResponse {
   landlord: {
     id: string;
@@ -49,7 +57,10 @@ export default function LandlordReceiptsPage() {
   const { landlordSession } = useLandlordPortalSession();
   const { dataRefreshVersion, showToast } = usePrototypeUI();
   const [receiptData, setReceiptData] = useState<LandlordReceiptsResponse | null>(null);
+  const [selectedReceipt, setSelectedReceipt] =
+    useState<LandlordReceiptDetailResponse["receipt"] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("all");
@@ -69,15 +80,17 @@ export default function LandlordReceiptsPage() {
       setError("");
 
       try {
-        const { data } = await apiRequest<LandlordReceiptsResponse>(
-          "/landlord/receipts",
-          {
-            token: landlordToken,
-          },
-        );
+        const { data } = await apiRequest<LandlordReceiptsResponse>("/landlord/receipts", {
+          token: landlordToken,
+        });
 
         if (!cancelled) {
           setReceiptData(data);
+          setSelectedReceipt((current) =>
+            current
+              ? data.receipts.find((receipt) => receipt.id === current.id) ?? data.receipts[0] ?? null
+              : data.receipts[0] ?? null,
+          );
         }
       } catch (requestError) {
         if (!cancelled) {
@@ -100,6 +113,34 @@ export default function LandlordReceiptsPage() {
       cancelled = true;
     };
   }, [dataRefreshVersion, landlordSession?.token]);
+
+  async function loadReceiptDetail(receiptId: string) {
+    if (!landlordSession?.token) {
+      showToast("Landlord session missing. Please sign in again.", "error");
+      return;
+    }
+
+    setDetailLoading(true);
+
+    try {
+      const { data } = await apiRequest<LandlordReceiptDetailResponse>(
+        `/landlord/receipts/${receiptId}`,
+        {
+          token: landlordSession.token,
+        },
+      );
+      setSelectedReceipt(data.receipt);
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "Receipt details could not be loaded.",
+        "error",
+      );
+    } finally {
+      setDetailLoading(false);
+    }
+  }
 
   const filteredReceipts = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -134,14 +175,16 @@ export default function LandlordReceiptsPage() {
   }, [dateFilter, propertyFilter, query, receiptData]);
 
   function openReceipt(receipt: ReceiptRow) {
-    if (!receipt.receiptNumber || !receiptData?.landlord.companyName) {
+    const companyName = receiptData?.landlord.companyName;
+
+    if (!receipt.receiptNumber || !companyName) {
       showToast("Receipt details are incomplete.", "error");
       return;
     }
 
     try {
       printReceipt({
-        companyName: receiptData.landlord.companyName,
+        companyName,
         receiptNumber: receipt.receiptNumber,
         issuedAt: receipt.issuedAt,
         amount: receipt.amount,
@@ -182,16 +225,25 @@ export default function LandlordReceiptsPage() {
     { key: "periodLabel", label: "For Period" },
     { key: "issuedAt", label: "Issued" },
     {
-      key: "download",
+      key: "action",
       label: "Action",
       render: (row) => (
-        <button
-          type="button"
-          className="btn btn-ghost btn-xs"
-          onClick={() => openReceipt(row)}
-        >
-          Print Receipt
-        </button>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => void loadReceiptDetail(row.id)}
+          >
+            View
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-xs"
+            onClick={() => openReceipt(row)}
+          >
+            Print
+          </button>
+        </div>
       ),
     },
   ];
@@ -204,7 +256,7 @@ export default function LandlordReceiptsPage() {
 
   return (
     <>
-      <PageMeta title="DoorRent — Receipts" />
+      <PageMeta title="DoorRent — Receipts" urlPath="/landlord/receipts" />
       <LandlordPortalShell topbarTitle="Receipts" breadcrumb="Dashboard → Receipts">
         <PageHeader title="Receipts" description={description} />
 
@@ -216,7 +268,10 @@ export default function LandlordReceiptsPage() {
           </div>
         ) : null}
 
-        <div className="stats-grid" style={{ gridTemplateColumns: "repeat(2,1fr)", marginBottom: 16 }}>
+        <div
+          className="stats-grid"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", marginBottom: 16 }}
+        >
           <div className="stat-card accent-green">
             <div className="stat-label">Total Receipts</div>
             <div className="stat-value">{receiptData?.summary.totalReceipts ?? 0}</div>
@@ -262,13 +317,117 @@ export default function LandlordReceiptsPage() {
           </select>
         </div>
 
-        <div className="card">
-          <div className="card-body" style={{ padding: 0 }}>
-            <DataTable
-              columns={receiptColumns}
-              rows={filteredReceipts}
-              emptyMessage={loading ? "Loading receipts..." : "No receipts found."}
-            />
+        <div className="grid-2" style={{ alignItems: "start" }}>
+          <div className="card">
+            <div className="card-body" style={{ padding: 0 }}>
+              <DataTable
+                columns={receiptColumns}
+                rows={filteredReceipts}
+                emptyMessage={loading ? "Loading receipts..." : "No receipts found."}
+              />
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Receipt Preview</div>
+                <div className="card-subtitle">
+                  Review a receipt before printing it.
+                </div>
+              </div>
+            </div>
+            <div className="card-body">
+              {selectedReceipt ? (
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div
+                    style={{
+                      padding: 16,
+                      borderRadius: "var(--radius)",
+                      background: "var(--surface2)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <div className="td-muted">Receipt Number</div>
+                    <div style={{ fontSize: 18, fontWeight: 700, marginTop: 6 }}>
+                      {selectedReceipt.receiptNumber ?? "Pending"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 6 }}>
+                      Reference {selectedReceipt.reference}
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Tenant</label>
+                      <input className="form-input" value={selectedReceipt.tenant} disabled />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Email</label>
+                      <input className="form-input" value={selectedReceipt.tenantEmail} disabled />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Property / Unit</label>
+                      <input
+                        className="form-input"
+                        value={selectedReceipt.propertyUnit}
+                        disabled
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Payment Method</label>
+                      <input className="form-input" value={selectedReceipt.method} disabled />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Period</label>
+                      <input
+                        className="form-input"
+                        value={selectedReceipt.periodLabel}
+                        disabled
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Issued</label>
+                      <input className="form-input" value={selectedReceipt.issuedAt} disabled />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Amount Received</label>
+                      <input className="form-input" value={selectedReceipt.amount} disabled />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Settlement</label>
+                      <input
+                        className="form-input"
+                        value={selectedReceipt.landlordSettlement}
+                        disabled
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-full"
+                    onClick={() => openReceipt(selectedReceipt)}
+                    disabled={detailLoading}
+                  >
+                    {detailLoading ? "Loading..." : "Print This Receipt"}
+                  </button>
+                </div>
+              ) : (
+                <div style={{ color: "var(--ink2)" }}>
+                  {loading ? "Loading receipt preview..." : "Select a receipt to view it here."}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </LandlordPortalShell>

@@ -34,6 +34,7 @@ export const tenantNav: NavSection[] = [
         badgeClass: "amber",
       },
       { label: "Notices", href: "/tenant/notices", icon: "bell", badge: "2" },
+      { label: "Notifications", href: "/tenant/notifications", icon: "chat" },
     ],
   },
   {

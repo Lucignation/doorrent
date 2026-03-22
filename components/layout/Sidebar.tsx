@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { LOGO_PATH } from "../../lib/site";
 import type { AppUser, NavSection } from "../../types/app";
 import { NavIcon } from "../ui/Icons";
 
@@ -25,12 +26,13 @@ export default function Sidebar({
   onNavigate,
 }: SidebarProps) {
   const router = useRouter();
+  const homeHref = navSections[0]?.items[0]?.href ?? "/";
 
   return (
     <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
       <div className="sidebar-header">
-        <Link href="/" className="sidebar-logo" onClick={onNavigate}>
-          <div className="logo-mark">D</div>
+        <Link href={homeHref} className="sidebar-logo" onClick={onNavigate}>
+          <img src={LOGO_PATH} alt="DoorRent logo" className="logo-image" />
           <span className="logo-name">DoorRent</span>
         </Link>
         <button

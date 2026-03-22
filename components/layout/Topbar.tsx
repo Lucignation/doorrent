@@ -21,17 +21,28 @@ export default function Topbar({
   const router = useRouter();
   const {
     clearAdminSession,
+    clearCaretakerSession,
     clearLandlordSession,
     clearTenantSession,
   } = useTenantPortalSession();
 
   const isTenantRoute = router.pathname.startsWith("/tenant");
   const isAdminRoute = router.pathname.startsWith("/admin");
+  const isCaretakerRoute = router.pathname.startsWith("/caretaker");
   const signOutHref = isTenantRoute
     ? "/tenant/login"
     : isAdminRoute
       ? "/admin/login"
+      : isCaretakerRoute
+        ? "/caretaker/login"
       : "/portal";
+  const notificationsHref = isTenantRoute
+    ? "/tenant/notifications"
+    : isCaretakerRoute
+      ? "/caretaker/notifications"
+      : isAdminRoute
+        ? ""
+        : "/landlord/notifications";
 
   return (
     <header className="topbar">
@@ -49,7 +60,18 @@ export default function Topbar({
         <button type="button" className="icon-btn" onClick={() => showToast("No new messages", "info")}>
           <MessageIcon />
         </button>
-        <button type="button" className="icon-btn" onClick={() => openModal("notifications")}>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => {
+            if (notificationsHref) {
+              void router.push(notificationsHref);
+              return;
+            }
+
+            openModal("notifications");
+          }}
+        >
           <BellIcon />
           <div className="dot" />
         </button>
@@ -71,6 +93,11 @@ export default function Topbar({
 
             if (isAdminRoute) {
               clearAdminSession();
+              return;
+            }
+
+            if (isCaretakerRoute) {
+              clearCaretakerSession();
               return;
             }
 

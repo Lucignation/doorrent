@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { type FormEvent, useEffect, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
 import { apiRequest } from "../lib/api";
+import { LOGO_PATH } from "../lib/site";
 import {
   TENANT_LAST_EMAIL_STORAGE_KEY,
   type AdminPortalIdentity,
@@ -1040,7 +1041,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
       <div id="auth-screen">
         <div className="auth-left">
           <div className="auth-logo">
-            <div className="auth-logo-mark">D</div>
+            <img src={LOGO_PATH} alt="DoorRent logo" className="auth-logo-image" />
             <span className="auth-logo-name">DoorRent</span>
           </div>
 

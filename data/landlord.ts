@@ -60,6 +60,7 @@ export const landlordNav: NavSection[] = [
       { label: "Meetings", href: "/landlord/meetings", icon: "clock" },
       { label: "Notices", href: "/landlord/notices", icon: "bell" },
       { label: "Reminders", href: "/landlord/reminders", icon: "clock" },
+      { label: "Notifications", href: "/landlord/notifications", icon: "chat" },
     ],
   },
   {
@@ -68,7 +69,10 @@ export const landlordNav: NavSection[] = [
   },
   {
     section: "Account",
-    items: [{ label: "Settings", href: "/landlord/settings", icon: "settings" }],
+    items: [
+      { label: "Caretakers", href: "/landlord/caretakers", icon: "users" },
+      { label: "Settings", href: "/landlord/settings", icon: "settings" },
+    ],
   },
 ];
 
