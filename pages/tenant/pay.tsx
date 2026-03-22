@@ -45,7 +45,7 @@ function formatNaira(amount: number) {
 export default function TenantPayPage() {
   const router = useRouter();
   const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
-  const { tenantSession } = useTenantPortalSession();
+  const { saveTenantSession, tenantSession } = useTenantPortalSession();
   const [tenantProfile, setTenantProfile] = useState<TenantPortalIdentity | null>(
     tenantSession?.tenant ?? null,
   );
@@ -71,11 +71,14 @@ export default function TenantPayPage() {
 
   useEffect(() => {
     const tenantToken = tenantSession?.token;
+    const tenantSessionExpiry = tenantSession?.expiresAt;
 
-    if (!tenantToken) {
+    if (!tenantToken || !tenantSessionExpiry) {
       return;
     }
 
+    const activeTenantToken = tenantToken;
+    const activeTenantSessionExpiry = tenantSessionExpiry;
     let active = true;
 
     async function loadTenantProfile() {
@@ -83,7 +86,7 @@ export default function TenantPayPage() {
 
       try {
         const { data } = await apiRequest<TenantMeResponse>("/tenant/auth/me", {
-          token: tenantToken,
+          token: activeTenantToken,
         });
 
         if (!active) {
@@ -91,6 +94,11 @@ export default function TenantPayPage() {
         }
 
         setTenantProfile(data.tenant);
+        saveTenantSession({
+          token: activeTenantToken,
+          expiresAt: activeTenantSessionExpiry,
+          tenant: data.tenant,
+        });
         setPaymentMode("full");
         setAmount(
           data.tenant.annualRent
@@ -122,7 +130,13 @@ export default function TenantPayPage() {
     return () => {
       active = false;
     };
-  }, [dataRefreshVersion, showToast, tenantSession?.token]);
+  }, [
+    dataRefreshVersion,
+    saveTenantSession,
+    showToast,
+    tenantSession?.expiresAt,
+    tenantSession?.token,
+  ]);
 
   useEffect(() => {
     const reference =
@@ -398,13 +412,14 @@ export default function TenantPayPage() {
                   type="number"
                   min={1000}
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  readOnly
+                  disabled
                 />
               </div>
               <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.6 }}>
                 {isLoadingProfile
                   ? "Loading your rent details..."
-                  : "Rent is stored yearly. The monthly figure here is only a helper calculation from your annual rent."}
+                  : "This amount is locked to the rent set by your landlord. You can only choose the available payment option above."}
               </div>
             </div>
           </div>

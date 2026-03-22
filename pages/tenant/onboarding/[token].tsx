@@ -123,6 +123,18 @@ export default function TenantOnboardingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const lockedNameParts = useMemo(
+    () => splitInviteeName(invitationData?.invitation.inviteeName),
+    [invitationData?.invitation.inviteeName],
+  );
+  const lockedFields = useMemo(
+    () => ({
+      firstName: Boolean(lockedNameParts.firstName),
+      lastName: Boolean(lockedNameParts.lastName),
+      email: Boolean(invitationData?.invitation.email),
+    }),
+    [invitationData?.invitation.email, lockedNameParts.firstName, lockedNameParts.lastName],
+  );
 
   useEffect(() => {
     if (!token) {
@@ -349,8 +361,14 @@ export default function TenantOnboardingPage() {
                       className="form-input"
                       value={form.firstName}
                       onChange={(event) => updateField("firstName", event.target.value)}
+                      disabled={lockedFields.firstName}
                       required
                     />
+                    {lockedFields.firstName ? (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        This first name was supplied by your landlord and cannot be edited here.
+                      </div>
+                    ) : null}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Last Name *</label>
@@ -358,8 +376,14 @@ export default function TenantOnboardingPage() {
                       className="form-input"
                       value={form.lastName}
                       onChange={(event) => updateField("lastName", event.target.value)}
+                      disabled={lockedFields.lastName}
                       required
                     />
+                    {lockedFields.lastName ? (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        This last name was supplied by your landlord and cannot be edited here.
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -371,8 +395,14 @@ export default function TenantOnboardingPage() {
                       type="email"
                       value={form.email}
                       onChange={(event) => updateField("email", event.target.value)}
+                      disabled={lockedFields.email}
                       required
                     />
+                    {lockedFields.email ? (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        This onboarding link is locked to the invited email address.
+                      </div>
+                    ) : null}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Phone *</label>
