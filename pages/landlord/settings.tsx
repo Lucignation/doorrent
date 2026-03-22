@@ -26,10 +26,10 @@ interface LandlordSettingsResponse {
   };
   payout: {
     bankId?: string | null;
-    bankName: string;
-    bankCode: string;
-    accountNumber: string;
-    accountName: string;
+    bankName: string | null;
+    bankCode: string | null;
+    accountNumber: string | null;
+    accountName: string | null;
     subaccountCode?: string | null;
     isConfigured?: boolean;
     isVerified: boolean;
@@ -216,8 +216,14 @@ export default function LandlordSettingsPage() {
       return;
     }
 
+    const savedBankName = normalizePayoutValue(settings.payout.bankName);
+
+    if (!savedBankName) {
+      return;
+    }
+
     const matchedBank = availableBanks.find(
-      (bank) => bank.name.trim().toLowerCase() === settings.payout.bankName.trim().toLowerCase(),
+      (bank) => normalizePayoutValue(bank.name) === savedBankName,
     );
 
     if (!matchedBank) {
