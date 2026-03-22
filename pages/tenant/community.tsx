@@ -74,6 +74,45 @@ interface CommunityMessageMutationResponse {
   message: CommunityMessagesResponse["messages"][number];
 }
 
+interface CommunityContactRecord {
+  id: string;
+  name: string;
+  email: string;
+  unit: string;
+  initials: string;
+  status: string;
+  joined: boolean;
+}
+
+interface CommunityContactsResponse {
+  landlord: {
+    id: string;
+    name: string;
+    companyName: string;
+  };
+  property: {
+    id: string;
+    name: string;
+  };
+  summary: {
+    total: number;
+    alreadyInGroup: number;
+    availableToAdd: number;
+  };
+  contacts: CommunityContactRecord[];
+}
+
+interface CommunityMembersMutationResponse {
+  group: CommunityGroupRecord;
+  summary: {
+    addedCount: number;
+    alreadyMemberCount: number;
+    missingEmailCount: number;
+    missingTenantCount: number;
+  };
+  missingEmails: string[];
+}
+
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -96,13 +135,19 @@ export default function TenantCommunityPage() {
   const [groupData, setGroupData] = useState<CommunityGroupsResponse | null>(null);
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [messageData, setMessageData] = useState<CommunityMessagesResponse | null>(null);
+  const [contactData, setContactData] = useState<CommunityContactsResponse | null>(null);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [loadingContacts, setLoadingContacts] = useState(false);
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [joiningGroupId, setJoiningGroupId] = useState<string | null>(null);
   const [leavingGroupId, setLeavingGroupId] = useState<string | null>(null);
+  const [addingMembers, setAddingMembers] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [error, setError] = useState("");
+  const [contactSearch, setContactSearch] = useState("");
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
+  const [inviteEmails, setInviteEmails] = useState("");
   const [groupForm, setGroupForm] = useState({
     name: "",
     description: "",
@@ -118,6 +163,20 @@ export default function TenantCommunityPage() {
     () => groupData?.groups.find((group) => group.id === selectedGroupId) ?? null,
     [groupData?.groups, selectedGroupId],
   );
+
+  const filteredContacts = useMemo(() => {
+    const query = contactSearch.trim().toLowerCase();
+
+    if (!query) {
+      return contactData?.contacts ?? [];
+    }
+
+    return (contactData?.contacts ?? []).filter((contact) =>
+      [contact.name, contact.email, contact.unit].some((value) =>
+        value.toLowerCase().includes(query),
+      ),
+    );
+  }, [contactData?.contacts, contactSearch]);
 
   useEffect(() => {
     const tenantToken = tenantSession?.token;
@@ -231,6 +290,62 @@ export default function TenantCommunityPage() {
     };
   }, [dataRefreshVersion, selectedGroup?.joined, selectedGroupId, showToast, tenantSession?.token]);
 
+  useEffect(() => {
+    const tenantToken = tenantSession?.token;
+
+    if (!tenantToken || !selectedGroupId || !selectedGroup?.joined) {
+      setContactData(null);
+      setSelectedContactIds([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadContacts() {
+      setLoadingContacts(true);
+
+      try {
+        const { data } = await apiRequest<CommunityContactsResponse>(
+          `/tenant/community/groups/${selectedGroupId}/contacts`,
+          {
+            token: tenantToken,
+          },
+        );
+
+        if (!cancelled) {
+          setContactData(data);
+          setSelectedContactIds((current) =>
+            current.filter((contactId) =>
+              data.contacts.some(
+                (contact) => contact.id === contactId && !contact.joined,
+              ),
+            ),
+          );
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setContactData(null);
+          showToast(
+            requestError instanceof Error
+              ? requestError.message
+              : "We could not load compound tenants for this group.",
+            "error",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingContacts(false);
+        }
+      }
+    }
+
+    void loadContacts();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dataRefreshVersion, selectedGroup?.joined, selectedGroupId, showToast, tenantSession?.token]);
+
   async function reloadGroups() {
     const tenantToken = tenantSession?.token;
 
@@ -247,6 +362,29 @@ export default function TenantCommunityPage() {
     if (selectedGroupId && !data.groups.some((group) => group.id === selectedGroupId)) {
       setSelectedGroupId(data.groups.find((group) => group.joined)?.id ?? data.groups[0]?.id ?? "");
     }
+  }
+
+  async function reloadContacts(groupId = selectedGroupId) {
+    const tenantToken = tenantSession?.token;
+
+    if (!tenantToken || !groupId || !selectedGroup?.joined) {
+      setContactData(null);
+      return;
+    }
+
+    const { data } = await apiRequest<CommunityContactsResponse>(
+      `/tenant/community/groups/${groupId}/contacts`,
+      {
+        token: tenantToken,
+      },
+    );
+
+    setContactData(data);
+    setSelectedContactIds((current) =>
+      current.filter((contactId) =>
+        data.contacts.some((contact) => contact.id === contactId && !contact.joined),
+      ),
+    );
   }
 
   async function submitGroup(event: FormEvent<HTMLFormElement>) {
@@ -439,6 +577,71 @@ export default function TenantCommunityPage() {
     }
   }
 
+  async function addMembersToGroup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!tenantSession?.token || !selectedGroupId || !selectedGroup?.joined) {
+      return;
+    }
+
+    const parsedEmails = inviteEmails
+      .split(/[\n,]+/)
+      .map((email) => email.trim())
+      .filter(Boolean);
+
+    if (!selectedContactIds.length && !parsedEmails.length) {
+      showToast("Select at least one tenant or enter an email.", "error");
+      return;
+    }
+
+    setAddingMembers(true);
+
+    try {
+      const { data } = await apiRequest<CommunityMembersMutationResponse>(
+        `/tenant/community/groups/${selectedGroupId}/members`,
+        {
+          method: "POST",
+          token: tenantSession.token,
+          body: {
+            tenantIds: selectedContactIds.length ? selectedContactIds : undefined,
+            emails: parsedEmails.length ? parsedEmails : undefined,
+          },
+        },
+      );
+
+      await reloadGroups();
+      await reloadContacts(selectedGroupId);
+      setSelectedContactIds([]);
+      setInviteEmails("");
+      refreshData();
+
+      if (data.summary.addedCount > 0) {
+        showToast(
+          `${data.summary.addedCount} tenant${data.summary.addedCount === 1 ? "" : "s"} added to the group.`,
+          "success",
+        );
+      } else if (data.summary.alreadyMemberCount > 0) {
+        showToast("Those tenants are already in the group.", "success");
+      }
+
+      if (data.missingEmails.length > 0) {
+        showToast(
+          `We could not find: ${data.missingEmails.join(", ")}`,
+          "error",
+        );
+      }
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not add tenants to this group.",
+        "error",
+      );
+    } finally {
+      setAddingMembers(false);
+    }
+  }
+
   const description = groupData
     ? `${groupData.summary.joined} joined group(s) in ${groupData.property.name} · Share updates, images, and neighbour feedback`
     : loadingGroups
@@ -602,6 +805,129 @@ export default function TenantCommunityPage() {
             <div className="card-body" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {selectedGroup?.joined ? (
                 <>
+                  <div
+                    style={{
+                      padding: 14,
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      background: "var(--surface2)",
+                    }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>
+                      Add Tenants to This Group
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--ink2)", marginBottom: 12 }}>
+                      Pick neighbours in {contactData?.property.name ?? selectedGroup.property.name} or
+                      paste their email addresses to add them straight into this community.
+                    </div>
+
+                    <form onSubmit={addMembersToGroup}>
+                      <div className="form-group">
+                        <label className="form-label">Search Compound Tenants</label>
+                        <input
+                          className="form-input"
+                          value={contactSearch}
+                          onChange={(event) => setContactSearch(event.target.value)}
+                          placeholder="Search by name, email, or unit"
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          maxHeight: 180,
+                          overflowY: "auto",
+                          border: "1px solid var(--border)",
+                          borderRadius: "var(--radius-sm)",
+                          background: "var(--surface)",
+                          padding: 10,
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 8,
+                          marginBottom: 12,
+                        }}
+                      >
+                        {loadingContacts ? (
+                          <div style={{ fontSize: 12, color: "var(--ink2)" }}>
+                            Loading tenants...
+                          </div>
+                        ) : filteredContacts.length ? (
+                          filteredContacts.map((contact) => {
+                            const checked = selectedContactIds.includes(contact.id);
+
+                            return (
+                              <label
+                                key={contact.id}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  gap: 12,
+                                  padding: 10,
+                                  borderRadius: "var(--radius-sm)",
+                                  border: "1px solid var(--border)",
+                                  background: contact.joined
+                                    ? "var(--surface2)"
+                                    : checked
+                                      ? "var(--accent-light)"
+                                      : "var(--surface)",
+                                }}
+                              >
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    disabled={contact.joined}
+                                    onChange={(event) =>
+                                      setSelectedContactIds((current) =>
+                                        event.target.checked
+                                          ? [...current, contact.id]
+                                          : current.filter((item) => item !== contact.id),
+                                      )
+                                    }
+                                  />
+                                  <div>
+                                    <div style={{ fontSize: 13, fontWeight: 600 }}>
+                                      {contact.name}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: "var(--ink3)" }}>
+                                      {contact.email} · Unit {contact.unit}
+                                    </div>
+                                  </div>
+                                </div>
+                                <StatusBadge tone={contact.joined ? "green" : "blue"}>
+                                  {contact.joined ? "In Group" : contact.status}
+                                </StatusBadge>
+                              </label>
+                            );
+                          })
+                        ) : (
+                          <div style={{ fontSize: 12, color: "var(--ink2)" }}>
+                            No matching tenants found in this compound.
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Add by Email</label>
+                        <textarea
+                          className="form-input"
+                          style={{ minHeight: 90 }}
+                          value={inviteEmails}
+                          onChange={(event) => setInviteEmails(event.target.value)}
+                          placeholder="Enter one or more tenant emails, separated by commas or new lines"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="btn btn-secondary btn-full"
+                        disabled={addingMembers}
+                      >
+                        {addingMembers ? "Adding tenants..." : "Add Tenants to Group"}
+                      </button>
+                    </form>
+                  </div>
+
                   <div
                     style={{
                       maxHeight: 360,

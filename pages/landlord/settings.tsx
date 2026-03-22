@@ -1,4 +1,4 @@
-import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
@@ -25,11 +25,13 @@ interface LandlordSettingsResponse {
     nextBilling: string;
   };
   payout: {
+    bankId?: string | null;
     bankName: string;
     bankCode: string;
     accountNumber: string;
     accountName: string;
     subaccountCode?: string | null;
+    isConfigured?: boolean;
     isVerified: boolean;
     platformFeePercent: number;
   };
@@ -55,6 +57,28 @@ interface PayoutUpdateResponse {
   syncStatus: "synced" | "saved_without_sync";
 }
 
+interface PayoutOtpRequestResponse {
+  email: string;
+  expiresAt: string;
+  expiresInMinutes: number;
+  delivery: "sent" | "failed" | "preview";
+  codePreview?: string;
+}
+
+interface PayoutBanksResponse {
+  banks: Array<{
+    id: string;
+    name: string;
+  }>;
+}
+
+interface ResolvePayoutAccountResponse {
+  bankId: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+}
+
 interface TeamInviteForm {
   name: string;
   email: string;
@@ -67,6 +91,10 @@ const initialTeamInviteForm: TeamInviteForm = {
   role: "",
 };
 
+function normalizePayoutValue(value?: string | null) {
+  return (value ?? "").trim().toLowerCase();
+}
+
 export default function LandlordSettingsPage() {
   const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
@@ -76,6 +104,21 @@ export default function LandlordSettingsPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPayout, setSavingPayout] = useState(false);
   const [invitingMember, setInvitingMember] = useState(false);
+  const [availableBanks, setAvailableBanks] = useState<PayoutBanksResponse["banks"]>([]);
+  const [loadingBanks, setLoadingBanks] = useState(false);
+  const [bankSearch, setBankSearch] = useState("");
+  const [resolvingAccount, setResolvingAccount] = useState(false);
+  const [payoutResolutionError, setPayoutResolutionError] = useState("");
+  const [savedPayoutSnapshot, setSavedPayoutSnapshot] = useState<{
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    isConfigured: boolean;
+  } | null>(null);
+  const [requestingPayoutOtp, setRequestingPayoutOtp] = useState(false);
+  const [payoutOtpCode, setPayoutOtpCode] = useState("");
+  const [payoutOtpExpiresAt, setPayoutOtpExpiresAt] = useState("");
+  const [payoutOtpPreview, setPayoutOtpPreview] = useState("");
   const [teamInviteForm, setTeamInviteForm] = useState<TeamInviteForm>(
     initialTeamInviteForm,
   );
@@ -102,6 +145,12 @@ export default function LandlordSettingsPage() {
 
         if (!cancelled) {
           setSettings(data);
+          setSavedPayoutSnapshot({
+            bankName: data.payout.bankName ?? "",
+            accountNumber: data.payout.accountNumber ?? "",
+            accountName: data.payout.accountName ?? "",
+            isConfigured: Boolean(data.payout.isConfigured),
+          });
         }
       } catch (requestError) {
         if (!cancelled) {
@@ -118,12 +167,160 @@ export default function LandlordSettingsPage() {
       }
     }
 
+    async function loadBanks() {
+      setLoadingBanks(true);
+
+      try {
+        const { data } = await apiRequest<PayoutBanksResponse>(
+          "/landlord/settings/payout/banks",
+          {
+            token: landlordToken,
+          },
+        );
+
+        if (!cancelled) {
+          setAvailableBanks(data.banks);
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          showToast(
+            requestError instanceof Error
+              ? requestError.message
+              : "We could not load Nigerian banks.",
+            "error",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingBanks(false);
+        }
+      }
+    }
+
     void loadSettings();
+    void loadBanks();
 
     return () => {
       cancelled = true;
     };
-  }, [dataRefreshVersion, landlordSession?.token]);
+  }, [dataRefreshVersion, landlordSession?.token, showToast]);
+
+  useEffect(() => {
+    if (settings?.payout.bankName) {
+      setBankSearch(settings.payout.bankName);
+    }
+  }, [settings?.payout.bankName]);
+
+  useEffect(() => {
+    if (!settings || settings.payout.bankId || availableBanks.length === 0) {
+      return;
+    }
+
+    const matchedBank = availableBanks.find(
+      (bank) => bank.name.trim().toLowerCase() === settings.payout.bankName.trim().toLowerCase(),
+    );
+
+    if (!matchedBank) {
+      return;
+    }
+
+    setSettings((current) =>
+      current
+        ? {
+            ...current,
+            payout: {
+              ...current.payout,
+              bankId: matchedBank.id,
+              bankName: matchedBank.name,
+            },
+          }
+        : current,
+    );
+  }, [availableBanks, settings]);
+
+  useEffect(() => {
+    const landlordToken = landlordSession?.token;
+    const bankId = settings?.payout.bankId;
+    const accountNumber = settings?.payout.accountNumber ?? "";
+
+    if (!landlordToken || !bankId) {
+      return;
+    }
+
+    if (accountNumber.length !== 10 || settings?.payout.accountName) {
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setResolvingAccount(true);
+      setPayoutResolutionError("");
+
+      try {
+        const { data } = await apiRequest<ResolvePayoutAccountResponse>(
+          "/landlord/settings/payout/resolve-account",
+          {
+            method: "POST",
+            token: landlordToken,
+            body: {
+              bankId,
+              accountNumber,
+            },
+          },
+        );
+
+        if (!cancelled) {
+          setSettings((current) =>
+            current
+              ? {
+                  ...current,
+                  payout: {
+                    ...current.payout,
+                    bankId: data.bankId,
+                    bankName: data.bankName,
+                    accountNumber: data.accountNumber,
+                    accountName: data.accountName,
+                  },
+                }
+              : current,
+          );
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setPayoutResolutionError(
+            requestError instanceof Error
+              ? requestError.message
+              : "We could not verify this account number.",
+          );
+          setSettings((current) =>
+            current
+              ? {
+                  ...current,
+                  payout: {
+                    ...current.payout,
+                    accountName: "",
+                  },
+                }
+              : current,
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setResolvingAccount(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    landlordSession?.token,
+    settings?.payout.accountName,
+    settings?.payout.accountNumber,
+    settings?.payout.bankId,
+  ]);
 
   function updateProfileField(
     field: keyof LandlordSettingsResponse["profile"],
@@ -157,6 +354,106 @@ export default function LandlordSettingsPage() {
           }
         : current,
     );
+  }
+
+  function selectPayoutBank(bankId: string) {
+    const bank = availableBanks.find((item) => item.id === bankId);
+
+    setSettings((current) =>
+      current
+        ? {
+            ...current,
+            payout: {
+              ...current.payout,
+              bankId,
+              bankName: bank?.name ?? "",
+              bankCode: "",
+              accountNumber: "",
+              accountName: "",
+            },
+          }
+        : current,
+    );
+    setPayoutResolutionError("");
+    setBankSearch(bank?.name ?? "");
+  }
+
+  function updatePayoutAccountNumber(value: string) {
+    const sanitized = value.replace(/\D/g, "").slice(0, 10);
+
+    setSettings((current) =>
+      current
+        ? {
+            ...current,
+            payout: {
+              ...current.payout,
+              accountNumber: sanitized,
+              accountName: sanitized === current.payout.accountNumber ? current.payout.accountName : "",
+            },
+          }
+        : current,
+    );
+    setPayoutResolutionError("");
+  }
+
+  const filteredBanks = useMemo(() => {
+    const query = bankSearch.trim().toLowerCase();
+
+    if (!query) {
+      return availableBanks;
+    }
+
+    return availableBanks.filter((bank) => bank.name.toLowerCase().includes(query));
+  }, [availableBanks, bankSearch]);
+
+  const payoutChangeRequiresOtp = Boolean(
+    savedPayoutSnapshot?.isConfigured &&
+      settings &&
+      (normalizePayoutValue(savedPayoutSnapshot.bankName) !==
+        normalizePayoutValue(settings.payout.bankName) ||
+        normalizePayoutValue(savedPayoutSnapshot.accountNumber) !==
+          normalizePayoutValue(settings.payout.accountNumber) ||
+        normalizePayoutValue(savedPayoutSnapshot.accountName) !==
+          normalizePayoutValue(settings.payout.accountName)),
+  );
+
+  async function requestPayoutUpdateOtp() {
+    if (!landlordSession?.token || !settings) {
+      return;
+    }
+
+    setRequestingPayoutOtp(true);
+
+    try {
+      const { data } = await apiRequest<PayoutOtpRequestResponse>(
+        "/landlord/settings/payout/request-update-otp",
+        {
+          method: "POST",
+          token: landlordSession.token,
+        },
+      );
+
+      setPayoutOtpExpiresAt(data.expiresAt);
+      setPayoutOtpPreview(data.codePreview ?? "");
+      setPayoutOtpCode("");
+      showToast(
+        data.delivery === "sent"
+          ? `A 6-digit payout update code was sent to ${data.email}.`
+          : data.delivery === "preview"
+            ? "Email delivery is unavailable here, so a preview code is shown below."
+            : "We generated a payout update code, but email delivery failed. Use the preview code if available.",
+        data.delivery === "failed" ? "error" : "success",
+      );
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not send a payout update code.",
+        "error",
+      );
+    } finally {
+      setRequestingPayoutOtp(false);
+    }
   }
 
   async function submitProfile(event: FormEvent<HTMLFormElement>) {
@@ -225,10 +522,10 @@ export default function LandlordSettingsPage() {
           method: "PATCH",
           token: landlordSession.token,
           body: {
-            bankName: settings.payout.bankName,
-            bankCode: settings.payout.bankCode,
+            bankId: settings.payout.bankId,
             accountNumber: settings.payout.accountNumber,
             accountName: settings.payout.accountName,
+            otpCode: payoutChangeRequiresOtp ? payoutOtpCode : undefined,
           },
         },
       );
@@ -244,6 +541,15 @@ export default function LandlordSettingsPage() {
             }
           : current,
       );
+      setSavedPayoutSnapshot({
+        bankName: data.payout.bankName ?? "",
+        accountNumber: data.payout.accountNumber ?? "",
+        accountName: data.payout.accountName ?? "",
+        isConfigured: Boolean(data.payout.isConfigured),
+      });
+      setPayoutOtpCode("");
+      setPayoutOtpExpiresAt("");
+      setPayoutOtpPreview("");
       refreshData();
       showToast("Payout settings saved", "success");
     } catch (requestError) {
@@ -492,20 +798,32 @@ export default function LandlordSettingsPage() {
               <div className="card-body">
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Bank Name</label>
+                    <label className="form-label">Search Bank</label>
                     <input
                       className="form-input"
-                      value={settings?.payout.bankName ?? ""}
-                      onChange={(event) => updatePayoutField("bankName", event.target.value)}
+                      placeholder="Search Nigerian bank"
+                      value={bankSearch}
+                      onChange={(event) => setBankSearch(event.target.value)}
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Bank Code</label>
-                    <input
+                    <label className="form-label">Bank</label>
+                    <select
                       className="form-input"
-                      value={settings?.payout.bankCode ?? ""}
-                      onChange={(event) => updatePayoutField("bankCode", event.target.value)}
-                    />
+                      value={settings?.payout.bankId ?? ""}
+                      onChange={(event) => selectPayoutBank(event.target.value)}
+                      disabled={loadingBanks}
+                    >
+                      <option value="">{loadingBanks ? "Loading banks..." : "Select bank"}</option>
+                      {filteredBanks.map((bank) => (
+                        <option key={bank.id} value={bank.id}>
+                          {bank.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                      {filteredBanks.length} bank{filteredBanks.length === 1 ? "" : "s"} found
+                    </div>
                   </div>
                 </div>
 
@@ -514,10 +832,11 @@ export default function LandlordSettingsPage() {
                     <label className="form-label">Account Number</label>
                     <input
                       className="form-input"
+                      inputMode="numeric"
+                      maxLength={10}
+                      placeholder="Enter 10-digit account number"
                       value={settings?.payout.accountNumber ?? ""}
-                      onChange={(event) =>
-                        updatePayoutField("accountNumber", event.target.value)
-                      }
+                      onChange={(event) => updatePayoutAccountNumber(event.target.value)}
                     />
                   </div>
                   <div className="form-group">
@@ -525,12 +844,111 @@ export default function LandlordSettingsPage() {
                     <input
                       className="form-input"
                       value={settings?.payout.accountName ?? ""}
-                      onChange={(event) =>
-                        updatePayoutField("accountName", event.target.value)
-                      }
+                      disabled
                     />
+                    <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                      Account name is filled automatically after verification.
+                    </div>
                   </div>
                 </div>
+
+                <div
+                  style={{
+                    marginBottom: 14,
+                    padding: 12,
+                    borderRadius: "var(--radius-sm)",
+                    background: payoutResolutionError
+                      ? "var(--red-light)"
+                      : settings?.payout.accountName
+                        ? "var(--green-light)"
+                        : "var(--surface2)",
+                    border: `1px solid ${
+                      payoutResolutionError
+                        ? "rgba(192,57,43,0.18)"
+                        : settings?.payout.accountName
+                          ? "rgba(26,107,74,0.18)"
+                          : "var(--border)"
+                    }`,
+                    fontSize: 12,
+                    color: payoutResolutionError
+                      ? "var(--red)"
+                      : settings?.payout.accountName
+                        ? "var(--green)"
+                        : "var(--ink2)",
+                  }}
+                >
+                  {resolvingAccount
+                    ? "Verifying account number..."
+                    : payoutResolutionError
+                      ? payoutResolutionError
+                      : settings?.payout.accountName
+                        ? `Verified account name: ${settings.payout.accountName}`
+                        : "Select a bank and enter a valid 10-digit account number to verify the account name."}
+                </div>
+
+                {payoutChangeRequiresOtp ? (
+                  <div
+                    style={{
+                      marginBottom: 14,
+                      padding: 14,
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--surface2)",
+                      border: "1px solid var(--border)",
+                    }}
+                  >
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+                      Confirm bank-account change
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 4 }}>
+                      For security, DoorRent must email you a 6-digit code before you can
+                      change an existing payout account.
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        alignItems: "flex-end",
+                        flexWrap: "wrap",
+                        marginTop: 12,
+                      }}
+                    >
+                      <div style={{ flex: "1 1 220px" }}>
+                        <label className="form-label">Update OTP</label>
+                        <input
+                          className="form-input"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="Enter 6-digit code"
+                          value={payoutOtpCode}
+                          onChange={(event) =>
+                            setPayoutOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                          }
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => void requestPayoutUpdateOtp()}
+                        disabled={requestingPayoutOtp}
+                      >
+                        {requestingPayoutOtp ? "Sending..." : payoutOtpExpiresAt ? "Resend OTP" : "Send OTP"}
+                      </button>
+                    </div>
+                    <div style={{ marginTop: 8, fontSize: 12, color: "var(--ink3)" }}>
+                      {payoutOtpExpiresAt
+                        ? `This code expires at ${new Date(payoutOtpExpiresAt).toLocaleTimeString("en-NG", {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}.`
+                        : "Request a code when you are ready to save the new account."}
+                    </div>
+                    {payoutOtpPreview ? (
+                      <div style={{ marginTop: 8, fontSize: 12, color: "var(--amber)" }}>
+                        Preview code: <strong>{payoutOtpPreview}</strong>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <div
                   style={{
@@ -563,7 +981,18 @@ export default function LandlordSettingsPage() {
                   </div>
                 </div>
 
-                <button type="submit" className="btn btn-primary btn-sm" disabled={savingPayout}>
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-sm"
+                  disabled={
+                    savingPayout ||
+                    resolvingAccount ||
+                    !settings?.payout.bankId ||
+                    !settings?.payout.accountName ||
+                    (payoutChangeRequiresOtp && payoutOtpCode.length !== 6) ||
+                    (settings?.payout.accountNumber?.length ?? 0) !== 10
+                  }
+                >
                   {savingPayout ? "Saving..." : "Save Payout Settings"}
                 </button>
               </div>
