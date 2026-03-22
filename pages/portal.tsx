@@ -68,7 +68,7 @@ const roles: Record<RoleKey, { label: string; href: string; button: string }> = 
   },
 };
 
-const LANDLORD_DEMO = {
+const LANDLORD_PLACEHOLDERS = {
   companyName: "Lekki Property Holdings Ltd",
   firstName: "Babatunde",
   lastName: "Adeyemi",
@@ -77,7 +77,7 @@ const LANDLORD_DEMO = {
   password: "password123",
 };
 
-const ADMIN_DEMO = {
+const ADMIN_PLACEHOLDERS = {
   email: "admin@doorrent.com",
   password: "password123",
 };
@@ -120,14 +120,13 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
   const [landlordMode, setLandlordMode] = useState<"login" | "register">("login");
   const [authBusy, setAuthBusy] = useState(false);
   const [authFeedback, setAuthFeedback] = useState("");
-  const [authEmail, setAuthEmail] = useState(LANDLORD_DEMO.email);
-  const [authPassword, setAuthPassword] = useState(LANDLORD_DEMO.password);
-  const [landlordFirstName, setLandlordFirstName] = useState(LANDLORD_DEMO.firstName);
-  const [landlordLastName, setLandlordLastName] = useState(LANDLORD_DEMO.lastName);
-  const [landlordCompanyName, setLandlordCompanyName] = useState(
-    LANDLORD_DEMO.companyName,
-  );
-  const [landlordPhone, setLandlordPhone] = useState(LANDLORD_DEMO.phone);
+  const [showPassword, setShowPassword] = useState(false);
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [landlordFirstName, setLandlordFirstName] = useState("");
+  const [landlordLastName, setLandlordLastName] = useState("");
+  const [landlordCompanyName, setLandlordCompanyName] = useState("");
+  const [landlordPhone, setLandlordPhone] = useState("");
   const [tenantEmail, setTenantEmail] = useState("");
   const [tenantCode, setTenantCode] = useState("");
   const [tenantRememberMe, setTenantRememberMe] = useState(true);
@@ -190,17 +189,9 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
 
   useEffect(() => {
     if (role === "admin") {
-      setAuthEmail(ADMIN_DEMO.email);
-      setAuthPassword(ADMIN_DEMO.password);
       setLandlordMode("login");
-      return;
     }
-
-    if (role === "landlord" && !landlordSession) {
-      setAuthEmail(LANDLORD_DEMO.email);
-      setAuthPassword(LANDLORD_DEMO.password);
-    }
-  }, [landlordSession, role]);
+  }, [role]);
 
   async function handleTenantRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -425,6 +416,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                 <label className="form-label">Company name</label>
                 <input
                   className="form-input"
+                  placeholder={LANDLORD_PLACEHOLDERS.companyName}
                   value={landlordCompanyName}
                   onChange={(event) => setLandlordCompanyName(event.target.value)}
                   required
@@ -436,6 +428,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                   <label className="form-label">First name</label>
                   <input
                     className="form-input"
+                    placeholder={LANDLORD_PLACEHOLDERS.firstName}
                     value={landlordFirstName}
                     onChange={(event) => setLandlordFirstName(event.target.value)}
                     required
@@ -445,6 +438,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                   <label className="form-label">Last name</label>
                   <input
                     className="form-input"
+                    placeholder={LANDLORD_PLACEHOLDERS.lastName}
                     value={landlordLastName}
                     onChange={(event) => setLandlordLastName(event.target.value)}
                     required
@@ -459,7 +453,11 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
             <input
               className="form-input"
               type="email"
-              placeholder="you@example.com"
+              placeholder={
+                role === "admin"
+                  ? ADMIN_PLACEHOLDERS.email
+                  : LANDLORD_PLACEHOLDERS.email
+              }
               value={authEmail}
               onChange={(event) => setAuthEmail(event.target.value)}
               required
@@ -472,7 +470,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
               <input
                 className="form-input"
                 type="tel"
-                placeholder="+234 800 000 0000"
+                placeholder={LANDLORD_PLACEHOLDERS.phone}
                 value={landlordPhone}
                 onChange={(event) => setLandlordPhone(event.target.value)}
               />
@@ -481,14 +479,29 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
 
           <div className="form-group">
             <label className="form-label">Password</label>
-            <input
-              className="form-input"
-              type="password"
-              placeholder="••••••••"
-              value={authPassword}
-              onChange={(event) => setAuthPassword(event.target.value)}
-              required
-            />
+            <div className="password-input-wrap">
+              <input
+                className="form-input"
+                type={showPassword ? "text" : "password"}
+                placeholder={
+                  role === "admin"
+                    ? ADMIN_PLACEHOLDERS.password
+                    : LANDLORD_PLACEHOLDERS.password
+                }
+                value={authPassword}
+                onChange={(event) => setAuthPassword(event.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </div>
 
           <div
