@@ -1,5 +1,6 @@
 import type { ChangeEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
@@ -91,6 +92,23 @@ interface PayoutTemplateUploadForm {
   mimeType: string;
   content: string;
   fileDataUrl: string;
+}
+
+interface NotificationModalItem {
+  id: string;
+  title: string;
+  body: string;
+  time: string;
+  tone: "green" | "amber" | "red" | "blue";
+  href?: string;
+}
+
+interface NotificationModalResponse {
+  summary: {
+    total: number;
+    unread: number;
+  };
+  items: NotificationModalItem[];
 }
 
 const amenityOptions = [
@@ -185,10 +203,15 @@ function LandlordAccessHint() {
 }
 
 export default function AppOverlays() {
+  const router = useRouter();
   const { activeModal, closeModal, refreshData, showToast, toasts } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
+  const { landlordSession, tenantSession, caretakerSession } = useLandlordPortalSession();
 
   const [modalError, setModalError] = useState("");
+  const [notificationData, setNotificationData] =
+    useState<NotificationModalResponse | null>(null);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
 
   const [propertyForm, setPropertyForm] = useState({
     name: "",
@@ -257,6 +280,43 @@ export default function AppOverlays() {
   const [savingTemplate, setSavingTemplate] = useState(false);
 
   const [agreementSignature, setAgreementSignature] = useState("");
+
+  const notificationConfig = useMemo(() => {
+    if (router.pathname.startsWith("/tenant")) {
+      return {
+        path: "/tenant/notifications",
+        token: tenantSession?.token ?? "",
+        emptyMessage: "No notifications yet.",
+      };
+    }
+
+    if (router.pathname.startsWith("/caretaker")) {
+      return {
+        path: "/caretaker/notifications",
+        token: caretakerSession?.token ?? "",
+        emptyMessage: "No notifications yet.",
+      };
+    }
+
+    if (router.pathname.startsWith("/landlord")) {
+      return {
+        path: "/landlord/notifications",
+        token: landlordSession?.token ?? "",
+        emptyMessage: "No notifications yet.",
+      };
+    }
+
+    return {
+      path: "",
+      token: "",
+      emptyMessage: "Notifications are not available here yet.",
+    };
+  }, [
+    caretakerSession?.token,
+    landlordSession?.token,
+    router.pathname,
+    tenantSession?.token,
+  ]);
 
   const filteredInviteUnits = useMemo(
     () =>
@@ -377,6 +437,66 @@ export default function AppOverlays() {
     }
   }, [activeModal]);
 
+  useEffect(() => {
+    if (activeModal !== "notifications") {
+      return;
+    }
+
+    if (!notificationConfig.path || !notificationConfig.token) {
+      setNotificationData({
+        summary: {
+          total: 0,
+          unread: 0,
+        },
+        items: [],
+      });
+      setNotificationError(
+        notificationConfig.path ? "Sign in again to view notifications." : "",
+      );
+      setNotificationLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadNotifications() {
+      setNotificationLoading(true);
+      setNotificationError("");
+
+      try {
+        const { data } = await apiRequest<NotificationModalResponse>(
+          notificationConfig.path,
+          {
+            token: notificationConfig.token,
+          },
+        );
+
+        if (!cancelled) {
+          setNotificationData(data);
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setNotificationError(
+            requestError instanceof Error
+              ? requestError.message
+              : "We could not load notifications.",
+          );
+          setNotificationData(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setNotificationLoading(false);
+        }
+      }
+    }
+
+    void loadNotifications();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeModal, notificationConfig]);
+
   function resetPropertyForm() {
     setPropertyForm({
       name: "",
@@ -441,6 +561,37 @@ export default function AppOverlays() {
       content: "",
       fileDataUrl: "",
     });
+  }
+
+  function notificationToneColor(tone: NotificationModalItem["tone"]) {
+    if (tone === "red") {
+      return "var(--red)";
+    }
+
+    if (tone === "amber") {
+      return "var(--amber)";
+    }
+
+    if (tone === "blue") {
+      return "var(--blue)";
+    }
+
+    return "var(--green)";
+  }
+
+  function markAllNotificationsRead() {
+    setNotificationData((current) =>
+      current
+        ? {
+            ...current,
+            summary: {
+              ...current.summary,
+              unread: 0,
+            },
+          }
+        : current,
+    );
+    showToast("Notifications marked as read", "success");
   }
 
   async function submitProperty() {
@@ -1617,35 +1768,59 @@ DoorRent Property Management`}
 
       <ModalFrame
         modalId="notifications"
+        size="modal-lg"
         title="Notifications"
         footer={
-          <div className="card-footer" style={{ width: "100%", padding: 0, border: "none", background: "transparent" }}>
-            <span style={{ fontSize: 12, color: "var(--ink3)" }}>5 notifications</span>
-            <button type="button" className="btn btn-ghost btn-xs">
+          <div className="notifications-modal-footer">
+            <span>
+              {notificationData?.summary.total ?? 0} notification
+              {(notificationData?.summary.total ?? 0) === 1 ? "" : "s"}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={markAllNotificationsRead}
+              disabled={!notificationData?.items.length}
+            >
               Mark all read
             </button>
           </div>
         }
       >
-        <div style={{ padding: 0 }}>
-          <div className="timeline" style={{ padding: "0 20px" }}>
-            {[
-              ["var(--red)", "Tunde Adeola — Rent Overdue", "₦150,000 rent is 21 days overdue on Unit B1, Lekki Gardens", "2h ago"],
-              ["var(--amber)", "Emeka Nwosu — Lease Expiring", "Lease expires in 25 days. Send renewal notice.", "5h ago"],
-              ["var(--green)", "Payment Received — Chidinma Eze", "₦320,000 received for Unit 5A, Ikoyi Residences", "1d ago"],
-              ["var(--accent)", "Agreement Signed — Kelechi Dike", "Tenancy agreement for Unit 3B has been signed", "2d ago"],
-              ["var(--accent)", "New Tenant Portal Access", "Ngozi Adichie activated their tenant portal account", "3d ago"],
-            ].map(([color, title, description, time]) => (
-              <div key={`${title}-${time}`} className="timeline-item">
-                <div className="timeline-dot" style={{ background: color }} />
-                <div className="timeline-content">
-                  <div className="timeline-title">{title}</div>
-                  <div className="timeline-desc">{description}</div>
-                </div>
-                <div className="timeline-time">{time}</div>
-              </div>
-            ))}
-          </div>
+        <div className="notifications-modal-list">
+          {notificationError ? (
+            <div className="notifications-modal-empty">{notificationError}</div>
+          ) : notificationLoading ? (
+            <div className="notifications-modal-empty">Loading notifications...</div>
+          ) : notificationData?.items.length ? (
+            notificationData.items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className="notifications-modal-item"
+                onClick={() => {
+                  if (item.href) {
+                    closeModal();
+                    void router.push(item.href);
+                  }
+                }}
+              >
+                <span
+                  className="notifications-modal-dot"
+                  style={{ background: notificationToneColor(item.tone) }}
+                />
+                <span className="notifications-modal-copy">
+                  <span className="notifications-modal-title">{item.title}</span>
+                  <span className="notifications-modal-body">{item.body}</span>
+                </span>
+                <span className="notifications-modal-time">{item.time}</span>
+              </button>
+            ))
+          ) : (
+            <div className="notifications-modal-empty">
+              {notificationConfig.emptyMessage}
+            </div>
+          )}
         </div>
       </ModalFrame>
 

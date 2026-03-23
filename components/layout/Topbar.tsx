@@ -36,14 +36,6 @@ export default function Topbar({
       : isCaretakerRoute
         ? "/caretaker/login"
       : "/portal";
-  const notificationsHref = isTenantRoute
-    ? "/tenant/notifications"
-    : isCaretakerRoute
-      ? "/caretaker/notifications"
-      : isAdminRoute
-        ? ""
-        : "/landlord/notifications";
-
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -64,11 +56,6 @@ export default function Topbar({
           type="button"
           className="icon-btn"
           onClick={() => {
-            if (notificationsHref) {
-              void router.push(notificationsHref);
-              return;
-            }
-
             openModal("notifications");
           }}
         >
