@@ -341,6 +341,7 @@ export default function LandingPage() {
               </Link>
 
               <div className="marketing-nav-links">
+                <Link href="/marketplace">Marketplace</Link>
                 <a href="#features">Features</a>
                 <a href="#roles">For Landlords</a>
                 <a href="#pricing">Pricing</a>
@@ -400,8 +401,8 @@ export default function LandingPage() {
                   <path d="M3 8h10M9 4l4 4-4 4" />
                 </svg>
               </Link>
-              <Link href="/portal" className="btn btn-ghost-light marketing-btn-lg">
-                View live demo
+              <Link href="/marketplace" className="btn btn-ghost-light marketing-btn-lg">
+                Browse marketplace
               </Link>
             </div>
 
