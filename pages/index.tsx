@@ -4,6 +4,21 @@ import PageMeta from "../components/layout/PageMeta";
 import { LOGO_PATH } from "../lib/site";
 
 type RoleKey = "landlord" | "tenant";
+type ValuePlan = {
+  name: string;
+  badge?: string;
+  price: string;
+  sub: string;
+  description: string;
+  rows: Array<
+    | { type: "cost"; label: string; value: string }
+    | { type: "included"; label: string }
+  >;
+  total?: { label: string; value: string; note: string };
+  featured: boolean;
+  ctaLabel: string;
+  ctaHref: string;
+};
 
 const trustedLogos = [
   "Lekki Realty",
@@ -201,7 +216,7 @@ const steps = [
   {
     step: "1",
     title: "Create your account",
-    body: "Sign up as a landlord and get a full-featured free trial to start setting up your portfolio.",
+    body: "Sign up as a landlord and start setting up your portfolio in minutes with the full platform included.",
   },
   {
     step: "2",
@@ -215,56 +230,46 @@ const steps = [
   },
 ];
 
-const pricing = [
+const pricing: ValuePlan[] = [
   {
-    name: "Starter",
-    price: "₦9,900",
-    sub: "per month",
+    name: "What these workflows usually cost",
+    badge: "Most popular",
+    price: "₦34,000+",
+    sub: "typical monthly tool spend",
     description:
-      "For landlords starting to digitize a smaller portfolio.",
-    features: [
-      "Up to 5 properties",
-      "20 tenants",
-      "Rent collection and invoicing",
-      "Digital agreements",
-      "Email notices and reminders",
-      "PDF receipts",
+      "When rent collection, agreements, notices, tenant records, and reporting are split across separate tools, the monthly cost adds up quickly.",
+    rows: [
+      { type: "cost", label: "Rent collection and payment tracking", value: "₦12,000/mo" },
+      { type: "cost", label: "Digital agreements and signing", value: "₦8,000/mo" },
+      { type: "cost", label: "Tenant records and onboarding", value: "₦6,000/mo" },
+      { type: "cost", label: "SMS and reminder workflows", value: "₦3,000/mo" },
+      { type: "cost", label: "Reports and portfolio insights", value: "₦5,000/mo" },
     ],
+    total: {
+      label: "Typical monthly cost",
+      value: "₦34,000+",
+      note: "Before manual follow-up time and admin overhead.",
+    },
     featured: false,
-  },
-  {
-    name: "Pro",
-    price: "₦24,900",
-    sub: "per month",
-    description:
-      "For active landlords who need automation, reporting, and strong day-to-day control.",
-    features: [
-      "Up to 20 properties",
-      "Unlimited tenants",
-      "Everything in Starter",
-      "Advanced analytics and reports",
-      "Bulk notices and reminders",
-      "Custom agreement templates",
-      "Priority support",
-    ],
-    featured: true,
+    ctaLabel: "See included workflows",
+    ctaHref: "#features",
   },
   {
     name: "Enterprise",
-    price: "Custom",
-    sub: "contact us for pricing",
+    price: "₦0",
+    sub: "free for landlords",
     description:
-      "For estate firms and institutional landlords managing large portfolios.",
-    features: [
-      "Unlimited properties",
-      "Multi-user and team roles",
-      "Everything in Pro",
-      "Dedicated account manager",
-      "API access and integrations",
-      "Custom onboarding",
-      "SLA and uptime support",
+      "DoorRent gives you the core landlord workflows in one platform with no setup fee, no subscription charge, and no paywall to get started.",
+    rows: [
+      { type: "included", label: "No monthly subscription" },
+      { type: "included", label: "No setup or onboarding fee" },
+      { type: "included", label: "Rent collection, agreements, and notices included" },
+      { type: "included", label: "Marketplace access and landlord tools included" },
+      { type: "included", label: "Start free and keep growing on the platform" },
     ],
-    featured: false,
+    featured: true,
+    ctaLabel: "Start free",
+    ctaHref: "/portal",
   },
 ];
 
@@ -278,7 +283,7 @@ const testimonials = [
   },
   {
     quote:
-      "The digital agreement feature alone is worth the subscription. My lawyer drafts the template once and I reuse it for every tenant.",
+      "The digital agreement feature alone made the switch worth it. My lawyer drafts the template once and I reuse it for every tenant.",
     name: "Funke Oyelaran",
     role: "Property investor · 14 units · Abuja",
     initials: "FO",
@@ -344,11 +349,14 @@ export default function LandingPage() {
                 <Link href="/marketplace">Marketplace</Link>
                 <a href="#features">Features</a>
                 <a href="#roles">For Landlords</a>
-                <a href="#pricing">Pricing</a>
+                <a href="#pricing">Why it's free</a>
                 <a href="#testimonials">Testimonials</a>
               </div>
 
               <div className="marketing-nav-cta">
+                <Link href="/marketplace" className="btn btn-ghost-light marketing-mobile-marketplace">
+                  Marketplace
+                </Link>
                 <Link href="/portal" className="btn btn-secondary">
                   Sign in
                 </Link>
@@ -369,164 +377,168 @@ export default function LandingPage() {
           </div>
 
           <div className="marketing-hero-body">
-            <div className="marketing-badge">
-              <span className="marketing-badge-dot" />
-              Built for Nigerian Property Owners
-            </div>
-
-            <h1 className="marketing-hero-title">
-              Property management
-              <br />
-              <em>built for how</em>
-              <span>Nigeria rents.</span>
-            </h1>
-
-            <p className="marketing-hero-copy">
-              Collect rent, manage tenants, send agreements, and track every
-              naira in one elegant platform designed for landlords and their
-              teams.
-            </p>
-
-            <div className="marketing-hero-actions">
-              <Link href="/portal" className="btn btn-gold marketing-btn-lg">
-                Start free trial
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                >
-                  <path d="M3 8h10M9 4l4 4-4 4" />
-                </svg>
-              </Link>
-              <Link href="/marketplace" className="btn btn-ghost-light marketing-btn-lg">
-                Browse marketplace
-              </Link>
-            </div>
-
-            <div className="marketing-proof">
-              <div>
-                <strong>12,000+</strong>
-                <span>Properties managed</span>
-              </div>
-              <div className="marketing-proof-divider" />
-              <div>
-                <strong>₦4.2B+</strong>
-                <span>Rent collected</span>
-              </div>
-              <div className="marketing-proof-divider" />
-              <div>
-                <strong>98.3%</strong>
-                <span>Platform uptime</span>
-              </div>
-              <div className="marketing-proof-divider" />
-              <div>
-                <strong>5,200+</strong>
-                <span>Active landlords</span>
-              </div>
-            </div>
-
-            <div className="marketing-hero-visual">
-              <div className="marketing-dashboard">
-                <div className="marketing-dashboard-topbar">
-                  <div className="marketing-dots">
-                    <span />
-                    <span />
-                    <span />
-                  </div>
-                  <div className="marketing-dashboard-title">
-                    DoorRent — Landlord Dashboard
-                  </div>
+            <div className="marketing-hero-grid">
+              <div className="marketing-hero-copy-wrap">
+                <div className="marketing-badge">
+                  <span className="marketing-badge-dot" />
+                  Built for Nigerian Property Owners
                 </div>
 
-                <div className="marketing-dashboard-body">
-                  <div className="marketing-dashboard-sidebar">
-                    <div className="marketing-dashboard-logo">
-                      <img
-                        src={LOGO_PATH}
-                        alt="DoorRent logo"
-                        className="marketing-dashboard-logo-image"
-                      />
-                      <strong>DoorRent</strong>
+                <h1 className="marketing-hero-title">
+                  Property management
+                  <br />
+                  <em>built for how</em>
+                  <span>Nigeria rents.</span>
+                </h1>
+
+                <p className="marketing-hero-copy">
+                  Collect rent, manage tenants, send agreements, and track every
+                  naira in one elegant platform designed for landlords and their
+                  teams.
+                </p>
+
+                <div className="marketing-hero-actions">
+                  <Link href="/portal" className="btn btn-gold marketing-btn-lg">
+                    Start free
+                    <svg
+                      width="16"
+                      height="16"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    >
+                      <path d="M3 8h10M9 4l4 4-4 4" />
+                    </svg>
+                  </Link>
+                  <Link href="/marketplace" className="btn btn-ghost-light marketing-btn-lg">
+                    Browse marketplace
+                  </Link>
+                </div>
+
+                <div className="marketing-proof">
+                  <div>
+                    <strong>12,000+</strong>
+                    <span>Properties managed</span>
+                  </div>
+                  <div className="marketing-proof-divider" />
+                  <div>
+                    <strong>₦4.2B+</strong>
+                    <span>Rent collected</span>
+                  </div>
+                  <div className="marketing-proof-divider" />
+                  <div>
+                    <strong>98.3%</strong>
+                    <span>Platform uptime</span>
+                  </div>
+                  <div className="marketing-proof-divider" />
+                  <div>
+                    <strong>5,200+</strong>
+                    <span>Active landlords</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="marketing-hero-visual">
+                <div className="marketing-dashboard">
+                  <div className="marketing-dashboard-topbar">
+                    <div className="marketing-dots">
+                      <span />
+                      <span />
+                      <span />
                     </div>
-                    <div className="marketing-dashboard-section">Main</div>
-                    {["Overview", "Properties", "Tenants", "Agreements"].map(
-                      (item, index) => (
-                        <div
-                          key={item}
-                          className={`marketing-dashboard-item ${
-                            index === 0 ? "is-active" : ""
-                          }`}
-                        >
+                    <div className="marketing-dashboard-title">
+                      DoorRent — Landlord Dashboard
+                    </div>
+                  </div>
+
+                  <div className="marketing-dashboard-body">
+                    <div className="marketing-dashboard-sidebar">
+                      <div className="marketing-dashboard-logo">
+                        <img
+                          src={LOGO_PATH}
+                          alt="DoorRent logo"
+                          className="marketing-dashboard-logo-image"
+                        />
+                        <strong>DoorRent</strong>
+                      </div>
+                      <div className="marketing-dashboard-section">Main</div>
+                      {["Overview", "Properties", "Tenants", "Agreements"].map(
+                        (item, index) => (
+                          <div
+                            key={item}
+                            className={`marketing-dashboard-item ${
+                              index === 0 ? "is-active" : ""
+                            }`}
+                          >
+                            <span />
+                            {item}
+                          </div>
+                        ),
+                      )}
+                      <div className="marketing-dashboard-section">Finance</div>
+                      {["Payments", "Receipts"].map((item) => (
+                        <div key={item} className="marketing-dashboard-item">
                           <span />
                           {item}
                         </div>
-                      ),
-                    )}
-                    <div className="marketing-dashboard-section">Finance</div>
-                    {["Payments", "Receipts"].map((item) => (
-                      <div key={item} className="marketing-dashboard-item">
-                        <span />
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="marketing-dashboard-content">
-                    <div className="marketing-dashboard-stats">
-                      <div className="marketing-mini-stat">
-                        <label>Properties</label>
-                        <strong>4</strong>
-                        <span>24 units</span>
-                      </div>
-                      <div className="marketing-mini-stat">
-                        <label>Collected</label>
-                        <strong>₦3.1M</strong>
-                        <span>↑ 12%</span>
-                      </div>
-                      <div className="marketing-mini-stat">
-                        <label>Occupancy</label>
-                        <strong>87%</strong>
-                        <span>21 / 24</span>
-                      </div>
+                      ))}
                     </div>
 
-                    <div className="marketing-chart-card">
-                      <div className="marketing-chart-title">
-                        Rent Collection · 12 months
+                    <div className="marketing-dashboard-content">
+                      <div className="marketing-dashboard-stats">
+                        <div className="marketing-mini-stat">
+                          <label>Properties</label>
+                          <strong>4</strong>
+                          <span>24 units</span>
+                        </div>
+                        <div className="marketing-mini-stat">
+                          <label>Collected</label>
+                          <strong>₦3.1M</strong>
+                          <span>↑ 12%</span>
+                        </div>
+                        <div className="marketing-mini-stat">
+                          <label>Occupancy</label>
+                          <strong>87%</strong>
+                          <span>21 / 24</span>
+                        </div>
                       </div>
-                      <div className="marketing-chart-bars">
-                        {[30, 38, 35, 45, 52, 48, 58, 50, 70, 61, 73, 80].map(
-                          (height, index) => (
-                            <div
-                              key={height}
-                              className={`marketing-chart-bar ${
-                                index === 11 ? "is-highlight" : ""
-                              }`}
-                              style={{ height: `${height}%` }}
-                            />
-                          ),
-                        )}
+
+                      <div className="marketing-chart-card">
+                        <div className="marketing-chart-title">
+                          Rent Collection · 12 months
+                        </div>
+                        <div className="marketing-chart-bars">
+                          {[30, 38, 35, 45, 52, 48, 58, 50, 70, 61, 73, 80].map(
+                            (height, index) => (
+                              <div
+                                key={height}
+                                className={`marketing-chart-bar ${
+                                  index === 11 ? "is-highlight" : ""
+                                }`}
+                                style={{ height: `${height}%` }}
+                              />
+                            ),
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="marketing-floating-card left">
-                <div className="icon">✅</div>
-                <div>
-                  <strong>Payment received</strong>
-                  <span>Chidinma Eze · ₦320,000</span>
+                <div className="marketing-floating-card left">
+                  <div className="icon">✅</div>
+                  <div>
+                    <strong>Payment received</strong>
+                    <span>Chidinma Eze · ₦320,000</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="marketing-floating-card right dark">
-                <small>Overdue rent</small>
-                <strong>₦780K</strong>
-                <span>3 tenants · send reminders →</span>
+                <div className="marketing-floating-card right dark">
+                  <small>Overdue rent</small>
+                  <strong>₦780K</strong>
+                  <span>3 tenants · send reminders →</span>
+                </div>
               </div>
             </div>
           </div>
@@ -724,15 +736,16 @@ export default function LandingPage() {
         <section id="pricing" className="marketing-pricing">
           <div className="marketing-container">
             <div className="marketing-section-head centered reveal">
-              <p>Simple pricing</p>
+              <p>Built to stay free</p>
               <h2>
-                Start free.
+                See the value.
                 <br />
-                <em>Scale as you grow.</em>
+                <em>Start at ₦0.</em>
               </h2>
               <span>
-                No hidden charges. No setup fees. Just pricing that grows with
-                your portfolio.
+                DoorRent is free for landlords. Here is the monthly cost this
+                workflow usually replaces, side by side with what you pay on
+                DoorRent.
               </span>
             </div>
 
@@ -744,32 +757,43 @@ export default function LandingPage() {
                     plan.featured ? "is-featured" : ""
                   }`}
                 >
-                  {plan.featured ? (
-                    <div className="marketing-pricing-badge">Most popular</div>
-                  ) : null}
+                  {plan.badge ? <div className="marketing-pricing-badge">{plan.badge}</div> : null}
                   <p className="plan-name">{plan.name}</p>
                   <div className="plan-price">{plan.price}</div>
                   <div className="plan-sub">{plan.sub}</div>
                   <p className="plan-description">{plan.description}</p>
                   <div className="plan-divider" />
-                  <ul>
-                    {plan.features.map((item) => (
-                      <li key={item}>
-                        <span>✓</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                  {plan.name === "Enterprise" ? (
-                    <a href="mailto:sales@doorrent.com" className="btn btn-secondary btn-full">
-                      Contact sales
+                  <div className="marketing-pricing-rows">
+                    {plan.rows.map((item) =>
+                      item.type === "cost" ? (
+                        <div key={item.label} className="marketing-pricing-row is-cost">
+                          <span>{item.label}</span>
+                          <strong>{item.value}</strong>
+                        </div>
+                      ) : (
+                        <div key={item.label} className="marketing-pricing-row is-included">
+                          <span className="row-check">✓</span>
+                          <span>{item.label}</span>
+                        </div>
+                      ),
+                    )}
+                  </div>
+                  {plan.total ? (
+                    <div className="marketing-pricing-total">
+                      <div>
+                        <span>{plan.total.label}</span>
+                        <small>{plan.total.note}</small>
+                      </div>
+                      <strong>{plan.total.value}</strong>
+                    </div>
+                  ) : null}
+                  {plan.ctaHref.startsWith("#") ? (
+                    <a href={plan.ctaHref} className="btn btn-secondary btn-full">
+                      {plan.ctaLabel}
                     </a>
                   ) : (
-                    <Link
-                      href="/portal"
-                      className={`btn btn-full ${plan.featured ? "btn-gold" : "btn-secondary"}`}
-                    >
-                      {plan.featured ? "Start Pro trial" : "Get started free"}
+                    <Link href={plan.ctaHref} className="btn btn-secondary btn-full">
+                      {plan.ctaLabel}
                     </Link>
                   )}
                 </article>
@@ -817,11 +841,12 @@ export default function LandingPage() {
               </h2>
               <p>
                 Join Nigerian landlords moving from WhatsApp and spreadsheets to
-                DoorRent. Your first 14 days are completely free.
+                DoorRent. The platform is free for landlords, so you can start
+                now without setup fees or time limits.
               </p>
               <div className="marketing-cta-actions">
                 <Link href="/portal" className="btn btn-gold marketing-btn-lg">
-                  Start free trial →
+                  Start free →
                 </Link>
                 <Link href="/portal" className="btn btn-ghost-light marketing-btn-lg">
                   View demo
@@ -853,8 +878,9 @@ export default function LandingPage() {
               <div>
                 <h4>Product</h4>
                 <ul>
+                  <li><Link href="/marketplace">Marketplace</Link></li>
                   <li><a href="#features">Features</a></li>
-                  <li><a href="#pricing">Pricing</a></li>
+                  <li><a href="#pricing">Why it's free</a></li>
                   <li><a href="#roles">For Landlords</a></li>
                   <li><a href="#roles">For Tenants</a></li>
                 </ul>
@@ -983,6 +1009,7 @@ export default function LandingPage() {
           font-family: var(--font-display);
           font-size: 21px;
           letter-spacing: -0.02em;
+          color: #fff;
         }
 
         .marketing-nav-links,
@@ -992,14 +1019,31 @@ export default function LandingPage() {
           gap: 10px;
         }
 
+        .marketing-mobile-marketplace {
+          display: none;
+        }
+
         .marketing-nav-links a {
           padding: 7px 14px;
           border-radius: var(--radius-sm);
-          color: var(--ink2);
+          color: rgba(255, 255, 255, 0.68);
           transition: var(--transition);
         }
 
         .marketing-nav-links a:hover {
+          background: rgba(255, 255, 255, 0.08);
+          color: #fff;
+        }
+
+        .marketing-nav.is-scrolled .marketing-brand-name {
+          color: var(--ink);
+        }
+
+        .marketing-nav.is-scrolled .marketing-nav-links a {
+          color: var(--ink2);
+        }
+
+        .marketing-nav.is-scrolled .marketing-nav-links a:hover {
           background: rgba(26, 25, 22, 0.05);
           color: var(--ink);
         }
@@ -1056,6 +1100,22 @@ export default function LandingPage() {
           min-height: calc(100vh - 46px);
           padding: 120px 40px 80px;
           position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .marketing-hero-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(380px, 520px);
+          gap: 48px;
+          align-items: center;
+          width: 100%;
+        }
+
+        .marketing-hero-copy-wrap {
+          max-width: 620px;
+          position: relative;
+          z-index: 2;
         }
 
         .marketing-badge {
@@ -1123,6 +1183,7 @@ export default function LandingPage() {
           gap: 24px;
           margin-top: 56px;
           flex-wrap: wrap;
+          max-width: 620px;
         }
 
         .marketing-proof strong {
@@ -1144,11 +1205,11 @@ export default function LandingPage() {
         }
 
         .marketing-hero-visual {
-          position: absolute;
-          right: -20px;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 520px;
+          position: relative;
+          width: min(100%, 520px);
+          justify-self: end;
+          padding: 42px 34px 32px 0;
+          z-index: 1;
         }
 
         .marketing-dashboard {
@@ -1485,11 +1546,19 @@ export default function LandingPage() {
         }
 
         .marketing-feature-grid,
-        .marketing-pricing-grid,
         .marketing-testimonial-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           gap: 16px;
+        }
+
+        .marketing-pricing-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px;
+          max-width: 1040px;
+          margin: 0 auto;
+          align-items: stretch;
         }
 
         .marketing-feature-card,
@@ -1777,16 +1846,15 @@ export default function LandingPage() {
         }
 
         .marketing-pricing-card.is-featured {
-          background: var(--accent);
-          border-color: var(--accent);
-          transform: scale(1.03);
+          background: linear-gradient(180deg, #1c9a72 0%, #1a6b4a 100%);
+          border-color: rgba(255, 255, 255, 0.08);
+          box-shadow: 0 24px 56px rgba(26, 107, 74, 0.24);
         }
 
         .marketing-pricing-badge {
           position: absolute;
-          top: -12px;
-          left: 50%;
-          transform: translateX(-50%);
+          top: -14px;
+          left: 24px;
           background: var(--accent2);
           color: var(--ink);
           font-size: 11px;
@@ -1807,7 +1875,9 @@ export default function LandingPage() {
         .marketing-pricing-card.is-featured .plan-name,
         .marketing-pricing-card.is-featured .plan-sub,
         .marketing-pricing-card.is-featured .plan-description,
-        .marketing-pricing-card.is-featured ul li {
+        .marketing-pricing-card.is-featured .marketing-pricing-row,
+        .marketing-pricing-card.is-featured .marketing-pricing-total span,
+        .marketing-pricing-card.is-featured .marketing-pricing-total small {
           color: rgba(255, 255, 255, 0.7);
         }
 
@@ -1843,20 +1913,42 @@ export default function LandingPage() {
           background: rgba(255, 255, 255, 0.12);
         }
 
-        .marketing-pricing-card ul {
-          list-style: none;
+        .marketing-pricing-rows {
           display: grid;
-          gap: 12px;
+          gap: 0;
           margin-bottom: 32px;
         }
 
-        .marketing-pricing-card li {
+        .marketing-pricing-row {
           display: flex;
-          gap: 10px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
           color: var(--ink2);
+          padding: 16px 0;
+          border-bottom: 1px solid var(--border);
         }
 
-        .marketing-pricing-card li span {
+        .marketing-pricing-card.is-featured .marketing-pricing-row {
+          border-bottom-color: rgba(255, 255, 255, 0.14);
+        }
+
+        .marketing-pricing-row.is-cost strong {
+          color: var(--ink);
+          font-size: 15px;
+          font-weight: 600;
+          flex-shrink: 0;
+        }
+
+        .marketing-pricing-card.is-featured .marketing-pricing-row.is-cost strong {
+          color: #fff;
+        }
+
+        .marketing-pricing-row.is-included {
+          justify-content: flex-start;
+        }
+
+        .marketing-pricing-row .row-check {
           width: 18px;
           height: 18px;
           border-radius: 50%;
@@ -1869,9 +1961,48 @@ export default function LandingPage() {
           flex-shrink: 0;
         }
 
-        .marketing-pricing-card.is-featured li span {
+        .marketing-pricing-card.is-featured .row-check {
           background: rgba(255, 255, 255, 0.15);
           color: #fff;
+        }
+
+        .marketing-pricing-total {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: 16px;
+          border-top: 1px solid var(--border);
+          padding-top: 20px;
+          margin-bottom: 28px;
+        }
+
+        .marketing-pricing-card.is-featured .marketing-pricing-total {
+          border-top-color: rgba(255, 255, 255, 0.14);
+        }
+
+        .marketing-pricing-total span,
+        .marketing-pricing-total small {
+          display: block;
+        }
+
+        .marketing-pricing-total span {
+          color: var(--ink2);
+          font-weight: 500;
+          margin-bottom: 4px;
+        }
+
+        .marketing-pricing-total small {
+          color: var(--ink3);
+          line-height: 1.5;
+        }
+
+        .marketing-pricing-total strong {
+          font-family: var(--font-display);
+          font-size: 36px;
+          line-height: 1;
+          letter-spacing: -0.04em;
+          color: var(--ink);
+          flex-shrink: 0;
         }
 
         .marketing-testimonial-card .stars {
@@ -1936,6 +2067,14 @@ export default function LandingPage() {
           margin-bottom: 36px;
         }
 
+        .marketing-cta-actions {
+          justify-content: center;
+        }
+
+        .marketing-cta-actions .marketing-btn-lg {
+          min-width: 196px;
+        }
+
         .marketing-footer {
           background: var(--ink);
           padding: 64px 0 40px;
@@ -1997,6 +2136,14 @@ export default function LandingPage() {
         }
 
         @media (max-width: 1024px) {
+          .marketing-hero-body {
+            display: block;
+          }
+
+          .marketing-hero-grid {
+            grid-template-columns: 1fr;
+          }
+
           .marketing-hero-visual {
             display: none;
           }
@@ -2018,6 +2165,29 @@ export default function LandingPage() {
             display: none;
           }
 
+          .marketing-nav-inner {
+            gap: 12px;
+          }
+
+          .marketing-nav-cta {
+            gap: 8px;
+          }
+
+          .marketing-nav-cta .btn {
+            padding: 10px 14px;
+            font-size: 12px;
+          }
+
+          .marketing-mobile-marketplace {
+            display: inline-flex;
+          }
+
+          .marketing-nav.is-scrolled .marketing-mobile-marketplace {
+            background: var(--accent-light);
+            color: var(--accent);
+            border-color: rgba(26, 58, 42, 0.14);
+          }
+
           .marketing-hero-body {
             padding-top: 100px;
             padding-bottom: 60px;
@@ -2037,10 +2207,6 @@ export default function LandingPage() {
           .marketing-steps,
           .marketing-footer-top {
             grid-template-columns: 1fr;
-          }
-
-          .marketing-pricing-card.is-featured {
-            transform: none;
           }
 
           .marketing-roles,

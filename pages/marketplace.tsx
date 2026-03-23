@@ -1,6 +1,8 @@
+import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
 import { apiRequest } from "../lib/api";
+import { LOGO_PATH } from "../lib/site";
 
 type ListingStatus = "vacant" | "in_process" | "occupied";
 type ProcessStep = "verification" | "reservation" | "clearance";
@@ -128,6 +130,299 @@ type BedFilter = "any" | "1" | "2" | "3" | "4+";
 const BED_FILTERS: BedFilter[] = ["any", "1", "2", "3", "4+"];
 
 const fmt = (value: number) => `₦${value.toLocaleString("en-NG")}`;
+const MARKETPLACE_PAGE_GUTTER = "clamp(20px, 2vw, 32px)";
+
+function MarketplaceSiteHeader() {
+  const navLinkStyle = {
+    color: BRAND.textMuted,
+    textDecoration: "none",
+    fontSize: 14,
+    padding: "8px 12px",
+    borderRadius: 10,
+  } as const;
+
+  const buttonStyle = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "11px 16px",
+    borderRadius: 12,
+    fontSize: 14,
+    fontWeight: 600,
+    textDecoration: "none",
+  } as const;
+
+  return (
+    <header
+      style={{
+        background: `linear-gradient(180deg, ${BRAND.header} 0%, ${BRAND.headerEnd} 100%)`,
+        borderBottom: `1px solid ${BRAND.surfaceSoft}`,
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          padding: `18px ${MARKETPLACE_PAGE_GUTTER}`,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <Link
+            href="/"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              textDecoration: "none",
+            }}
+          >
+            <img
+              src={LOGO_PATH}
+              alt="DoorRent logo"
+              style={{
+                width: 42,
+                height: 42,
+                objectFit: "contain",
+              }}
+            />
+            <span
+              style={{
+                fontFamily: '"DM Serif Display", Georgia, serif',
+                fontSize: 22,
+                letterSpacing: "-0.02em",
+                color: BRAND.text,
+              }}
+            >
+              DoorRent
+            </span>
+          </Link>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "flex-end",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <Link href="/" style={navLinkStyle}>
+              Home
+            </Link>
+            <Link href="/#features" style={navLinkStyle}>
+              Features
+            </Link>
+            <Link href="/#pricing" style={navLinkStyle}>
+              Why it's free
+            </Link>
+            <Link
+              href="/portal"
+              style={{
+                ...buttonStyle,
+                background: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "#151712",
+              }}
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/portal"
+              style={{
+                ...buttonStyle,
+                background: "#1A6B4A",
+                border: "1px solid #1A6B4A",
+                color: "#ffffff",
+              }}
+            >
+              Get started →
+            </Link>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function MarketplaceSiteFooter() {
+  const headingStyle = {
+    color: "rgba(255,255,255,0.58)",
+    fontSize: 12,
+    fontWeight: 700,
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    marginBottom: 16,
+  };
+
+  const listStyle = {
+    listStyle: "none",
+    display: "grid",
+    gap: 10,
+    padding: 0,
+    margin: 0,
+  } as const;
+
+  const linkStyle = {
+    color: BRAND.textMuted,
+    textDecoration: "none",
+    fontSize: 15,
+    lineHeight: 1.6,
+  } as const;
+
+  return (
+    <footer
+      style={{
+        background: BRAND.header,
+        borderTop: `1px solid ${BRAND.surfaceSoft}`,
+        padding: `56px ${MARKETPLACE_PAGE_GUTTER} 36px`,
+      }}
+    >
+      <div style={{ width: "100%" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 32,
+            marginBottom: 40,
+          }}
+        >
+          <div style={{ maxWidth: 340 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                marginBottom: 12,
+              }}
+            >
+              <img
+                src={LOGO_PATH}
+                alt="DoorRent logo"
+                style={{ width: 42, height: 42, objectFit: "contain" }}
+              />
+              <span
+                style={{
+                  fontFamily: '"DM Serif Display", Georgia, serif',
+                  fontSize: 22,
+                  letterSpacing: "-0.02em",
+                  color: BRAND.text,
+                }}
+              >
+                DoorRent
+              </span>
+            </div>
+            <p style={{ color: BRAND.textMuted, lineHeight: 1.7, fontSize: 15 }}>
+              The complete property management platform for Nigerian landlords.
+              Collect rent, manage tenants, and grow your portfolio.
+            </p>
+          </div>
+
+          <div>
+            <h4 style={headingStyle}>Product</h4>
+            <ul style={listStyle}>
+              <li>
+                <Link href="/marketplace" style={linkStyle}>
+                  Marketplace
+                </Link>
+              </li>
+              <li>
+                <Link href="/#features" style={linkStyle}>
+                  Features
+                </Link>
+              </li>
+              <li>
+                <Link href="/#pricing" style={linkStyle}>
+                  Why it's free
+                </Link>
+              </li>
+              <li>
+                <Link href="/#roles" style={linkStyle}>
+                  For Landlords
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 style={headingStyle}>Company</h4>
+            <ul style={listStyle}>
+              <li>
+                <Link href="/#testimonials" style={linkStyle}>
+                  Testimonials
+                </Link>
+              </li>
+              <li>
+                <Link href="/portal" style={linkStyle}>
+                  Live Demo
+                </Link>
+              </li>
+              <li>
+                <a href="mailto:hello@doorrent.com" style={linkStyle}>
+                  Contact
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4 style={headingStyle}>Legal</h4>
+            <ul style={listStyle}>
+              <li>
+                <a href="/" style={linkStyle}>
+                  Privacy Policy
+                </a>
+              </li>
+              <li>
+                <a href="/" style={linkStyle}>
+                  Terms of Service
+                </a>
+              </li>
+              <li>
+                <a href="/" style={linkStyle}>
+                  Security
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div
+          style={{
+            borderTop: `1px solid ${BRAND.surfaceSoft}`,
+            paddingTop: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+            flexWrap: "wrap",
+          }}
+        >
+          <p style={{ color: BRAND.textSoft, fontSize: 13 }}>
+            © 2026 DoorRent – Subsidiary of ReSuply Technologies Limited. All rights reserved.
+          </p>
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+            <a href="https://x.com" target="_blank" rel="noreferrer" style={linkStyle}>
+              Twitter / X
+            </a>
+            <a href="https://linkedin.com" target="_blank" rel="noreferrer" style={linkStyle}>
+              LinkedIn
+            </a>
+            <a href="https://instagram.com" target="_blank" rel="noreferrer" style={linkStyle}>
+              Instagram
+            </a>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
 
 function ProcessStepper({ step }: { step: ProcessStep }) {
   const cfg = PROCESS_STEPS[step];
@@ -1405,10 +1700,12 @@ export default function MarketplacePage() {
           fontFamily: '"DM Sans", system-ui, sans-serif',
         }}
       >
+        <MarketplaceSiteHeader />
+
         <div
           style={{
             background: `linear-gradient(180deg, ${BRAND.header} 0%, ${BRAND.headerEnd} 100%)`,
-            padding: "24px 24px 0",
+            padding: `24px ${MARKETPLACE_PAGE_GUTTER} 0`,
             position: "sticky",
             top: 0,
             zIndex: 100,
@@ -1784,7 +2081,7 @@ export default function MarketplacePage() {
           </div>
         </div>
 
-        <div style={{ padding: "16px 24px 80px" }}>
+        <div style={{ padding: `16px ${MARKETPLACE_PAGE_GUTTER} 80px` }}>
           <div
             style={{
               display: "flex",
@@ -1900,6 +2197,8 @@ export default function MarketplacePage() {
             </div>
           )}
         </div>
+
+        <MarketplaceSiteFooter />
 
         {selectedListing && (
           <DetailModal
