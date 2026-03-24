@@ -23,6 +23,10 @@ import type {
   TenantInviteRow,
   TeamMember,
 } from "../types/app";
+import {
+  resolveLandlordCapabilities,
+  type LandlordCapabilities,
+} from "../lib/landlord-access";
 
 export const landlordUser: AppUser = {
   name: "Babatunde Adeyemi",
@@ -30,7 +34,7 @@ export const landlordUser: AppUser = {
   initials: "BA",
 };
 
-export const landlordNav: NavSection[] = [
+const landlordNavSections: NavSection[] = [
   {
     section: "Main",
     items: [
@@ -75,6 +79,45 @@ export const landlordNav: NavSection[] = [
     ],
   },
 ];
+
+export function buildLandlordNav(capabilities?: Partial<LandlordCapabilities> | null) {
+  const resolved = resolveLandlordCapabilities({ capabilities });
+
+  return landlordNavSections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => {
+        if (item.href === "/landlord/agreements") {
+          return resolved.canManageAgreements;
+        }
+
+        if (item.href === "/landlord/payments") {
+          return resolved.canManagePayments;
+        }
+
+        if (item.href === "/landlord/receipts") {
+          return resolved.canViewReceipts;
+        }
+
+        if (item.href === "/landlord/reminders") {
+          return resolved.canManageReminders;
+        }
+
+        if (item.href === "/landlord/reports") {
+          return resolved.canViewReports;
+        }
+
+        if (item.href === "/landlord/caretakers") {
+          return resolved.canManageCaretakers;
+        }
+
+        return true;
+      }),
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
+export const landlordNav = buildLandlordNav();
 
 export const landlordHighlights: HighlightBanner[] = [
   {

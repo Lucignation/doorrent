@@ -7,8 +7,10 @@ export function formatNaira(amount: number) {
 export function normalizeBillingFrequency(
   frequency?: string | null,
 ): BillingFrequency {
-  if (frequency === "daily" || frequency === "monthly" || frequency === "yearly") {
-    return frequency;
+  const normalized = frequency?.trim().toLowerCase();
+
+  if (normalized === "daily" || normalized === "monthly" || normalized === "yearly") {
+    return normalized;
   }
 
   return "yearly";

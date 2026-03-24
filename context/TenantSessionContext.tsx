@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { LandlordCapabilities } from "../lib/landlord-access";
 import {
   createContext,
   useCallback,
@@ -54,6 +55,11 @@ export interface LandlordPortalIdentity {
   email: string;
   phone?: string | null;
   fullName: string;
+  plan?: "basic" | "full_service";
+  planKey?: string | null;
+  subscriptionModel?: string | null;
+  subscriptionInterval?: string | null;
+  capabilities?: LandlordCapabilities;
 }
 
 export interface LandlordPortalSession {

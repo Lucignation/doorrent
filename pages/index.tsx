@@ -225,20 +225,21 @@ const BASIC_YEARLY_SAVINGS_PERCENT = Math.round(
 );
 
 const basicPlanFeatures = [
-  "Tenant management",
-  "Rent reminders",
-  "Property marketplace listing",
+  "Arranging Google Meet meetings with one tenant",
+  "Arranging Google Meet meetings with all tenants",
+  "Units management",
+  "Properties management",
 ];
 
 const fullServiceFeatures = [
-  "Tenant management",
-  "Rent reminders",
-  "Property marketplace listing",
-  "Automated rent collection",
-  "Digital agreement signing",
+  "Agreements",
+  "Payments",
+  "Receipts",
+  "Reminders & automations",
   "Caretaker access",
-  "Payment dashboard and reports",
-  "Late payment enforcement",
+  "Reports",
+  "Account updates",
+  "Team member management",
 ];
 
 const testimonials = [
@@ -719,9 +720,10 @@ export default function LandingPage() {
                 <em>Built around how rent is collected.</em>
               </h2>
               <span>
-                Basic lets landlords choose monthly or yearly billing.
-                Full Service charges a 3% base commission at collection time, scaled by the
-                rent years paid upfront.
+                Basic lets landlords choose monthly or yearly billing for property and unit
+                management. Full Service adds the operational tools Basic does not include,
+                and charges a 3% base commission at collection time, scaled by the rent
+                years paid upfront.
               </span>
             </div>
 
@@ -749,8 +751,8 @@ export default function LandingPage() {
                 <div className="plan-price">{basicPriceLabel}</div>
                 <div className="plan-sub">{basicBillingNote}</div>
                 <p className="plan-description">
-                  Subscription plan for landlords who want tenant management, rent reminders,
-                  and marketplace listing in one clean workflow.
+                  Subscription plan for landlords who want to manage properties and units,
+                  and arrange Google Meet sessions with a tenant or the full tenant base.
                 </p>
                 {basicBillingCycle === "yearly" ? (
                   <div className="marketing-pricing-highlight">
@@ -791,8 +793,9 @@ export default function LandingPage() {
                 <div className="plan-price">3%</div>
                 <div className="plan-sub">base per rent year covered</div>
                 <p className="plan-description">
-                  Commission model with automated rent collection, agreements, caretaker
-                  access, reports, and late payment enforcement.
+                  Popular choice for landlords who need the operational tools that Basic
+                  does not include, from agreements and collections to reports and account
+                  controls.
                 </p>
                 <div className="marketing-pricing-highlight is-featured">
                   No monthly subscription. DoorRent applies a 3% base commission per rent

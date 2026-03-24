@@ -12,6 +12,10 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import {
+  canAccessLandlordPath,
+  resolveLandlordCapabilities,
+} from "../../lib/landlord-access";
 import type {
   HighlightBanner,
   PaymentRecord,
@@ -138,6 +142,16 @@ export default function LandlordDashboardPage() {
 
   const occupiedPercent = overview?.occupancyBreakdown.percent ?? 0;
   const occupiedDash = (occupiedPercent / 100) * circleCircumference;
+  const landlordCapabilities = resolveLandlordCapabilities({
+    capabilities: landlordSession?.landlord.capabilities,
+    subscriptionModel: landlordSession?.landlord.subscriptionModel,
+  });
+  const visibleHighlights = (overview?.highlights ?? []).filter((item) =>
+    canAccessLandlordPath(item.cta.href, landlordCapabilities),
+  );
+  const visibleStats = (overview?.stats ?? []).filter((item) =>
+    canAccessLandlordPath(item.href, landlordCapabilities),
+  );
 
   return (
     <>
@@ -166,7 +180,7 @@ export default function LandlordDashboardPage() {
           />
         ) : null}
 
-        {overview?.highlights.map((item) => (
+        {visibleHighlights.map((item) => (
           <AlertBanner
             key={item.title}
             tone={item.tone}
@@ -178,20 +192,22 @@ export default function LandlordDashboardPage() {
         ))}
 
         <div className="stats-grid">
-          {(overview?.stats ?? []).map((stat) => (
+          {visibleStats.map((stat) => (
             <StatCard key={stat.label} {...stat} />
           ))}
         </div>
 
         <div className="grid-2" style={{ marginBottom: 20 }}>
-          <SectionCard
-            title="Rent Collection (12 months)"
-            subtitle="Monthly rent received from live payments"
-            actionLabel="Full report →"
-            actionHref="/landlord/payments"
-          >
-            <BarChart data={overview?.collectionSeries ?? []} accent="forest" />
-          </SectionCard>
+          {landlordCapabilities.canManagePayments ? (
+            <SectionCard
+              title="Rent Collection (12 months)"
+              subtitle="Monthly rent received from live payments"
+              actionLabel="Full report →"
+              actionHref="/landlord/payments"
+            >
+              <BarChart data={overview?.collectionSeries ?? []} accent="forest" />
+            </SectionCard>
+          ) : null}
 
           <div className="card">
             <div className="card-header">
@@ -249,17 +265,19 @@ export default function LandlordDashboardPage() {
           </div>
         </div>
 
-        <SectionCard
-          title="Recent Payments"
-          actionLabel="View all"
-          actionHref="/landlord/payments"
-        >
-          <DataTable
-            columns={paymentColumns}
-            rows={overview?.recentPayments ?? []}
-            emptyMessage={loading ? "Loading payments..." : "No payments yet."}
-          />
-        </SectionCard>
+        {landlordCapabilities.canManagePayments ? (
+          <SectionCard
+            title="Recent Payments"
+            actionLabel="View all"
+            actionHref="/landlord/payments"
+          >
+            <DataTable
+              columns={paymentColumns}
+              rows={overview?.recentPayments ?? []}
+              emptyMessage={loading ? "Loading payments..." : "No payments yet."}
+            />
+          </SectionCard>
+        ) : null}
       </LandlordPortalShell>
     </>
   );

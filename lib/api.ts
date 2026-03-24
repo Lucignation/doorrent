@@ -2,6 +2,7 @@ export interface ApiSuccessEnvelope<T> {
   success?: boolean;
   message?: string;
   data?: T;
+  issues?: Array<{ message?: string }>;
 }
 
 function normalizeBaseUrl(value: string) {
@@ -47,19 +48,17 @@ export async function apiRequest<T>(
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  const payload = (await response.json().catch(() => null)) as
-    | ApiSuccessEnvelope<T>
-    | null;
+  const payload = (await response.json().catch(() => null)) as ApiSuccessEnvelope<T> | null;
+  const issuesMessage = payload?.issues?.find((issue) => issue.message)?.message;
+  const message =
+    payload?.message ?? issuesMessage ?? "We could not complete your request.";
 
-  if (!response.ok || !payload?.data) {
-    throw new ApiError(
-      payload?.message ?? "We could not complete your request.",
-      response.status,
-    );
+  if (!response.ok) {
+    throw new ApiError(message, response.status);
   }
 
   return {
-    data: payload.data,
-    message: payload.message,
+    data: payload?.data as T,
+    message,
   };
 }

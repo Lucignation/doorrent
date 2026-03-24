@@ -42,6 +42,48 @@ type LandlordAuthResult = {
   };
 };
 
+type LandlordOnboardingResult = {
+  flow: "onboarding_required";
+  landlord: LandlordPortalIdentity;
+  onboarding: {
+    landlordId: string;
+    email: string;
+    emailVerificationDelivery: "sent" | "failed" | "preview";
+    emailVerificationExpiresAt: string;
+    emailVerificationLinkPreview?: string;
+    phoneOtpDelivery: "sent" | "failed" | "preview";
+    phoneOtpExpiresAt: string;
+    phoneOtpPreview?: string;
+    requiresPayment: boolean;
+    checkout?: {
+      reference: string;
+      authorizationUrl: string;
+      accessCode: string;
+      amount: number;
+      amountLabel: string;
+      interval: "monthly" | "yearly";
+      provider: "paystack";
+    } | null;
+  };
+};
+
+type LandlordRegisterResult = LandlordAuthResult | LandlordOnboardingResult;
+
+type LandlordOnboardingState = {
+  landlordId: string;
+  email?: string;
+  emailVerificationDelivery?: "sent" | "failed" | "preview";
+  emailVerificationExpiresAt?: string;
+  emailVerificationLinkPreview?: string;
+  emailToken?: string;
+  phoneOtpDelivery?: "sent" | "failed" | "preview";
+  phoneOtpExpiresAt?: string;
+  phoneOtpPreview?: string;
+  requiresPayment?: boolean;
+  checkout?: LandlordOnboardingResult["onboarding"]["checkout"];
+  paymentReference?: string;
+};
+
 type AdminAuthResult = {
   superAdmin: AdminPortalIdentity;
   dashboardPath: string;
@@ -91,6 +133,43 @@ const ADMIN_PLACEHOLDERS = {
   email: "admin@doorrent.com",
   password: "password123",
 };
+
+const LANDLORD_ONBOARDING_STORAGE_KEY = "doorrent.landlord.onboarding";
+
+function loadStoredLandlordOnboarding() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(LANDLORD_ONBOARDING_STORAGE_KEY);
+
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw) as LandlordOnboardingState;
+  } catch {
+    window.localStorage.removeItem(LANDLORD_ONBOARDING_STORAGE_KEY);
+    return null;
+  }
+}
+
+function persistLandlordOnboarding(value: LandlordOnboardingState | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  if (!value) {
+    window.localStorage.removeItem(LANDLORD_ONBOARDING_STORAGE_KEY);
+    return;
+  }
+
+  window.localStorage.setItem(
+    LANDLORD_ONBOARDING_STORAGE_KEY,
+    JSON.stringify(value),
+  );
+}
 
 type PortalExperienceProps = {
   forcedRole: RoleKey;
@@ -173,6 +252,11 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
   const [resetFeedback, setResetFeedback] = useState("");
+  const [landlordOnboarding, setLandlordOnboarding] =
+    useState<LandlordOnboardingState | null>(null);
+  const [landlordOnboardingOtp, setLandlordOnboardingOtp] = useState("");
+  const [landlordOnboardingBusy, setLandlordOnboardingBusy] = useState(false);
+  const [landlordOnboardingFeedback, setLandlordOnboardingFeedback] = useState("");
 
   useEffect(() => {
     if (!router.isReady) {
@@ -251,6 +335,73 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
       setResetFeedback("");
     }
   }, [workspaceAuthView]);
+
+  function saveLandlordOnboardingState(value: LandlordOnboardingState | null) {
+    setLandlordOnboarding(value);
+    persistLandlordOnboarding(value);
+  }
+
+  function clearLandlordOnboardingState() {
+    saveLandlordOnboardingState(null);
+    setLandlordOnboardingOtp("");
+    setLandlordOnboardingFeedback("");
+  }
+
+  useEffect(() => {
+    if (!router.isReady || forcedRole !== "landlord") {
+      return;
+    }
+
+    const storedOnboarding = loadStoredLandlordOnboarding();
+    const landlordOnboardingId =
+      typeof router.query.landlordOnboardingId === "string"
+        ? router.query.landlordOnboardingId
+        : null;
+    const emailToken =
+      typeof router.query.emailToken === "string" ? router.query.emailToken : "";
+    const paymentReference =
+      typeof router.query.reference === "string"
+        ? router.query.reference
+        : typeof router.query.trxref === "string"
+          ? router.query.trxref
+          : "";
+
+    if (!landlordOnboardingId && !storedOnboarding) {
+      return;
+    }
+
+    const nextState =
+      storedOnboarding &&
+      (!landlordOnboardingId || storedOnboarding.landlordId === landlordOnboardingId)
+        ? {
+            ...storedOnboarding,
+            emailToken: emailToken || storedOnboarding.emailToken,
+            paymentReference: paymentReference || storedOnboarding.paymentReference,
+          }
+        : landlordOnboardingId
+          ? {
+              landlordId: landlordOnboardingId,
+              emailToken: emailToken || undefined,
+              paymentReference: paymentReference || undefined,
+            }
+          : storedOnboarding;
+
+    if (!nextState) {
+      return;
+    }
+
+    setRole("landlord");
+    setLandlordMode("register");
+    setWorkspaceAuthView("auth");
+    saveLandlordOnboardingState(nextState);
+  }, [
+    forcedRole,
+    router.isReady,
+    router.query.emailToken,
+    router.query.landlordOnboardingId,
+    router.query.reference,
+    router.query.trxref,
+  ]);
 
   async function handleTenantRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -345,7 +496,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
     try {
       if (role === "landlord") {
         if (landlordMode === "register") {
-          const { data } = await apiRequest<LandlordAuthResult>("/auth/register", {
+          const { data } = await apiRequest<LandlordRegisterResult>("/auth/register", {
             method: "POST",
             body: {
               companyName: landlordCompanyName,
@@ -363,13 +514,38 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
             },
           });
 
-          saveLandlordSession({
-            token: data.session.token,
-            expiresAt: data.session.expiresAt,
-            landlord: data.landlord,
+          if ("session" in data) {
+            clearLandlordOnboardingState();
+            saveLandlordSession({
+              token: data.session.token,
+              expiresAt: data.session.expiresAt,
+              landlord: data.landlord,
+            });
+            showToast("Landlord account created", "success");
+            await router.replace(data.dashboardPath);
+            return;
+          }
+
+          saveLandlordOnboardingState({
+            landlordId: data.onboarding.landlordId,
+            email: data.onboarding.email,
+            emailVerificationDelivery: data.onboarding.emailVerificationDelivery,
+            emailVerificationExpiresAt: data.onboarding.emailVerificationExpiresAt,
+            emailVerificationLinkPreview: data.onboarding.emailVerificationLinkPreview,
+            phoneOtpDelivery: data.onboarding.phoneOtpDelivery,
+            phoneOtpExpiresAt: data.onboarding.phoneOtpExpiresAt,
+            phoneOtpPreview: data.onboarding.phoneOtpPreview,
+            requiresPayment: data.onboarding.requiresPayment,
+            checkout: data.onboarding.checkout,
+            paymentReference: data.onboarding.checkout?.reference,
           });
-          showToast("Landlord account created", "success");
-          await router.replace(data.dashboardPath);
+          setLandlordOnboardingOtp("");
+          setLandlordOnboardingFeedback(
+            data.onboarding.requiresPayment
+              ? "Finish email verification, enter the OTP, and complete the Paystack checkout to activate this landlord account."
+              : "Finish email verification and enter the OTP to activate this landlord account.",
+          );
+          showToast("Landlord onboarding started", "success");
           return;
         }
 
@@ -386,6 +562,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
           expiresAt: data.session.expiresAt,
           landlord: data.landlord,
         });
+        clearLandlordOnboardingState();
         showToast("Landlord login successful", "success");
         await router.replace(data.dashboardPath);
         return;
@@ -451,6 +628,44 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
     }
   }
 
+  async function handleLandlordOnboardingCompletion() {
+    if (!landlordOnboarding?.landlordId) {
+      return;
+    }
+
+    setLandlordOnboardingBusy(true);
+    setLandlordOnboardingFeedback("");
+
+    try {
+      const { data } = await apiRequest<LandlordAuthResult>("/auth/register/complete", {
+        method: "POST",
+        body: {
+          landlordId: landlordOnboarding.landlordId,
+          emailToken: landlordOnboarding.emailToken || undefined,
+          phoneOtpCode: landlordOnboardingOtp || undefined,
+          paymentReference: landlordOnboarding.paymentReference || undefined,
+        },
+      });
+
+      clearLandlordOnboardingState();
+      saveLandlordSession({
+        token: data.session.token,
+        expiresAt: data.session.expiresAt,
+        landlord: data.landlord,
+      });
+      showToast("Landlord account activated", "success");
+      await router.replace(data.dashboardPath);
+    } catch (error) {
+      setLandlordOnboardingFeedback(
+        error instanceof Error
+          ? error.message
+          : "We could not complete landlord onboarding.",
+      );
+    } finally {
+      setLandlordOnboardingBusy(false);
+    }
+  }
+
   async function handlePasswordReset(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setResetBusy(true);
@@ -494,6 +709,115 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
       role === "landlord"
         ? landlordSession?.landlord.fullName
         : adminSession?.superAdmin.fullName;
+
+    if (
+      role === "landlord" &&
+      landlordMode === "register" &&
+      workspaceAuthView === "auth" &&
+      landlordOnboarding
+    ) {
+      return (
+        <>
+          <div className="tenant-auth-panel">
+            <div className="tenant-auth-panel-title">Finish landlord onboarding</div>
+            <div className="tenant-auth-panel-copy">
+              Complete the verification steps for{" "}
+              {landlordOnboarding.email || "your landlord account"} before DoorRent signs
+              you in.
+            </div>
+          </div>
+
+          <div className="tenant-auth-preview">
+            <div className="tenant-auth-preview-title">Step 1: Verify email</div>
+            <div className="tenant-auth-preview-copy">
+              {landlordOnboarding.emailToken
+                ? "Email verification link detected for this account."
+                : landlordOnboarding.emailVerificationDelivery === "sent"
+                  ? "Open the verification link from your inbox."
+                  : "Use the preview verification link below in this environment."}
+            </div>
+            {landlordOnboarding.emailVerificationLinkPreview ? (
+              <div className="tenant-auth-preview-line">
+                <strong>Verification link:</strong>{" "}
+                <a href={landlordOnboarding.emailVerificationLinkPreview}>
+                  Open email verification
+                </a>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="tenant-auth-preview">
+            <div className="tenant-auth-preview-title">Step 2: Enter phone OTP</div>
+            <div className="tenant-auth-preview-copy">
+              Enter the 6-digit verification code prepared for this landlord registration.
+            </div>
+            {landlordOnboarding.phoneOtpPreview ? (
+              <div className="tenant-auth-preview-line">
+                <strong>Preview OTP:</strong> {landlordOnboarding.phoneOtpPreview}
+              </div>
+            ) : null}
+            <div className="form-group" style={{ marginTop: 12 }}>
+              <label className="form-label">Phone verification code</label>
+              <input
+                className="form-input"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="Enter 6-digit OTP"
+                value={landlordOnboardingOtp}
+                onChange={(event) =>
+                  setLandlordOnboardingOtp(
+                    event.target.value.replace(/\D/g, "").slice(0, 6),
+                  )
+                }
+              />
+            </div>
+          </div>
+
+          {landlordOnboarding.checkout ? (
+            <div className="tenant-auth-preview">
+              <div className="tenant-auth-preview-title">Step 3: Pay with Paystack</div>
+              <div className="tenant-auth-preview-copy">
+                Complete your Basic checkout before DoorRent activates this landlord
+                account.
+              </div>
+              <div className="tenant-auth-preview-line">
+                <strong>Checkout:</strong>{" "}
+                <a href={landlordOnboarding.checkout.authorizationUrl}>Continue to Paystack</a>
+              </div>
+              <div className="tenant-auth-preview-line">
+                <strong>Reference:</strong>{" "}
+                {landlordOnboarding.paymentReference || landlordOnboarding.checkout.reference}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="tenant-auth-actions">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={landlordOnboardingBusy || landlordOnboardingOtp.length !== 6}
+              onClick={() => void handleLandlordOnboardingCompletion()}
+            >
+              {landlordOnboardingBusy ? "Finishing..." : "Complete onboarding"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                clearLandlordOnboardingState();
+                void router.replace("/portal");
+              }}
+            >
+              Start over
+            </button>
+          </div>
+
+          {landlordOnboardingFeedback ? (
+            <div className="tenant-auth-feedback">{landlordOnboardingFeedback}</div>
+          ) : null}
+        </>
+      );
+    }
 
     if (currentSession && currentName && workspaceAuthView === "auth") {
       return (
@@ -745,6 +1069,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                 placeholder={LANDLORD_PLACEHOLDERS.phone}
                 value={landlordPhone}
                 onChange={(event) => setLandlordPhone(event.target.value)}
+                required
               />
             </div>
           ) : null}
@@ -776,9 +1101,9 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                 <div className="td-muted" style={{ marginTop: 6 }}>
                   {landlordSubscriptionModel === "SUBSCRIPTION"
                     ? landlordSubscriptionInterval === "YEARLY"
-                      ? "Basic annual billing: ₦95,000/year discounted from ₦102,000."
-                      : "Basic monthly billing: ₦8,500/month."
-                    : "Full Service: 3% base commission per rent year covered, charged when rent is collected."}
+                      ? "Basic annual billing: ₦95,000/year for properties, units, and Google Meet scheduling."
+                      : "Basic monthly billing: ₦8,500/month for properties, units, and Google Meet scheduling."
+                    : "Full Service unlocks agreements, payments, receipts, caretakers, reports, reminders, and account updates."}
                 </div>
               </div>
 

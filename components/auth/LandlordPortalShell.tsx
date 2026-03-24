@@ -1,10 +1,11 @@
 import { useRouter } from "next/router";
 import { useEffect } from "react";
-import { landlordNav } from "../../data/landlord";
+import { buildLandlordNav } from "../../data/landlord";
 import {
   useLandlordPortalSession,
 } from "../../context/TenantSessionContext";
 import AppShell from "../layout/AppShell";
+import { resolveLandlordCapabilities } from "../../lib/landlord-access";
 
 interface LandlordPortalShellProps {
   topbarTitle: string;
@@ -48,6 +49,11 @@ export default function LandlordPortalShell({
     return null;
   }
 
+  const landlordCapabilities = resolveLandlordCapabilities({
+    capabilities: landlordSession.landlord.capabilities,
+    subscriptionModel: landlordSession.landlord.subscriptionModel,
+  });
+
   return (
     <AppShell
       user={{
@@ -57,7 +63,7 @@ export default function LandlordPortalShell({
       }}
       topbarTitle={topbarTitle}
       breadcrumb={breadcrumb}
-      navSections={landlordNav}
+      navSections={buildLandlordNav(landlordCapabilities)}
     >
       {children}
     </AppShell>

@@ -10,6 +10,7 @@ import {
   formatBillingSchedule,
   formatNaira,
   monthlyEquivalentFromBilling,
+  normalizeBillingFrequency,
 } from "../../lib/rent";
 import DataTable from "../../components/ui/DataTable";
 import IdentityCell from "../../components/ui/IdentityCell";
@@ -176,7 +177,7 @@ export default function LandlordUnitsPage() {
     setEditForm({
       unitNumber: unit.unit,
       type: unit.type,
-      billingFrequency: unit.billingFrequency ?? "yearly",
+      billingFrequency: normalizeBillingFrequency(unit.billingFrequency),
       billingCyclePrice: unit.billingCyclePrice
         ? String(unit.billingCyclePrice)
         : unit.annualRent

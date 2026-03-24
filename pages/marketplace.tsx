@@ -286,6 +286,34 @@ function MarketplaceSiteHeader() {
   );
 }
 
+function frequencySuffix(frequency: string) {
+  const normalized = frequency.trim().toLowerCase();
+
+  if (normalized === "daily") {
+    return "/ day";
+  }
+
+  if (normalized === "yearly") {
+    return "/ year";
+  }
+
+  return "/ month";
+}
+
+function compactFrequencySuffix(frequency: string) {
+  const normalized = frequency.trim().toLowerCase();
+
+  if (normalized === "daily") {
+    return "/day";
+  }
+
+  if (normalized === "yearly") {
+    return "/yr";
+  }
+
+  return "/mo";
+}
+
 function MarketplaceSiteFooter() {
   const headingStyle = {
     color: "rgba(255,255,255,0.58)",
@@ -824,7 +852,7 @@ function DetailModal({
                     }}
                   >
                     {" "}
-                    / month
+                    {frequencySuffix(listing.frequency)}
                   </span>
                 </div>
                 {listing.serviceCharge > 0 && (
@@ -1525,7 +1553,7 @@ function ListingCard({
                   fontWeight: 400,
                 }}
               >
-                /mo
+                {compactFrequencySuffix(listing.frequency)}
               </span>
             </div>
             {listing.serviceCharge > 0 && (

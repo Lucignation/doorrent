@@ -1,12 +1,14 @@
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import PageHeader from "../../components/ui/PageHeader";
+import type { LandlordCapabilities } from "../../lib/landlord-access";
 
 interface LandlordSettingsResponse {
+  capabilities: LandlordCapabilities;
   profile: {
     id: string;
     companyName: string;
@@ -133,42 +135,6 @@ export default function LandlordSettingsPage() {
     const landlordToken = landlordSession.token;
     let cancelled = false;
 
-    async function loadSettings() {
-      setLoading(true);
-      setError("");
-
-      try {
-        const { data } = await apiRequest<LandlordSettingsResponse>(
-          "/landlord/settings",
-          {
-            token: landlordToken,
-          },
-        );
-
-        if (!cancelled) {
-          setSettings(data);
-          setSavedPayoutSnapshot({
-            bankName: data.payout.bankName ?? "",
-            accountNumber: data.payout.accountNumber ?? "",
-            accountName: data.payout.accountName ?? "",
-            isConfigured: Boolean(data.payout.isConfigured),
-          });
-        }
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : "We could not load your landlord settings.",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
     async function loadBanks() {
       setLoadingBanks(true);
 
@@ -199,8 +165,50 @@ export default function LandlordSettingsPage() {
       }
     }
 
+    async function loadSettings() {
+      setLoading(true);
+      setError("");
+
+      try {
+        const { data } = await apiRequest<LandlordSettingsResponse>(
+          "/landlord/settings",
+          {
+            token: landlordToken,
+          },
+        );
+
+        if (!cancelled) {
+          setSettings(data);
+          setSavedPayoutSnapshot({
+            bankName: data.payout.bankName ?? "",
+            accountNumber: data.payout.accountNumber ?? "",
+            accountName: data.payout.accountName ?? "",
+            isConfigured: Boolean(data.payout.isConfigured),
+          });
+
+          if (data.capabilities.canManageAccountUpdates) {
+            void loadBanks();
+          } else {
+            setAvailableBanks([]);
+            setLoadingBanks(false);
+          }
+        }
+      } catch (requestError) {
+        if (!cancelled) {
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "We could not load your landlord settings.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
     void loadSettings();
-    void loadBanks();
 
     return () => {
       cancelled = true;
@@ -417,6 +425,7 @@ export default function LandlordSettingsPage() {
   const payoutChangeRequiresOtp = Boolean(
     savedPayoutSnapshot?.isConfigured &&
       settings &&
+      settings.capabilities.canManageAccountUpdates &&
       (normalizePayoutValue(savedPayoutSnapshot.bankName) !==
         normalizePayoutValue(settings.payout.bankName) ||
         normalizePayoutValue(savedPayoutSnapshot.accountNumber) !==
@@ -424,6 +433,8 @@ export default function LandlordSettingsPage() {
         normalizePayoutValue(savedPayoutSnapshot.accountName) !==
           normalizePayoutValue(settings.payout.accountName)),
   );
+  const canManageAccountUpdates = settings?.capabilities.canManageAccountUpdates ?? true;
+  const canManageTeamMembers = settings?.capabilities.canManageTeamMembers ?? true;
 
   async function requestPayoutUpdateOtp() {
     if (!landlordSession?.token || !settings) {
@@ -813,219 +824,233 @@ export default function LandlordSettingsPage() {
               </div>
             </div>
 
-            <form className="card" style={{ marginTop: 16 }} onSubmit={submitPayout}>
-              <div className="card-header">
-                <div>
-                  <div className="card-title">Payout Settings</div>
-                  <div className="card-subtitle">
-                    Tenant payments settle through Paystack, and DoorRent calculates
-                    commission from the rent years covered by each collection. Multi-year
-                    upfront rent therefore increases the total commission on that transaction.
-                  </div>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Search Bank</label>
-                    <input
-                      className="form-input"
-                      placeholder="Search Nigerian bank"
-                      value={bankSearch}
-                      onChange={(event) => setBankSearch(event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Bank</label>
-                    <select
-                      className="form-input"
-                      value={settings?.payout.bankId ?? ""}
-                      onChange={(event) => selectPayoutBank(event.target.value)}
-                      disabled={loadingBanks}
-                    >
-                      <option value="">{loadingBanks ? "Loading banks..." : "Select bank"}</option>
-                      {filteredBanks.map((bank) => (
-                        <option key={bank.id} value={bank.id}>
-                          {bank.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
-                      {filteredBanks.length} bank{filteredBanks.length === 1 ? "" : "s"} found
+            {canManageAccountUpdates ? (
+              <form className="card" style={{ marginTop: 16 }} onSubmit={submitPayout}>
+                <div className="card-header">
+                  <div>
+                    <div className="card-title">Payout Settings</div>
+                    <div className="card-subtitle">
+                      Tenant payments settle through Paystack, and DoorRent calculates
+                      commission from the rent years covered by each collection. Multi-year
+                      upfront rent therefore increases the total commission on that transaction.
                     </div>
                   </div>
                 </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Account Number</label>
-                    <input
-                      className="form-input"
-                      inputMode="numeric"
-                      maxLength={10}
-                      placeholder="Enter 10-digit account number"
-                      value={settings?.payout.accountNumber ?? ""}
-                      onChange={(event) => updatePayoutAccountNumber(event.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Account Name</label>
-                    <input
-                      className="form-input"
-                      value={settings?.payout.accountName ?? ""}
-                      disabled
-                    />
-                    <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
-                      Account name is filled automatically after verification.
+                <div className="card-body">
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Search Bank</label>
+                      <input
+                        className="form-input"
+                        placeholder="Search Nigerian bank"
+                        value={bankSearch}
+                        onChange={(event) => setBankSearch(event.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Bank</label>
+                      <select
+                        className="form-input"
+                        value={settings?.payout.bankId ?? ""}
+                        onChange={(event) => selectPayoutBank(event.target.value)}
+                        disabled={loadingBanks}
+                      >
+                        <option value="">{loadingBanks ? "Loading banks..." : "Select bank"}</option>
+                        {filteredBanks.map((bank) => (
+                          <option key={bank.id} value={bank.id}>
+                            {bank.name}
+                          </option>
+                        ))}
+                      </select>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        {filteredBanks.length} bank{filteredBanks.length === 1 ? "" : "s"} found
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div
-                  style={{
-                    marginBottom: 14,
-                    padding: 12,
-                    borderRadius: "var(--radius-sm)",
-                    background: payoutResolutionError
-                      ? "var(--red-light)"
-                      : settings?.payout.accountName
-                        ? "var(--green-light)"
-                        : "var(--surface2)",
-                    border: `1px solid ${
-                      payoutResolutionError
-                        ? "rgba(192,57,43,0.18)"
-                        : settings?.payout.accountName
-                          ? "rgba(26,107,74,0.18)"
-                          : "var(--border)"
-                    }`,
-                    fontSize: 12,
-                    color: payoutResolutionError
-                      ? "var(--red)"
-                      : settings?.payout.accountName
-                        ? "var(--green)"
-                        : "var(--ink2)",
-                  }}
-                >
-                  {resolvingAccount
-                    ? "Verifying account number..."
-                    : payoutResolutionError
-                      ? payoutResolutionError
-                      : settings?.payout.accountName
-                        ? `Verified account name: ${settings.payout.accountName}`
-                        : "Select a bank and enter a valid 10-digit account number to verify the account name."}
-                </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Account Number</label>
+                      <input
+                        className="form-input"
+                        inputMode="numeric"
+                        maxLength={10}
+                        placeholder="Enter 10-digit account number"
+                        value={settings?.payout.accountNumber ?? ""}
+                        onChange={(event) => updatePayoutAccountNumber(event.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Account Name</label>
+                      <input
+                        className="form-input"
+                        value={settings?.payout.accountName ?? ""}
+                        disabled
+                      />
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        Account name is filled automatically after verification.
+                      </div>
+                    </div>
+                  </div>
 
-                {payoutChangeRequiresOtp ? (
                   <div
                     style={{
                       marginBottom: 14,
-                      padding: 14,
+                      padding: 12,
                       borderRadius: "var(--radius-sm)",
-                      background: "var(--surface2)",
-                      border: "1px solid var(--border)",
+                      background: payoutResolutionError
+                        ? "var(--red-light)"
+                        : settings?.payout.accountName
+                          ? "var(--green-light)"
+                          : "var(--surface2)",
+                      border: `1px solid ${
+                        payoutResolutionError
+                          ? "rgba(192,57,43,0.18)"
+                          : settings?.payout.accountName
+                            ? "rgba(26,107,74,0.18)"
+                            : "var(--border)"
+                      }`,
+                      fontSize: 12,
+                      color: payoutResolutionError
+                        ? "var(--red)"
+                        : settings?.payout.accountName
+                          ? "var(--green)"
+                          : "var(--ink2)",
                     }}
                   >
-                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
-                      Confirm bank-account change
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 4 }}>
-                      For security, DoorRent must email you a 6-digit code before you can
-                      change an existing payout account.
-                    </div>
+                    {resolvingAccount
+                      ? "Verifying account number..."
+                      : payoutResolutionError
+                        ? payoutResolutionError
+                        : settings?.payout.accountName
+                          ? `Verified account name: ${settings.payout.accountName}`
+                          : "Select a bank and enter a valid 10-digit account number to verify the account name."}
+                  </div>
+
+                  {payoutChangeRequiresOtp ? (
                     <div
                       style={{
-                        display: "flex",
-                        gap: 10,
-                        alignItems: "flex-end",
-                        flexWrap: "wrap",
-                        marginTop: 12,
+                        marginBottom: 14,
+                        padding: 14,
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--surface2)",
+                        border: "1px solid var(--border)",
                       }}
                     >
-                      <div style={{ flex: "1 1 220px" }}>
-                        <label className="form-label">Update OTP</label>
-                        <input
-                          className="form-input"
-                          inputMode="numeric"
-                          maxLength={6}
-                          placeholder="Enter 6-digit code"
-                          value={payoutOtpCode}
-                          onChange={(event) =>
-                            setPayoutOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))
-                          }
-                        />
+                      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>
+                        Confirm bank-account change
                       </div>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => void requestPayoutUpdateOtp()}
-                        disabled={requestingPayoutOtp}
+                      <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 4 }}>
+                        For security, DoorRent must email you a 6-digit code before you can
+                        change an existing payout account.
+                      </div>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          alignItems: "flex-end",
+                          flexWrap: "wrap",
+                          marginTop: 12,
+                        }}
                       >
-                        {requestingPayoutOtp ? "Sending..." : payoutOtpExpiresAt ? "Resend OTP" : "Send OTP"}
-                      </button>
-                    </div>
-                    <div style={{ marginTop: 8, fontSize: 12, color: "var(--ink3)" }}>
-                      {payoutOtpExpiresAt
-                        ? `This code expires at ${new Date(payoutOtpExpiresAt).toLocaleTimeString("en-NG", {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}.`
-                        : "Request a code when you are ready to save the new account."}
-                    </div>
-                    {payoutOtpPreview ? (
-                      <div style={{ marginTop: 8, fontSize: 12, color: "var(--amber)" }}>
-                        Preview code: <strong>{payoutOtpPreview}</strong>
+                        <div style={{ flex: "1 1 220px" }}>
+                          <label className="form-label">Update OTP</label>
+                          <input
+                            className="form-input"
+                            inputMode="numeric"
+                            maxLength={6}
+                            placeholder="Enter 6-digit code"
+                            value={payoutOtpCode}
+                            onChange={(event) =>
+                              setPayoutOtpCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                            }
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => void requestPayoutUpdateOtp()}
+                          disabled={requestingPayoutOtp}
+                        >
+                          {requestingPayoutOtp ? "Sending..." : payoutOtpExpiresAt ? "Resend OTP" : "Send OTP"}
+                        </button>
                       </div>
-                    ) : null}
-                  </div>
-                ) : null}
+                      <div style={{ marginTop: 8, fontSize: 12, color: "var(--ink3)" }}>
+                        {payoutOtpExpiresAt
+                          ? `This code expires at ${new Date(payoutOtpExpiresAt).toLocaleTimeString("en-NG", {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}.`
+                          : "Request a code when you are ready to save the new account."}
+                      </div>
+                      {payoutOtpPreview ? (
+                        <div style={{ marginTop: 8, fontSize: 12, color: "var(--amber)" }}>
+                          Preview code: <strong>{payoutOtpPreview}</strong>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
 
-                <div
-                  style={{
-                    padding: 14,
-                    background: settings?.payout.isVerified
-                      ? "var(--green-light)"
-                      : "var(--amber-light)",
-                    border: `1px solid ${
-                      settings?.payout.isVerified
-                        ? "rgba(26,107,74,0.18)"
-                        : "rgba(176,125,42,0.2)"
-                    }`,
-                    borderRadius: "var(--radius-sm)",
-                    marginBottom: 14,
-                  }}
-                >
                   <div
                     style={{
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: settings?.payout.isVerified ? "var(--green)" : "var(--amber)",
+                      padding: 14,
+                      background: settings?.payout.isVerified
+                        ? "var(--green-light)"
+                        : "var(--amber-light)",
+                      border: `1px solid ${
+                        settings?.payout.isVerified
+                          ? "rgba(26,107,74,0.18)"
+                          : "rgba(176,125,42,0.2)"
+                      }`,
+                      borderRadius: "var(--radius-sm)",
+                      marginBottom: 14,
                     }}
                   >
-                    {settings?.payout.isVerified
-                      ? "Paystack subaccount verified"
-                      : "Awaiting Paystack verification"}
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: settings?.payout.isVerified ? "var(--green)" : "var(--amber)",
+                      }}
+                    >
+                      {settings?.payout.isVerified
+                        ? "Paystack subaccount verified"
+                        : "Awaiting Paystack verification"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 4 }}>
+                      Subaccount: {settings?.payout.subaccountCode || "Not configured yet"}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 4 }}>
-                    Subaccount: {settings?.payout.subaccountCode || "Not configured yet"}
+
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-sm"
+                    disabled={
+                      savingPayout ||
+                      resolvingAccount ||
+                      !settings?.payout.bankId ||
+                      !settings?.payout.accountName ||
+                      (payoutChangeRequiresOtp && payoutOtpCode.length !== 6) ||
+                      (settings?.payout.accountNumber?.length ?? 0) !== 10
+                    }
+                  >
+                    {savingPayout ? "Saving..." : "Save Payout Settings"}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <div className="card" style={{ marginTop: 16 }}>
+                <div className="card-header">
+                  <div className="card-title">Account Updates</div>
+                </div>
+                <div className="card-body">
+                  <div className="td-muted">
+                    Basic landlords can update their company profile and notification preferences
+                    here. Payout setup and other account-update controls unlock on Full Service.
                   </div>
                 </div>
-
-                <button
-                  type="submit"
-                  className="btn btn-primary btn-sm"
-                  disabled={
-                    savingPayout ||
-                    resolvingAccount ||
-                    !settings?.payout.bankId ||
-                    !settings?.payout.accountName ||
-                    (payoutChangeRequiresOtp && payoutOtpCode.length !== 6) ||
-                    (settings?.payout.accountNumber?.length ?? 0) !== 10
-                  }
-                >
-                  {savingPayout ? "Saving..." : "Save Payout Settings"}
-                </button>
               </div>
-            </form>
+            )}
           </div>
 
           <div>
@@ -1066,83 +1091,85 @@ export default function LandlordSettingsPage() {
               </div>
             </div>
 
-            <div className="card">
-              <div className="card-header">
-                <div className="card-title">Team Members</div>
-              </div>
-              <div className="card-body">
-                {(settings?.teamMembers ?? []).map((member) => (
-                  <div
-                    key={member.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "8px 0",
-                      borderBottom: "1px solid var(--border)",
-                    }}
-                  >
-                    <div className="tenant-avatar">{member.initials}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500 }}>{member.name}</div>
-                      <div style={{ fontSize: 11, color: "var(--ink3)" }}>{member.email}</div>
+            {canManageTeamMembers ? (
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title">Team Members</div>
+                </div>
+                <div className="card-body">
+                  {(settings?.teamMembers ?? []).map((member) => (
+                    <div
+                      key={member.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "8px 0",
+                        borderBottom: "1px solid var(--border)",
+                      }}
+                    >
+                      <div className="tenant-avatar">{member.initials}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>{member.name}</div>
+                        <div style={{ fontSize: 11, color: "var(--ink3)" }}>{member.email}</div>
+                      </div>
+                      <span className="tag">{member.role}</span>
                     </div>
-                    <span className="tag">{member.role}</span>
-                  </div>
-                ))}
+                  ))}
 
-                <form onSubmit={inviteMember} style={{ marginTop: 16 }}>
-                  <div className="form-group">
-                    <label className="form-label">Team Member Name</label>
-                    <input
-                      className="form-input"
-                      value={teamInviteForm.name}
-                      onChange={(event) =>
-                        setTeamInviteForm((current) => ({
-                          ...current,
-                          name: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Email Address</label>
-                    <input
-                      className="form-input"
-                      type="email"
-                      value={teamInviteForm.email}
-                      onChange={(event) =>
-                        setTeamInviteForm((current) => ({
-                          ...current,
-                          email: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Role</label>
-                    <input
-                      className="form-input"
-                      value={teamInviteForm.role}
-                      onChange={(event) =>
-                        setTeamInviteForm((current) => ({
-                          ...current,
-                          role: event.target.value,
-                        }))
-                      }
-                      placeholder="Operations Manager"
-                      required
-                    />
-                  </div>
+                  <form onSubmit={inviteMember} style={{ marginTop: 16 }}>
+                    <div className="form-group">
+                      <label className="form-label">Team Member Name</label>
+                      <input
+                        className="form-input"
+                        value={teamInviteForm.name}
+                        onChange={(event) =>
+                          setTeamInviteForm((current) => ({
+                            ...current,
+                            name: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Email Address</label>
+                      <input
+                        className="form-input"
+                        type="email"
+                        value={teamInviteForm.email}
+                        onChange={(event) =>
+                          setTeamInviteForm((current) => ({
+                            ...current,
+                            email: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Role</label>
+                      <input
+                        className="form-input"
+                        value={teamInviteForm.role}
+                        onChange={(event) =>
+                          setTeamInviteForm((current) => ({
+                            ...current,
+                            role: event.target.value,
+                          }))
+                        }
+                        placeholder="Operations Manager"
+                        required
+                      />
+                    </div>
 
-                  <button type="submit" className="btn btn-secondary btn-sm" disabled={invitingMember}>
-                    {invitingMember ? "Sending..." : "+ Invite Member"}
-                  </button>
-                </form>
+                    <button type="submit" className="btn btn-secondary btn-sm" disabled={invitingMember}>
+                      {invitingMember ? "Sending..." : "+ Invite Member"}
+                    </button>
+                  </form>
+                </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
       </LandlordPortalShell>
