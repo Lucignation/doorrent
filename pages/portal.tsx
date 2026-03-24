@@ -329,6 +329,14 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
   }, [role]);
 
   useEffect(() => {
+    if (!router.isReady || forcedRole !== "landlord") return;
+    const mode = typeof router.query.mode === "string" ? router.query.mode : null;
+    if (mode === "register") {
+      setLandlordMode("register");
+    }
+  }, [router.isReady, router.query.mode, forcedRole]);
+
+  useEffect(() => {
     if (workspaceAuthView === "auth") {
       setForgotPasswordFeedback("");
       setForgotPasswordPreview(null);
@@ -986,24 +994,6 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
 
     return (
       <>
-        {role === "landlord" ? (
-          <div className="role-pills" style={{ marginBottom: 18 }}>
-            <button
-              type="button"
-              className={`role-pill ${landlordMode === "login" ? "active" : ""}`}
-              onClick={() => setLandlordMode("login")}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              className={`role-pill ${landlordMode === "register" ? "active" : ""}`}
-              onClick={() => setLandlordMode("register")}
-            >
-              Create account
-            </button>
-          </div>
-        ) : null}
 
         <form onSubmit={handleWorkspaceAuth}>
           {role === "landlord" && landlordMode === "register" ? (
@@ -1075,61 +1065,96 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
           ) : null}
 
           {role === "landlord" && landlordMode === "register" ? (
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <div className="password-input-wrap">
+                <input
+                  className="form-input"
+                  type={showPassword ? "text" : "password"}
+                  placeholder={LANDLORD_PLACEHOLDERS.password}
+                  value={authPassword}
+                  onChange={(event) => setAuthPassword(event.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {role === "landlord" && landlordMode === "register" ? (
             <>
               <div className="form-group">
-                <label className="form-label">Plan option</label>
-                <div className="role-pills" style={{ marginBottom: 0 }}>
+                <label className="form-label">Choose your plan</label>
+                <div className="plan-toggle">
                   <button
                     type="button"
-                    className={`role-pill ${
-                      landlordSubscriptionModel === "SUBSCRIPTION" ? "active" : ""
-                    }`}
+                    className={`plan-toggle-opt ${landlordSubscriptionModel === "SUBSCRIPTION" ? "active" : ""}`}
                     onClick={() => setLandlordSubscriptionModel("SUBSCRIPTION")}
                   >
                     Basic
                   </button>
                   <button
                     type="button"
-                    className={`role-pill ${
-                      landlordSubscriptionModel === "COMMISSION" ? "active" : ""
-                    }`}
+                    className={`plan-toggle-opt ${landlordSubscriptionModel === "COMMISSION" ? "active" : ""}`}
                     onClick={() => setLandlordSubscriptionModel("COMMISSION")}
                   >
                     Full Service
                   </button>
                 </div>
-                <div className="td-muted" style={{ marginTop: 6 }}>
-                  {landlordSubscriptionModel === "SUBSCRIPTION"
-                    ? landlordSubscriptionInterval === "YEARLY"
-                      ? "Basic annual billing: ₦95,000/year for properties, units, and Google Meet scheduling."
-                      : "Basic monthly billing: ₦8,500/month for properties, units, and Google Meet scheduling."
-                    : "Full Service unlocks agreements, payments, receipts, caretakers, reports, reminders, and account updates."}
+                <div className="plan-detail">
+                  {landlordSubscriptionModel === "SUBSCRIPTION" ? (
+                    <>
+                      <span className="plan-detail-price">
+                        {landlordSubscriptionInterval === "YEARLY" ? "₦95,000 / year" : "₦8,500 / month"}
+                      </span>
+                      <span className="plan-detail-features">Properties &amp; units · Google Meet scheduling · Tenant portal</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="plan-detail-price">3% per payment collected</span>
+                      <span className="plan-detail-features">Everything in Basic · Payments &amp; receipts · Agreements · Reports · Caretakers · Reminders</span>
+                    </>
+                  )}
                 </div>
               </div>
 
               {landlordSubscriptionModel === "SUBSCRIPTION" ? (
                 <div className="form-group">
                   <label className="form-label">Billing cycle</label>
-                  <select
-                    className="form-input"
-                    value={landlordSubscriptionInterval}
-                    onChange={(event) =>
-                      setLandlordSubscriptionInterval(
-                        event.target.value as "MONTHLY" | "YEARLY",
-                      )
-                    }
-                  >
-                    <option value="MONTHLY">Monthly - ₦8,500/month</option>
-                    <option value="YEARLY">Yearly - ₦95,000/year</option>
-                  </select>
+                  <div className="billing-toggle">
+                    <button
+                      type="button"
+                      className={`billing-opt ${landlordSubscriptionInterval === "MONTHLY" ? "active" : ""}`}
+                      onClick={() => setLandlordSubscriptionInterval("MONTHLY")}
+                    >
+                      Monthly
+                      <span>₦8,500 / month</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`billing-opt ${landlordSubscriptionInterval === "YEARLY" ? "active" : ""}`}
+                      onClick={() => setLandlordSubscriptionInterval("YEARLY")}
+                    >
+                      Yearly
+                      <span>₦95,000 / year · save 7%</span>
+                    </button>
+                  </div>
                 </div>
               ) : null}
 
               <div className="form-group">
-                <label className="form-label">Promo code</label>
+                <label className="form-label">Promo code <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(optional)</span></label>
                 <input
                   className="form-input"
-                  placeholder="Optional referral code"
+                  placeholder="Enter referral code"
                   value={landlordPromoCode}
                   onChange={(event) => setLandlordPromoCode(event.target.value.toUpperCase())}
                 />
@@ -1137,32 +1162,34 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
             </>
           ) : null}
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <div className="password-input-wrap">
-              <input
-                className="form-input"
-                type={showPassword ? "text" : "password"}
-                placeholder={
-                  role === "admin"
-                    ? ADMIN_PLACEHOLDERS.password
-                    : LANDLORD_PLACEHOLDERS.password
-                }
-                value={authPassword}
-                onChange={(event) => setAuthPassword(event.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle"
-                onClick={() => setShowPassword((current) => !current)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
-                aria-pressed={showPassword}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
+          {!(role === "landlord" && landlordMode === "register") ? (
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <div className="password-input-wrap">
+                <input
+                  className="form-input"
+                  type={showPassword ? "text" : "password"}
+                  placeholder={
+                    role === "admin"
+                      ? ADMIN_PLACEHOLDERS.password
+                      : LANDLORD_PLACEHOLDERS.password
+                  }
+                  value={authPassword}
+                  onChange={(event) => setAuthPassword(event.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : null}
 
           <div
             style={{
@@ -1172,10 +1199,12 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
               marginBottom: 20,
             }}
           >
-            <div className="checkbox-wrap">
-              <input type="checkbox" id="remember" defaultChecked />
-              <label htmlFor="remember">Remember me</label>
-            </div>
+            {!(role === "landlord" && landlordMode === "register") ? (
+              <div className="checkbox-wrap">
+                <input type="checkbox" id="remember" defaultChecked />
+                <label htmlFor="remember">Remember me</label>
+              </div>
+            ) : <div />}
             <span
               role={role === "landlord" && landlordMode === "register" ? undefined : "button"}
               tabIndex={role === "landlord" && landlordMode === "register" ? -1 : 0}
@@ -1197,11 +1226,28 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                 setWorkspaceAuthView("forgot");
               }}
             >
-              {role === "landlord" && landlordMode === "register"
-                ? "Start your landlord workspace"
-                : "Forgot password?"}
+              {!(role === "landlord" && landlordMode === "register") ? "Forgot password?" : ""}
             </span>
           </div>
+
+          {role === "landlord" && landlordMode === "register" ? (
+            <div className="form-group" style={{ marginBottom: 4 }}>
+              <div className="checkbox-wrap">
+                <input type="checkbox" id="terms-agree" required />
+                <label htmlFor="terms-agree" style={{ fontSize: 13, lineHeight: 1.5 }}>
+                  I agree to the{" "}
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--accent)", fontWeight: 600 }}
+                  >
+                    Terms and Conditions
+                  </Link>
+                </label>
+              </div>
+            </div>
+          ) : null}
 
           <button
             type="submit"
@@ -1224,7 +1270,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
         <div className="auth-link">
           {role === "landlord" ? (
             <>
-              {landlordMode === "register" ? "Already have an account? " : "Need a landlord account? "}
+              {landlordMode === "register" ? "Already a member? " : "Don't have an account? "}
               <button
                 type="button"
                 onClick={() =>
@@ -1232,20 +1278,19 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                 }
                 style={{
                   color: "var(--accent)",
-                  fontWeight: 500,
+                  fontWeight: 600,
                   background: "none",
                   border: "none",
                   cursor: "pointer",
+                  fontSize: "inherit",
                 }}
               >
-                {landlordMode === "register" ? "Sign in →" : "Create one →"}
+                {landlordMode === "register" ? "Sign in" : "Create account"}
               </button>
             </>
-          ) : (
-            <>
-              Super admin access is provisioned by DoorRent.
-            </>
-          )}
+          ) : role === "admin" ? (
+            <>Super admin access is provisioned by DoorRent.</>
+          ) : null}
         </div>
       </>
     );
@@ -1488,7 +1533,9 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                     ? "Set a new password"
                 : role === "admin"
                   ? "Internal admin access"
-                  : "Welcome back"}
+                  : landlordMode === "register"
+                    ? "Create your account"
+                    : "Welcome back"}
             </h2>
             <p>
               {role === "tenant"
@@ -1499,7 +1546,9 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                     ? "Create a fresh password for your DoorRent account."
                 : role === "admin"
                   ? "Internal DoorRent operations access."
-                  : "Sign in to your DoorRent landlord workspace"}
+                  : landlordMode === "register"
+                    ? "Set up your DoorRent landlord workspace."
+                    : "Sign in to your DoorRent landlord workspace"}
             </p>
 
             {role === "tenant" ? (

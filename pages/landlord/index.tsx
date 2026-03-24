@@ -39,6 +39,14 @@ interface OccupancyBreakdown {
 }
 
 interface LandlordOverviewResponse {
+  landlord: {
+    id: string;
+    name: string;
+    companyName: string;
+    email: string;
+    emailVerified: boolean;
+    phoneVerified: boolean;
+  };
   hero: {
     title: string;
     description: string;
@@ -59,11 +67,28 @@ const circleRadius = 46;
 const circleCircumference = 2 * Math.PI * circleRadius;
 
 export default function LandlordDashboardPage() {
-  const { dataRefreshVersion } = usePrototypeUI();
+  const { dataRefreshVersion, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [overview, setOverview] = useState<LandlordOverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [resendingVerification, setResendingVerification] = useState(false);
+
+  async function handleResendVerification() {
+    if (!landlordSession?.token || resendingVerification) return;
+    setResendingVerification(true);
+    try {
+      await apiRequest("/landlord/verify/resend", {
+        method: "POST",
+        token: landlordSession.token,
+      });
+      showToast("Verification email sent. Check your inbox.", "success");
+    } catch {
+      showToast("Could not send verification email. Try again later.", "error");
+    } finally {
+      setResendingVerification(false);
+    }
+  }
 
   useEffect(() => {
     if (!landlordSession?.token) {
@@ -171,6 +196,22 @@ export default function LandlordDashboardPage() {
             { label: "Add Property", modal: "add-property", variant: "primary" },
           ]}
         />
+
+        {overview && (!overview.landlord.emailVerified || !overview.landlord.phoneVerified) ? (
+          <AlertBanner
+            tone="amber"
+            title="Complete your account verification"
+            description={
+              !overview.landlord.emailVerified && !overview.landlord.phoneVerified
+                ? "Your email address and phone number have not been verified. Check your inbox for the verification link and use the 6-digit OTP from the registration page to complete setup."
+                : !overview.landlord.emailVerified
+                  ? "Your email address has not been verified. Check your inbox for a verification link."
+                  : "Your phone number has not been verified. Return to the registration page and enter the 6-digit OTP to complete verification."
+            }
+            actionLabel={resendingVerification ? "Sending..." : "Resend verification email"}
+            onAction={handleResendVerification}
+          />
+        ) : null}
 
         {error ? (
           <AlertBanner

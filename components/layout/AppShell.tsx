@@ -30,6 +30,13 @@ export default function AppShell({
           mobileOpen={mobileOpen}
           onNavigate={() => setMobileOpen(false)}
         />
+        {mobileOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setMobileOpen(false)}
+            aria-hidden="true"
+          />
+        )}
         <div className="main-area">
           <Topbar
             title={topbarTitle}
@@ -40,6 +47,20 @@ export default function AppShell({
           <main className="content-area">{children}</main>
         </div>
       </div>
+      <style jsx>{`
+        .sidebar-backdrop {
+          display: none;
+        }
+        @media (max-width: 768px) {
+          .sidebar-backdrop {
+            display: block;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 49;
+          }
+        }
+      `}</style>
     </div>
   );
 }

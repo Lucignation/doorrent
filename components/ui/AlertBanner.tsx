@@ -8,6 +8,7 @@ interface AlertBannerProps {
   description: string;
   actionLabel?: string;
   actionHref?: string;
+  onAction?: () => void;
 }
 
 export default function AlertBanner({
@@ -16,6 +17,7 @@ export default function AlertBanner({
   description,
   actionLabel,
   actionHref,
+  onAction,
 }: AlertBannerProps) {
   return (
     <div className={`alert alert-${tone}`}>
@@ -28,6 +30,10 @@ export default function AlertBanner({
         <Link href={actionHref} className="alert-action">
           {actionLabel}
         </Link>
+      ) : actionLabel && onAction ? (
+        <button type="button" className="alert-action" onClick={onAction}>
+          {actionLabel}
+        </button>
       ) : null}
     </div>
   );

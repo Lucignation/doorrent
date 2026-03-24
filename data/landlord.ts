@@ -56,6 +56,7 @@ const landlordNavSections: NavSection[] = [
     items: [
       { label: "Payments", href: "/landlord/payments", icon: "card" },
       { label: "Receipts", href: "/landlord/receipts", icon: "receipt" },
+      { label: "Rent Defaults", href: "/landlord/rent-defaults", icon: "bell" },
     ],
   },
   {
@@ -97,6 +98,10 @@ export function buildLandlordNav(capabilities?: Partial<LandlordCapabilities> | 
 
         if (item.href === "/landlord/receipts") {
           return resolved.canViewReceipts;
+        }
+
+        if (item.href === "/landlord/rent-defaults") {
+          return resolved.canManagePayments;
         }
 
         if (item.href === "/landlord/reminders") {
