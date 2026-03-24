@@ -806,7 +806,8 @@ export default function LandlordSettingsPage() {
                   >
                     Full Service landlords can now log offline rent collections from the
                     Payments page so DoorRent still tracks the{" "}
-                    {settings.subscription.commissionRatePercent ?? 3}% commission.
+                    {settings.subscription.commissionRatePercent ?? 3}% base commission per
+                    rent year covered.
                   </div>
                 ) : null}
               </div>
@@ -817,7 +818,9 @@ export default function LandlordSettingsPage() {
                 <div>
                   <div className="card-title">Payout Settings</div>
                   <div className="card-subtitle">
-                    Tenant payments settle through Paystack, and DoorRent keeps {settings?.payout.platformFeePercent ?? 3}% as the platform fee.
+                    Tenant payments settle through Paystack, and DoorRent calculates
+                    commission from the rent years covered by each collection. Multi-year
+                    upfront rent therefore increases the total commission on that transaction.
                   </div>
                 </div>
               </div>

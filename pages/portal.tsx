@@ -778,7 +778,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                     ? landlordSubscriptionInterval === "YEARLY"
                       ? "Basic annual billing: ₦95,000/year discounted from ₦102,000."
                       : "Basic monthly billing: ₦8,500/month."
-                    : "Full Service: 3% commission only when rent is paid."}
+                    : "Full Service: 3% base commission per rent year covered, charged when rent is collected."}
                 </div>
               </div>
 

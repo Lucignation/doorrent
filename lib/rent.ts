@@ -76,6 +76,47 @@ export function monthlyEquivalentFromBilling(
   return Math.round(annualEquivalent / 12);
 }
 
+export function calculateCommissionPreview(input: {
+  amount: number;
+  annualRent?: number;
+  billingCyclePrice?: number;
+  frequency?: string | null;
+  baseCommissionPercent?: number;
+}) {
+  const annualRentEquivalent =
+    Number.isFinite(input.annualRent) && Number(input.annualRent) > 0
+      ? Math.round(Number(input.annualRent))
+      : annualEquivalentFromBilling(input.billingCyclePrice ?? 0, input.frequency);
+  const amount = Number.isFinite(input.amount) ? Math.max(Math.round(input.amount), 0) : 0;
+  const baseCommissionPercent = input.baseCommissionPercent ?? 3;
+  const commissionYearCount =
+    amount <= 0
+      ? 0
+      : annualRentEquivalent > 0
+        ? Math.max(1, Math.ceil(amount / annualRentEquivalent - 1e-9))
+        : 1;
+  const commissionRatePercent =
+    commissionYearCount > 0 ? baseCommissionPercent * commissionYearCount : 0;
+  const commissionAmount =
+    commissionRatePercent > 0 ? Math.round((amount * commissionRatePercent) / 100) : 0;
+
+  return {
+    annualRentEquivalent,
+    yearsCovered:
+      annualRentEquivalent > 0 && amount > 0 ? amount / annualRentEquivalent : 0,
+    commissionYearCount,
+    commissionRatePercent,
+    commissionAmount,
+    landlordSettlementAmount: Math.max(amount - commissionAmount, 0),
+    commissionFormulaLabel:
+      commissionYearCount > 0
+        ? `${baseCommissionPercent}% × ${commissionYearCount} rent year${
+            commissionYearCount === 1 ? "" : "s"
+          }`
+        : `${baseCommissionPercent}% base commission`,
+  };
+}
+
 export function billingAmountLabel(frequency?: string | null) {
   return `${billingLabel(frequency)} rent`;
 }

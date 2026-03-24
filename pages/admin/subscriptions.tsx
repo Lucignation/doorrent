@@ -61,7 +61,7 @@ const initialPromoForm = {
   agentName: "",
   agentEmail: "",
   agentPhone: "",
-  commissionPercent: "3",
+  commissionPercent: "30",
   usageLimit: "",
   expiresAt: "",
 };
@@ -188,7 +188,7 @@ export default function AdminSubscriptionsPage() {
       },
       {
         key: "commissionPercent",
-        label: "Commission",
+        label: "Agent Share",
         render: (row) => `${row.commissionPercent}%`,
       },
       {
@@ -401,10 +401,12 @@ export default function AdminSubscriptionsPage() {
                   marginBottom: 8,
                 }}
               >
-                {fullServiceOption?.priceLabel ?? "3% only when rent is paid"}
+                {fullServiceOption?.priceLabel ?? "3% base per rent year covered"}
               </div>
               <div style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.7 }}>
-                No monthly subscription. DoorRent only takes commission when rent is paid.
+                No monthly subscription. DoorRent applies a 3% base commission per rent
+                year covered, so multi-year upfront rent increases the total commission in
+                that collection.
               </div>
             </div>
           </div>
@@ -416,8 +418,9 @@ export default function AdminSubscriptionsPage() {
               <div>
                 <div className="card-title">Create Agent Promo Code</div>
                 <div className="card-subtitle">
-                  Set the commission percentage and how long or how many times a referral code can
-                  work before it expires.
+                  Set the agent&apos;s share of DoorRent&apos;s commission for the first 3
+                  lease renewal years, plus how long or how many times the code can work
+                  before it expires.
                 </div>
               </div>
             </div>
@@ -485,7 +488,7 @@ export default function AdminSubscriptionsPage() {
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Commission % *</label>
+                  <label className="form-label">Agent Share % *</label>
                   <input
                     className="form-input"
                     type="number"
@@ -552,7 +555,7 @@ export default function AdminSubscriptionsPage() {
               <div>
                 <div className="card-title">Referral Promo Codes</div>
                 <div className="card-subtitle">
-                  Track code performance, remaining uses, and expiry status.
+                  Track agent-share codes, remaining uses, and expiry status.
                 </div>
               </div>
             </div>

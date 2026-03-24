@@ -8,7 +8,12 @@ import type { TenantPortalIdentity } from "../../context/TenantSessionContext";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
-import { billingLabel, formatBillingSchedule, formatNaira } from "../../lib/rent";
+import {
+  billingLabel,
+  calculateCommissionPreview,
+  formatBillingSchedule,
+  formatNaira,
+} from "../../lib/rent";
 
 interface InitializePaymentResponse {
   reference: string;
@@ -17,6 +22,8 @@ interface InitializePaymentResponse {
   amount: string;
   platformFee: string;
   landlordSettlement: string;
+  commissionRatePercent?: number;
+  commissionFormulaLabel?: string;
   callbackUrl: string;
 }
 
@@ -30,6 +37,8 @@ interface VerifiedPaymentResponse {
     method?: string;
     platformFee: string;
     landlordSettlement: string;
+    commissionRatePercent?: number;
+    commissionFormulaLabel?: string;
     property: string;
     unit: string;
   };
@@ -83,6 +92,17 @@ export default function TenantPayPage() {
         ? "Outstanding rent balance"
         : `${billingLabel(tenantProfile?.billingFrequency)} rent payment`;
   const checkoutAmount = Number(amount || 0);
+  const commissionPreview = useMemo(
+    () =>
+      calculateCommissionPreview({
+        amount: checkoutAmount,
+        annualRent: annualRentAmount,
+        billingCyclePrice: billingCycleAmount,
+        frequency: tenantProfile?.billingFrequency,
+        baseCommissionPercent: 3,
+      }),
+    [annualRentAmount, billingCycleAmount, checkoutAmount, tenantProfile?.billingFrequency],
+  );
 
   const pageDescription = useMemo(() => {
     if (isLoadingProfile) {
@@ -331,12 +351,17 @@ export default function TenantPayPage() {
                         textTransform: "uppercase",
                         letterSpacing: "0.06em",
                       }}
-                    >
+                  >
                       DoorRent fee
                     </div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>
                       {verifiedPayment.platformFee}
                     </div>
+                    {verifiedPayment.commissionFormulaLabel ? (
+                      <div className="td-muted" style={{ marginTop: 4 }}>
+                        {verifiedPayment.commissionFormulaLabel}
+                      </div>
+                    ) : null}
                   </div>
                   <div>
                     <div
@@ -495,8 +520,38 @@ export default function TenantPayPage() {
                   borderBottom: "1px solid var(--border)",
                 }}
               >
-                <span style={{ color: "var(--ink2)" }}>DoorRent platform fee</span>
-                <span style={{ fontWeight: 500 }}>3%</span>
+                <span style={{ color: "var(--ink2)" }}>Commission rule</span>
+                <span style={{ fontWeight: 500 }}>
+                  {checkoutAmount > 0 ? commissionPreview.commissionFormulaLabel : "—"}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "10px 0",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <span style={{ color: "var(--ink2)" }}>Estimated DoorRent commission</span>
+                <span style={{ fontWeight: 500 }}>
+                  {checkoutAmount > 0 ? formatNaira(commissionPreview.commissionAmount) : "—"}
+                </span>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  padding: "10px 0",
+                  borderBottom: "1px solid var(--border)",
+                }}
+              >
+                <span style={{ color: "var(--ink2)" }}>Estimated landlord settlement</span>
+                <span style={{ fontWeight: 500 }}>
+                  {checkoutAmount > 0
+                    ? formatNaira(commissionPreview.landlordSettlementAmount)
+                    : "—"}
+                </span>
               </div>
               <div
                 style={{
@@ -674,8 +729,9 @@ export default function TenantPayPage() {
                 : `Pay ${checkoutAmount ? formatNaira(checkoutAmount) : "₦0"} via Paystack`}
           </button>
           <div style={{ textAlign: "center", marginTop: 12, fontSize: 11, color: "var(--ink3)" }}>
-            Secured by Paystack. DoorRent keeps 3% and the landlord settlement is tracked
-            automatically.
+            Secured by Paystack. DoorRent applies a 3% base commission per rent year covered,
+            so multi-year upfront rent can carry a higher total commission in the same
+            collection.
           </div>
         </div>
       </TenantPortalShell>

@@ -720,7 +720,8 @@ export default function LandingPage() {
               </h2>
               <span>
                 Basic lets landlords choose monthly or yearly billing.
-                Full Service charges 3% only when rent is paid.
+                Full Service charges a 3% base commission at collection time, scaled by the
+                rent years paid upfront.
               </span>
             </div>
 
@@ -788,14 +789,15 @@ export default function LandingPage() {
                 <div className="marketing-pricing-badge">Popular choice</div>
                 <p className="plan-name">Full Service</p>
                 <div className="plan-price">3%</div>
-                <div className="plan-sub">only when rent is paid</div>
+                <div className="plan-sub">base per rent year covered</div>
                 <p className="plan-description">
                   Commission model with automated rent collection, agreements, caretaker
                   access, reports, and late payment enforcement.
                 </p>
                 <div className="marketing-pricing-highlight is-featured">
-                  No monthly subscription. DoorRent only takes 3% when rent is successfully
-                  paid.
+                  No monthly subscription. DoorRent applies a 3% base commission per rent
+                  year covered, so multi-year upfront rent increases the total commission in
+                  that collection.
                 </div>
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">

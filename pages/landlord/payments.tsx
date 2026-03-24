@@ -83,6 +83,8 @@ interface LandlordPaymentsResponse {
     billingModel: string;
     billingModelLabel: string;
     commissionRatePercent: number;
+    commissionPolicyLabel?: string;
+    referralPolicyLabel?: string | null;
     canRecordOfflineCollection: boolean;
     platformCollectionsCount: number;
     platformCollectionsValueFormatted: string;
@@ -468,8 +470,9 @@ export default function LandlordPaymentsPage() {
                   <div>
                     <div className="card-title">Record Offline Collection</div>
                     <div className="card-subtitle">
-                      Full Service landlords can log offline rent so DoorRent still tracks the{" "}
-                      {paymentData.collectionTracking.commissionRatePercent}% commission.
+                      Full Service landlords can log offline rent so DoorRent still tracks the
+                      collection commission and any eligible referred-agent share on the first
+                      3 renewal years.
                     </div>
                   </div>
                 </div>
@@ -621,10 +624,16 @@ export default function LandlordPaymentsPage() {
                       {paymentData.collectionTracking.commissionTrackedThisYearFormatted}
                     </div>
                     <div className="stat-sub">
-                      {paymentData.collectionTracking.commissionRatePercent}% of recorded rent
+                      {paymentData.collectionTracking.commissionPolicyLabel ??
+                        `${paymentData.collectionTracking.commissionRatePercent}% base commission per rent year covered`}
                     </div>
                   </div>
                 </div>
+                {paymentData.collectionTracking.referralPolicyLabel ? (
+                  <div className="td-muted" style={{ marginBottom: 12 }}>
+                    {paymentData.collectionTracking.referralPolicyLabel}
+                  </div>
+                ) : null}
                 {paymentData.collectionTracking.reviewFlag ? (
                   <div
                     style={{
@@ -645,7 +654,7 @@ export default function LandlordPaymentsPage() {
                 ) : (
                   <div className="td-muted">
                     DoorRent now tracks both platform collections and offline collections for
-                    your payment reporting.
+                    your payment reporting, including multi-year commission logic.
                   </div>
                 )}
               </div>
