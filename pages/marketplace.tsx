@@ -133,6 +133,19 @@ const fmt = (value: number) => `₦${value.toLocaleString("en-NG")}`;
 const MARKETPLACE_PAGE_GUTTER = "clamp(20px, 2vw, 32px)";
 
 function MarketplaceSiteHeader() {
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const syncViewport = () => setIsCompact(window.innerWidth < 760);
+
+    syncViewport();
+    window.addEventListener("resize", syncViewport);
+
+    return () => {
+      window.removeEventListener("resize", syncViewport);
+    };
+  }, []);
+
   const navLinkStyle = {
     color: BRAND.textMuted,
     textDecoration: "none",
@@ -168,10 +181,10 @@ function MarketplaceSiteHeader() {
         <div
           style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: isCompact ? "stretch" : "center",
             justifyContent: "space-between",
             gap: 16,
-            flexWrap: "wrap",
+            flexDirection: isCompact ? "column" : "row",
           }}
         >
           <Link
@@ -207,43 +220,65 @@ function MarketplaceSiteHeader() {
           <div
             style={{
               display: "flex",
-              alignItems: "center",
-              justifyContent: "flex-end",
-              gap: 10,
-              flexWrap: "wrap",
+              flexDirection: "column",
+              alignItems: isCompact ? "stretch" : "flex-end",
+              gap: 12,
+              width: isCompact ? "100%" : "auto",
+              marginLeft: isCompact ? 0 : "auto",
             }}
           >
-            <Link href="/" style={navLinkStyle}>
-              Home
-            </Link>
-            <Link href="/#features" style={navLinkStyle}>
-              Features
-            </Link>
-            <Link href="/#pricing" style={navLinkStyle}>
-              Why it's free
-            </Link>
-            <Link
-              href="/portal"
+            <div
               style={{
-                ...buttonStyle,
-                background: "#ffffff",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "#151712",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: isCompact ? "center" : "flex-end",
+                gap: isCompact ? 6 : 10,
+                flexWrap: "wrap",
+                width: "100%",
               }}
             >
-              Sign in
-            </Link>
-            <Link
-              href="/portal"
+              <Link href="/" style={navLinkStyle}>
+                Home
+              </Link>
+              <Link href="/#features" style={navLinkStyle}>
+                Features
+              </Link>
+              <Link href="/#pricing" style={navLinkStyle}>
+                Why it&apos;s free
+              </Link>
+            </div>
+
+            <div
               style={{
-                ...buttonStyle,
-                background: "#1A6B4A",
-                border: "1px solid #1A6B4A",
-                color: "#ffffff",
+                display: isCompact ? "grid" : "flex",
+                gridTemplateColumns: isCompact ? "repeat(2,minmax(0,1fr))" : undefined,
+                gap: 10,
+                width: isCompact ? "100%" : "auto",
               }}
             >
-              Get started →
-            </Link>
+              <Link
+                href="/portal"
+                style={{
+                  ...buttonStyle,
+                  background: "#ffffff",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#151712",
+                }}
+              >
+                Sign in
+              </Link>
+              <Link
+                href="/portal"
+                style={{
+                  ...buttonStyle,
+                  background: "#1A6B4A",
+                  border: "1px solid #1A6B4A",
+                  color: "#ffffff",
+                }}
+              >
+                Get started →
+              </Link>
+            </div>
           </div>
         </div>
       </div>

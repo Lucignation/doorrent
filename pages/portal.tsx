@@ -145,6 +145,13 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
   const [landlordLastName, setLandlordLastName] = useState("");
   const [landlordCompanyName, setLandlordCompanyName] = useState("");
   const [landlordPhone, setLandlordPhone] = useState("");
+  const [landlordSubscriptionModel, setLandlordSubscriptionModel] = useState<
+    "SUBSCRIPTION" | "COMMISSION"
+  >("SUBSCRIPTION");
+  const [landlordSubscriptionInterval, setLandlordSubscriptionInterval] = useState<
+    "MONTHLY" | "YEARLY"
+  >("MONTHLY");
+  const [landlordPromoCode, setLandlordPromoCode] = useState("");
   const [tenantEmail, setTenantEmail] = useState("");
   const [tenantCode, setTenantCode] = useState("");
   const [tenantRememberMe, setTenantRememberMe] = useState(true);
@@ -347,6 +354,12 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
               email: authEmail,
               phone: landlordPhone,
               password: authPassword,
+              subscriptionModel: landlordSubscriptionModel,
+              subscriptionInterval:
+                landlordSubscriptionModel === "SUBSCRIPTION"
+                  ? landlordSubscriptionInterval
+                  : undefined,
+              promoCode: landlordPromoCode || undefined,
             },
           });
 
@@ -734,6 +747,69 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                 onChange={(event) => setLandlordPhone(event.target.value)}
               />
             </div>
+          ) : null}
+
+          {role === "landlord" && landlordMode === "register" ? (
+            <>
+              <div className="form-group">
+                <label className="form-label">Plan option</label>
+                <div className="role-pills" style={{ marginBottom: 0 }}>
+                  <button
+                    type="button"
+                    className={`role-pill ${
+                      landlordSubscriptionModel === "SUBSCRIPTION" ? "active" : ""
+                    }`}
+                    onClick={() => setLandlordSubscriptionModel("SUBSCRIPTION")}
+                  >
+                    Basic
+                  </button>
+                  <button
+                    type="button"
+                    className={`role-pill ${
+                      landlordSubscriptionModel === "COMMISSION" ? "active" : ""
+                    }`}
+                    onClick={() => setLandlordSubscriptionModel("COMMISSION")}
+                  >
+                    Full Service
+                  </button>
+                </div>
+                <div className="td-muted" style={{ marginTop: 6 }}>
+                  {landlordSubscriptionModel === "SUBSCRIPTION"
+                    ? landlordSubscriptionInterval === "YEARLY"
+                      ? "Basic annual billing: ₦95,000/year discounted from ₦102,000."
+                      : "Basic monthly billing: ₦8,500/month."
+                    : "Full Service: 3% commission only when rent is paid."}
+                </div>
+              </div>
+
+              {landlordSubscriptionModel === "SUBSCRIPTION" ? (
+                <div className="form-group">
+                  <label className="form-label">Billing cycle</label>
+                  <select
+                    className="form-input"
+                    value={landlordSubscriptionInterval}
+                    onChange={(event) =>
+                      setLandlordSubscriptionInterval(
+                        event.target.value as "MONTHLY" | "YEARLY",
+                      )
+                    }
+                  >
+                    <option value="MONTHLY">Monthly - ₦8,500/month</option>
+                    <option value="YEARLY">Yearly - ₦95,000/year</option>
+                  </select>
+                </div>
+              ) : null}
+
+              <div className="form-group">
+                <label className="form-label">Promo code</label>
+                <input
+                  className="form-input"
+                  placeholder="Optional referral code"
+                  value={landlordPromoCode}
+                  onChange={(event) => setLandlordPromoCode(event.target.value.toUpperCase())}
+                />
+              </div>
+            </>
           ) : null}
 
           <div className="form-group">

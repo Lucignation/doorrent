@@ -16,6 +16,7 @@ interface AdminLandlordsResponse {
     active: number;
     trial: number;
     suspended: number;
+    flagged: number;
   };
   landlords: Array<AdminLandlordRow & { id: string; companyName: string }>;
 }
@@ -147,9 +148,25 @@ export default function AdminLandlordsPage() {
           label: "Plan",
           render: (row) => <StatusBadge tone={planTone(row.plan)}>{row.plan}</StatusBadge>,
         },
+        {
+          key: "flags",
+          label: "Flags",
+          render: (row) =>
+            row.flags && row.flags.length > 0 ? (
+              <div style={{ display: "grid", gap: 6 }}>
+                {row.flags.map((flag) => (
+                  <StatusBadge key={flag} tone="amber">
+                    {flag}
+                  </StatusBadge>
+                ))}
+              </div>
+            ) : (
+              <span className="td-muted">—</span>
+            ),
+        },
         { key: "properties", label: "Properties" },
         { key: "tenants", label: "Tenants" },
-        { key: "mrr", label: "MRR" },
+        { key: "mrr", label: "Billing" },
         {
           key: "status",
           label: "Status",
@@ -188,7 +205,7 @@ export default function AdminLandlordsPage() {
     );
 
   const description = landlordData
-    ? `${landlordData.count} landlords on the platform`
+    ? `${landlordData.count} landlords on the platform · ${landlordData.summary.flagged} flagged for review`
     : loading
       ? "Loading landlord accounts..."
       : error || "No landlord accounts found.";

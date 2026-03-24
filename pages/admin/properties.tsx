@@ -132,7 +132,7 @@ export default function AdminPropertiesPage() {
       { key: "location", label: "Location" },
       { key: "units", label: "Units" },
       { key: "occupancy", label: "Occupancy" },
-      { key: "revenue", label: "Potential Annual Rent" },
+      { key: "revenue", label: "Potential Lease Value" },
       {
         key: "status",
         label: "Landlord Status",

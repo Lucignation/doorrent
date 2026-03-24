@@ -18,6 +18,7 @@ import type {
 
 interface TenantInvitationRecord extends TenantInviteRow {
   id: string;
+  billingSchedule?: string;
 }
 
 interface InvitationResponse {
@@ -33,12 +34,18 @@ interface InvitationResponse {
     property: string;
     unit: string;
     rent: string;
+    billingSchedule?: string;
     monthlyEquivalent?: string;
     leaseStart: string;
     leaseEnd: string;
     expiresAt: string;
     status: "pending" | "completed" | "expired";
   }>;
+}
+
+interface TenantRecord extends TenantLedgerRow {
+  id: string;
+  billingSchedule?: string;
 }
 
 interface TenantResponse {
@@ -54,7 +61,7 @@ interface TenantResponse {
     properties: Array<{ id: string; name: string }>;
     statuses: Array<{ value: string; label: string }>;
   };
-  tenants: Array<TenantLedgerRow & { id: string }>;
+  tenants: TenantRecord[];
 }
 
 function statusTone(status: TenantLedgerRow["status"]): BadgeTone {
@@ -145,7 +152,7 @@ export default function LandlordTenantsPage() {
     };
   }, [dataRefreshVersion, landlordSession?.token, propertyId, search, status]);
 
-  const tenantColumns: TableColumn<TenantLedgerRow & { id: string }>[] = useMemo(
+  const tenantColumns: TableColumn<TenantRecord>[] = useMemo(
     () => [
       {
         key: "tenant",
@@ -155,12 +162,12 @@ export default function LandlordTenantsPage() {
       { key: "unit", label: "Unit" },
       {
         key: "rent",
-        label: "Rent/yr",
+        label: "Rent",
         render: (row) => (
           <div>
-            <span style={{ fontWeight: 600 }}>{row.rent}</span>
+            <span style={{ fontWeight: 600 }}>{row.billingSchedule ?? row.rent}</span>
             <div className="td-muted">
-              Monthly equivalent: {row.monthlyEquivalent ?? "—"}
+              Annual equivalent: {row.rent}
             </div>
           </div>
         ),
@@ -223,6 +230,7 @@ export default function LandlordTenantsPage() {
       property: invitation.property,
       unit: invitation.unit,
       rent: invitation.rent,
+      billingSchedule: invitation.billingSchedule,
       monthlyEquivalent: invitation.monthlyEquivalent,
       lease: `${invitation.leaseStart} → ${invitation.leaseEnd}`,
       expires: invitation.expiresAt,
@@ -236,12 +244,12 @@ export default function LandlordTenantsPage() {
     { key: "unit", label: "Unit" },
     {
       key: "rent",
-      label: "Annual Rent",
+      label: "Rent",
       render: (row) => (
         <div>
-          <span style={{ fontWeight: 600 }}>{row.rent}</span>
+          <span style={{ fontWeight: 600 }}>{row.billingSchedule ?? row.rent}</span>
           <div className="td-muted">
-            Monthly equivalent: {row.monthlyEquivalent ?? "—"}
+            Annual equivalent: {row.rent}
           </div>
         </div>
       ),

@@ -23,6 +23,9 @@ interface TenantProfileResponse {
     landlordEmail: string;
     leaseStartLabel: string;
     leaseEndLabel: string;
+    billingFrequency: string;
+    billingFrequencyLabel: string;
+    billingSchedule: string;
     annualRentFormatted: string;
   };
   guarantor: {
@@ -193,7 +196,7 @@ export default function TenantProfilePage() {
   }
 
   const description = profileData
-    ? `${profileData.profile.propertyName} · Unit ${profileData.profile.unitNumber} · ${profileData.profile.annualRentFormatted} yearly rent`
+    ? `${profileData.profile.propertyName} · Unit ${profileData.profile.unitNumber} · ${profileData.profile.billingSchedule}`
     : loading
       ? "Loading your tenant profile..."
       : error || "Your profile is unavailable.";
@@ -271,6 +274,24 @@ export default function TenantProfilePage() {
                   <input
                     className="form-input"
                     value={profileData?.profile.landlordEmail ?? "—"}
+                    disabled
+                  />
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Billing Schedule</label>
+                  <input
+                    className="form-input"
+                    value={profileData?.profile.billingSchedule ?? "—"}
+                    disabled
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Annual Equivalent</label>
+                  <input
+                    className="form-input"
+                    value={profileData?.profile.annualRentFormatted ?? "—"}
                     disabled
                   />
                 </div>

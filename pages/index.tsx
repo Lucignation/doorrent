@@ -4,21 +4,6 @@ import PageMeta from "../components/layout/PageMeta";
 import { LOGO_PATH } from "../lib/site";
 
 type RoleKey = "landlord" | "tenant";
-type ValuePlan = {
-  name: string;
-  badge?: string;
-  price: string;
-  sub: string;
-  description: string;
-  rows: Array<
-    | { type: "cost"; label: string; value: string }
-    | { type: "included"; label: string }
-  >;
-  total?: { label: string; value: string; note: string };
-  featured: boolean;
-  ctaLabel: string;
-  ctaHref: string;
-};
 
 const trustedLogos = [
   "Lekki Realty",
@@ -183,7 +168,7 @@ const rolePanels: Record<
       },
     ],
     stats: [
-      { label: "Annual Rent", value: "₦1.8M", sub: "≈ ₦150K monthly equivalent" },
+      { label: "Billing Cycle", value: "₦150K/month", sub: "₦1.8M annual equivalent" },
       { label: "Lease Ends", value: "Mar '27", sub: "12 months left" },
     ],
     items: [
@@ -230,47 +215,30 @@ const steps = [
   },
 ];
 
-const pricing: ValuePlan[] = [
-  {
-    name: "What these workflows usually cost",
-    badge: "Most popular",
-    price: "₦34,000+",
-    sub: "typical monthly tool spend",
-    description:
-      "When rent collection, agreements, notices, tenant records, and reporting are split across separate tools, the monthly cost adds up quickly.",
-    rows: [
-      { type: "cost", label: "Rent collection and payment tracking", value: "₦12,000/mo" },
-      { type: "cost", label: "Digital agreements and signing", value: "₦8,000/mo" },
-      { type: "cost", label: "Tenant records and onboarding", value: "₦6,000/mo" },
-      { type: "cost", label: "SMS and reminder workflows", value: "₦3,000/mo" },
-      { type: "cost", label: "Reports and portfolio insights", value: "₦5,000/mo" },
-    ],
-    total: {
-      label: "Typical monthly cost",
-      value: "₦34,000+",
-      note: "Before manual follow-up time and admin overhead.",
-    },
-    featured: false,
-    ctaLabel: "See included workflows",
-    ctaHref: "#features",
-  },
-  {
-    name: "Enterprise",
-    price: "₦0",
-    sub: "free for landlords",
-    description:
-      "DoorRent gives you the core landlord workflows in one platform with no setup fee, no subscription charge, and no paywall to get started.",
-    rows: [
-      { type: "included", label: "No monthly subscription" },
-      { type: "included", label: "No setup or onboarding fee" },
-      { type: "included", label: "Rent collection, agreements, and notices included" },
-      { type: "included", label: "Marketplace access and landlord tools included" },
-      { type: "included", label: "Start free and keep growing on the platform" },
-    ],
-    featured: true,
-    ctaLabel: "Start free",
-    ctaHref: "/portal",
-  },
+const BASIC_MONTHLY_PRICE = 8500;
+const BASIC_YEARLY_LIST_PRICE = 102000;
+const BASIC_YEARLY_DISCOUNT_PRICE = 95000;
+const BASIC_YEARLY_SAVINGS_AMOUNT =
+  BASIC_YEARLY_LIST_PRICE - BASIC_YEARLY_DISCOUNT_PRICE;
+const BASIC_YEARLY_SAVINGS_PERCENT = Math.round(
+  (BASIC_YEARLY_SAVINGS_AMOUNT / BASIC_YEARLY_LIST_PRICE) * 100,
+);
+
+const basicPlanFeatures = [
+  "Tenant management",
+  "Rent reminders",
+  "Property marketplace listing",
+];
+
+const fullServiceFeatures = [
+  "Tenant management",
+  "Rent reminders",
+  "Property marketplace listing",
+  "Automated rent collection",
+  "Digital agreement signing",
+  "Caretaker access",
+  "Payment dashboard and reports",
+  "Late payment enforcement",
 ];
 
 const testimonials = [
@@ -299,6 +267,9 @@ const testimonials = [
 
 export default function LandingPage() {
   const [activeRole, setActiveRole] = useState<RoleKey>("landlord");
+  const [basicBillingCycle, setBasicBillingCycle] = useState<"monthly" | "yearly">(
+    "monthly",
+  );
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -328,6 +299,11 @@ export default function LandingPage() {
   }, []);
 
   const activePanel = rolePanels[activeRole];
+  const basicPrice =
+    basicBillingCycle === "monthly" ? BASIC_MONTHLY_PRICE : BASIC_YEARLY_DISCOUNT_PRICE;
+  const basicPriceLabel = `₦${basicPrice.toLocaleString("en-NG")}`;
+  const basicBillingNote =
+    basicBillingCycle === "monthly" ? "per month billed monthly" : "per year billed yearly";
 
   return (
     <>
@@ -736,68 +712,104 @@ export default function LandingPage() {
         <section id="pricing" className="marketing-pricing">
           <div className="marketing-container">
             <div className="marketing-section-head centered reveal">
-              <p>Built to stay free</p>
+              <p>Choose your model</p>
               <h2>
-                See the value.
+                Basic or Full Service.
                 <br />
-                <em>Start at ₦0.</em>
+                <em>Built around how rent is collected.</em>
               </h2>
               <span>
-                DoorRent is free for landlords. Here is the monthly cost this
-                workflow usually replaces, side by side with what you pay on
-                DoorRent.
+                Basic lets landlords choose monthly or yearly billing.
+                Full Service charges 3% only when rent is paid.
               </span>
             </div>
 
             <div className="marketing-pricing-grid reveal">
-              {pricing.map((plan) => (
-                <article
-                  key={plan.name}
-                  className={`marketing-pricing-card ${
-                    plan.featured ? "is-featured" : ""
-                  }`}
-                >
-                  {plan.badge ? <div className="marketing-pricing-badge">{plan.badge}</div> : null}
-                  <p className="plan-name">{plan.name}</p>
-                  <div className="plan-price">{plan.price}</div>
-                  <div className="plan-sub">{plan.sub}</div>
-                  <p className="plan-description">{plan.description}</p>
-                  <div className="plan-divider" />
-                  <div className="marketing-pricing-rows">
-                    {plan.rows.map((item) =>
-                      item.type === "cost" ? (
-                        <div key={item.label} className="marketing-pricing-row is-cost">
-                          <span>{item.label}</span>
-                          <strong>{item.value}</strong>
-                        </div>
-                      ) : (
-                        <div key={item.label} className="marketing-pricing-row is-included">
-                          <span className="row-check">✓</span>
-                          <span>{item.label}</span>
-                        </div>
-                      ),
-                    )}
+              <article className="marketing-pricing-card">
+                <div className="marketing-pricing-card-top">
+                  <p className="plan-name">Basic</p>
+                  <div className="marketing-billing-toggle" role="tablist" aria-label="Basic billing cycle">
+                    <button
+                      type="button"
+                      className={basicBillingCycle === "monthly" ? "is-active" : ""}
+                      onClick={() => setBasicBillingCycle("monthly")}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      type="button"
+                      className={basicBillingCycle === "yearly" ? "is-active" : ""}
+                      onClick={() => setBasicBillingCycle("yearly")}
+                    >
+                      Yearly <span>· Save {BASIC_YEARLY_SAVINGS_PERCENT}%</span>
+                    </button>
                   </div>
-                  {plan.total ? (
-                    <div className="marketing-pricing-total">
-                      <div>
-                        <span>{plan.total.label}</span>
-                        <small>{plan.total.note}</small>
-                      </div>
-                      <strong>{plan.total.value}</strong>
+                </div>
+                <div className="plan-price">{basicPriceLabel}</div>
+                <div className="plan-sub">{basicBillingNote}</div>
+                <p className="plan-description">
+                  Subscription plan for landlords who want tenant management, rent reminders,
+                  and marketplace listing in one clean workflow.
+                </p>
+                {basicBillingCycle === "yearly" ? (
+                  <div className="marketing-pricing-highlight">
+                    <strong>Standard yearly price:</strong> ₦
+                    {BASIC_YEARLY_LIST_PRICE.toLocaleString("en-NG")}/year
+                    <br />
+                    <strong>Discounted price:</strong> ₦
+                    {BASIC_YEARLY_DISCOUNT_PRICE.toLocaleString("en-NG")}/year
+                    <br />
+                    <strong>You save:</strong> ₦
+                    {BASIC_YEARLY_SAVINGS_AMOUNT.toLocaleString("en-NG")} (
+                    {BASIC_YEARLY_SAVINGS_PERCENT}%)
+                  </div>
+                ) : (
+                  <div className="marketing-pricing-highlight">
+                    Monthly billing is ₦{BASIC_MONTHLY_PRICE.toLocaleString("en-NG")}/month,
+                    and landlords can switch to yearly billing at ₦
+                    {BASIC_YEARLY_DISCOUNT_PRICE.toLocaleString("en-NG")}/year.
+                  </div>
+                )}
+                <div className="plan-divider" />
+                <div className="marketing-pricing-rows">
+                  {basicPlanFeatures.map((feature) => (
+                    <div key={feature} className="marketing-pricing-row is-included">
+                      <span className="row-check">✓</span>
+                      <span>{feature}</span>
                     </div>
-                  ) : null}
-                  {plan.ctaHref.startsWith("#") ? (
-                    <a href={plan.ctaHref} className="btn btn-secondary btn-full">
-                      {plan.ctaLabel}
-                    </a>
-                  ) : (
-                    <Link href={plan.ctaHref} className="btn btn-secondary btn-full">
-                      {plan.ctaLabel}
-                    </Link>
-                  )}
-                </article>
-              ))}
+                  ))}
+                </div>
+                <Link href="/portal" className="btn btn-secondary btn-full">
+                  Choose Basic
+                </Link>
+              </article>
+
+              <article className="marketing-pricing-card is-featured">
+                <div className="marketing-pricing-badge">Popular choice</div>
+                <p className="plan-name">Full Service</p>
+                <div className="plan-price">3%</div>
+                <div className="plan-sub">only when rent is paid</div>
+                <p className="plan-description">
+                  Commission model with automated rent collection, agreements, caretaker
+                  access, reports, and late payment enforcement.
+                </p>
+                <div className="marketing-pricing-highlight is-featured">
+                  No monthly subscription. DoorRent only takes 3% when rent is successfully
+                  paid.
+                </div>
+                <div className="plan-divider" />
+                <div className="marketing-pricing-rows">
+                  {fullServiceFeatures.map((feature) => (
+                    <div key={feature} className="marketing-pricing-row is-included">
+                      <span className="row-check">✓</span>
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/portal" className="btn btn-secondary btn-full">
+                  Choose Full Service
+                </Link>
+              </article>
             </div>
           </div>
         </section>
@@ -1845,6 +1857,14 @@ export default function LandingPage() {
           position: relative;
         }
 
+        .marketing-pricing-card-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 20px;
+          margin-bottom: 16px;
+        }
+
         .marketing-pricing-card.is-featured {
           background: linear-gradient(180deg, #1c9a72 0%, #1a6b4a 100%);
           border-color: rgba(255, 255, 255, 0.08);
@@ -1896,11 +1916,12 @@ export default function LandingPage() {
         .marketing-pricing-card .plan-sub {
           color: var(--ink3);
           margin-bottom: 24px;
+          line-height: 1.5;
         }
 
         .marketing-pricing-card .plan-description {
           color: var(--ink2);
-          margin-bottom: 28px;
+          margin-bottom: 18px;
         }
 
         .marketing-pricing-card .plan-divider {
@@ -1963,6 +1984,62 @@ export default function LandingPage() {
 
         .marketing-pricing-card.is-featured .row-check {
           background: rgba(255, 255, 255, 0.15);
+          color: #fff;
+        }
+
+        .marketing-billing-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px;
+          border-radius: 999px;
+          background: #131512;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          flex-shrink: 0;
+        }
+
+        .marketing-billing-toggle button {
+          border: 0;
+          background: transparent;
+          color: var(--ink3);
+          padding: 10px 16px;
+          border-radius: 999px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.2s ease, color 0.2s ease;
+        }
+
+        .marketing-billing-toggle button span {
+          color: #2083ff;
+        }
+
+        .marketing-billing-toggle button.is-active {
+          background: rgba(255, 255, 255, 0.1);
+          color: #fff;
+        }
+
+        .marketing-pricing-highlight {
+          margin-bottom: 24px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          background: var(--surface2);
+          border: 1px solid var(--border);
+          color: var(--ink2);
+          line-height: 1.7;
+        }
+
+        .marketing-pricing-highlight strong {
+          color: var(--ink);
+        }
+
+        .marketing-pricing-highlight.is-featured {
+          background: rgba(255, 255, 255, 0.08);
+          border-color: rgba(255, 255, 255, 0.14);
+          color: rgba(255, 255, 255, 0.82);
+        }
+
+        .marketing-pricing-highlight.is-featured strong {
           color: #fff;
         }
 
@@ -2151,6 +2228,10 @@ export default function LandingPage() {
           .marketing-role-panel {
             grid-template-columns: 1fr;
           }
+
+          .marketing-pricing-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
         }
 
         @media (max-width: 768px) {
@@ -2207,6 +2288,17 @@ export default function LandingPage() {
           .marketing-steps,
           .marketing-footer-top {
             grid-template-columns: 1fr;
+          }
+
+          .marketing-pricing-card-top {
+            flex-direction: column;
+            align-items: stretch;
+          }
+
+          .marketing-billing-toggle {
+            width: fit-content;
+            max-width: 100%;
+            flex-wrap: wrap;
           }
 
           .marketing-roles,

@@ -35,10 +35,19 @@ interface OnboardingInvitationResponse {
   lease: {
     leaseStart: string;
     leaseEnd: string;
+    billingFrequency: string;
+    billingFrequencyLabel: string;
+    billingSchedule: string;
     annualRent: string;
     monthlyEquivalent: string;
     depositAmount: string;
   };
+  duplicateLeaseWarning?: {
+    title: string;
+    body: string;
+    leasePeriod: string;
+    leaseState: string;
+  } | null;
   agreementTemplate: {
     id: string;
     name: string;
@@ -190,6 +199,7 @@ export default function TenantOnboardingPage() {
   const inviteTag = token || "Loading...";
 
   const canSubmit =
+    !invitationData?.duplicateLeaseWarning &&
     Boolean(form.firstName.trim()) &&
     Boolean(form.lastName.trim()) &&
     Boolean(form.email.trim()) &&
@@ -344,6 +354,23 @@ export default function TenantOnboardingPage() {
                     }}
                   >
                     Message from landlord: {invitationData.invitation.message}
+                  </div>
+                ) : null}
+                {invitationData?.duplicateLeaseWarning ? (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: 12,
+                      borderRadius: "var(--radius-sm)",
+                      background: "rgba(241, 196, 15, 0.12)",
+                      border: "1px solid rgba(241, 196, 15, 0.28)",
+                      fontSize: 12,
+                      color: "var(--amber)",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    <strong>{invitationData.duplicateLeaseWarning.title}.</strong>{" "}
+                    {invitationData.duplicateLeaseWarning.body}
                   </div>
                 ) : null}
               </div>
@@ -627,7 +654,16 @@ export default function TenantOnboardingPage() {
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Annual Rent</div>
+                      <div style={{ fontSize: 11, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Billing Schedule</div>
+                      <div style={{ fontSize: 14, fontWeight: 600 }}>
+                        {invitationData?.lease.billingSchedule ?? "—"}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--ink3)" }}>
+                        {invitationData?.lease.billingFrequencyLabel ?? "Rent"} billing
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Annual Equivalent</div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>
                         {invitationData?.lease.annualRent ?? "—"}
                       </div>

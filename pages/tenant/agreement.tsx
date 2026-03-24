@@ -28,6 +28,10 @@ interface TenantAgreementResponse {
     unitNumber: string;
     leaseStartLabel: string;
     leaseEndLabel: string;
+    billingFrequency: string;
+    billingFrequencyLabel: string;
+    billingCyclePriceFormatted: string;
+    billingSchedule: string;
     annualRentFormatted: string;
     depositFormatted: string;
     landlordName: string;
@@ -232,7 +236,10 @@ export default function TenantAgreementPage() {
                     <strong>Lease:</strong> {agreement.leaseStartLabel} to {agreement.leaseEndLabel}
                   </p>
                   <p>
-                    <strong>Rent:</strong> {agreement.annualRentFormatted}
+                    <strong>Billing:</strong> {agreement.billingSchedule}
+                  </p>
+                  <p>
+                    <strong>Annual equivalent:</strong> {agreement.annualRentFormatted}
                   </p>
                   <p>
                     <strong>Deposit:</strong> {agreement.depositFormatted}

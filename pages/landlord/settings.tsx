@@ -23,6 +23,8 @@ interface LandlordSettingsResponse {
     planDescription: string;
     price: string;
     nextBilling: string;
+    billingModel?: string;
+    commissionRatePercent?: number;
   };
   payout: {
     bankId?: string | null;
@@ -789,6 +791,24 @@ export default function LandlordSettingsPage() {
                     Upgrade Plan
                   </button>
                 </div>
+                {settings?.subscription.billingModel === "commission" ? (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: 12,
+                      borderRadius: "var(--radius-sm)",
+                      background: "rgba(26, 115, 232, 0.08)",
+                      border: "1px solid rgba(26, 115, 232, 0.18)",
+                      fontSize: 12,
+                      color: "var(--blue)",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    Full Service landlords can now log offline rent collections from the
+                    Payments page so DoorRent still tracks the{" "}
+                    {settings.subscription.commissionRatePercent ?? 3}% commission.
+                  </div>
+                ) : null}
               </div>
             </div>
 

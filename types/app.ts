@@ -261,6 +261,8 @@ export interface AdminLandlordRow {
   properties: number;
   tenants: number;
   mrr: string;
+  billingModel?: "subscription" | "commission";
+  flags?: string[];
   status: "active" | "trial" | "suspended";
   joined: string;
 }

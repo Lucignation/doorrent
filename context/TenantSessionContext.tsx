@@ -20,10 +20,21 @@ export interface TenantPortalIdentity {
   unitType?: string | null;
   landlordCompany: string;
   landlordName: string;
+  billingFrequency?: string;
+  billingFrequencyLabel?: string;
+  billingCyclePrice?: number;
+  billingCyclePriceFormatted?: string;
+  billingSchedule?: string;
   annualRent?: number;
   annualRentFormatted?: string;
   monthlyEquivalent?: number;
   monthlyEquivalentFormatted?: string;
+  leaseTotal?: number;
+  leaseTotalFormatted?: string;
+  currentDue?: number;
+  currentDueFormatted?: string;
+  totalPaidThisLease?: number;
+  totalPaidThisLeaseFormatted?: string;
   leaseStart?: string;
   leaseEnd?: string;
 }

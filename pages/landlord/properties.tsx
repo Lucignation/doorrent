@@ -80,7 +80,7 @@ export default function LandlordPropertiesPage() {
   const description = propertyData
     ? `${propertyData.summary.properties} properties · ${propertyData.summary.units} units · ${
         propertyData.summary.potentialAnnualRevenue ?? propertyData.summary.potentialMonthlyRevenue
-      } potential yearly rent`
+      } lease value across billing schedules`
     : loading
       ? "Loading your property portfolio..."
       : error || "No properties yet.";

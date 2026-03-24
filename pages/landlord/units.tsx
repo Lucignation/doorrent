@@ -4,6 +4,13 @@ import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import {
+  annualEquivalentFromBilling,
+  type BillingFrequency,
+  formatBillingSchedule,
+  formatNaira,
+  monthlyEquivalentFromBilling,
+} from "../../lib/rent";
 import DataTable from "../../components/ui/DataTable";
 import IdentityCell from "../../components/ui/IdentityCell";
 import { SearchIcon } from "../../components/ui/Icons";
@@ -17,6 +24,12 @@ interface LandlordUnitRecord extends LandlordUnitRow {
   leaseEndIso?: string | null;
   monthlyRent?: number;
   canAssignTenant?: boolean;
+  statusLabel?: string;
+  billingFrequency?: BillingFrequency;
+  billingFrequencyLabel?: string;
+  billingCyclePrice?: number;
+  billingCyclePriceFormatted?: string;
+  billingSchedule?: string;
 }
 
 interface UnitsResponse {
@@ -37,14 +50,19 @@ interface UnitsResponse {
   units: LandlordUnitRecord[];
 }
 
-function monthlyEquivalentFromAnnualRent(value: string) {
-  const annualRent = Number(value);
+function pricingHelperText(value: string, frequency: BillingFrequency) {
+  const billingCyclePrice = Number(value);
 
-  if (!Number.isFinite(annualRent) || annualRent <= 0) {
+  if (!Number.isFinite(billingCyclePrice) || billingCyclePrice <= 0) {
     return "—";
   }
 
-  return `₦${Math.round(annualRent / 12).toLocaleString("en-NG")}`;
+  const annualEquivalent = annualEquivalentFromBilling(billingCyclePrice, frequency);
+  const monthlyEquivalent = monthlyEquivalentFromBilling(billingCyclePrice, frequency);
+
+  return `${formatBillingSchedule(billingCyclePrice, frequency)} · Annual equivalent ${formatNaira(
+    annualEquivalent,
+  )} · Monthly equivalent ${formatNaira(monthlyEquivalent)}`;
 }
 
 function statusTone(status: LandlordUnitRow["status"]): BadgeTone {
@@ -82,9 +100,9 @@ export default function LandlordUnitsPage() {
   const [editForm, setEditForm] = useState({
     unitNumber: "",
     type: "",
-    annualRent: "",
+    billingFrequency: "yearly" as BillingFrequency,
+    billingCyclePrice: "",
     leaseEnd: "",
-    status: "VACANT",
   });
   const [editError, setEditError] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -158,9 +176,13 @@ export default function LandlordUnitsPage() {
     setEditForm({
       unitNumber: unit.unit,
       type: unit.type,
-      annualRent: unit.annualRent ? String(unit.annualRent) : "",
+      billingFrequency: unit.billingFrequency ?? "yearly",
+      billingCyclePrice: unit.billingCyclePrice
+        ? String(unit.billingCyclePrice)
+        : unit.annualRent
+          ? String(unit.annualRent)
+          : "",
       leaseEnd: unit.leaseEndIso ? unit.leaseEndIso.slice(0, 10) : "",
-      status: unit.status.toUpperCase(),
     });
   }
 
@@ -178,6 +200,11 @@ export default function LandlordUnitsPage() {
       return;
     }
 
+    if (!editForm.billingCyclePrice || Number(editForm.billingCyclePrice) <= 0) {
+      setEditError("Enter a valid rent amount for this unit.");
+      return;
+    }
+
     setSavingEdit(true);
     setEditError("");
 
@@ -188,9 +215,9 @@ export default function LandlordUnitsPage() {
         body: {
           unitNumber: editForm.unitNumber,
           type: editForm.type,
-          annualRent: Number(editForm.annualRent),
+          billingFrequency: editForm.billingFrequency.toUpperCase(),
+          billingCyclePrice: Number(editForm.billingCyclePrice),
           leaseEnd: editForm.leaseEnd || null,
-          status: editForm.status,
         },
       });
 
@@ -208,22 +235,6 @@ export default function LandlordUnitsPage() {
       setSavingEdit(false);
     }
   }
-
-  const editStatusOptions = useMemo(() => {
-    const options = unitsData?.filters.statuses ?? [];
-
-    if (!editingUnit) {
-      return options;
-    }
-
-    if (editingUnit.tenant !== "—") {
-      return options.filter((option) => option.value !== "VACANT");
-    }
-
-    return options.filter(
-      (option) => !["OCCUPIED", "EXPIRING", "OVERDUE"].includes(option.value),
-    );
-  }, [editingUnit, unitsData?.filters.statuses]);
 
   const unitColumns: TableColumn<LandlordUnitRecord>[] = useMemo(
     () => [
@@ -250,12 +261,12 @@ export default function LandlordUnitsPage() {
       },
       {
         key: "rent",
-        label: "Rent/yr",
+        label: "Rent",
         render: (row) => (
           <div>
-            <span style={{ fontWeight: 600 }}>{row.rent}</span>
+            <span style={{ fontWeight: 600 }}>{row.billingSchedule ?? row.rent}</span>
             <div className="td-muted">
-              Monthly equivalent: {row.monthlyEquivalent ?? "—"}
+              Annual equivalent: {row.rent}
             </div>
           </div>
         ),
@@ -269,7 +280,9 @@ export default function LandlordUnitsPage() {
         key: "status",
         label: "Status",
         render: (row) => (
-          <StatusBadge tone={statusTone(row.status)}>{row.status}</StatusBadge>
+          <StatusBadge tone={statusTone(row.status)}>
+            {row.statusLabel ?? row.status}
+          </StatusBadge>
         ),
       },
       {
@@ -451,24 +464,46 @@ export default function LandlordUnitsPage() {
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Annual Rent (₦) *</label>
+                    <label className="form-label">Billing Frequency *</label>
+                    <select
+                      className="form-input"
+                      value={editForm.billingFrequency}
+                      onChange={(event) =>
+                        setEditForm((current) => ({
+                          ...current,
+                          billingFrequency: event.target.value as BillingFrequency,
+                        }))
+                      }
+                    >
+                      <option value="daily">Daily</option>
+                      <option value="monthly">Monthly</option>
+                      <option value="yearly">Yearly</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Price Per Billing Cycle (₦) *</label>
                     <input
                       className="form-input"
                       type="number"
                       min="1"
                       step="1000"
-                      value={editForm.annualRent}
+                      value={editForm.billingCyclePrice}
                       onChange={(event) =>
                         setEditForm((current) => ({
                           ...current,
-                          annualRent: event.target.value,
+                          billingCyclePrice: event.target.value,
                         }))
                       }
                     />
                     <div className="helper-text">
-                      Monthly equivalent: {monthlyEquivalentFromAnnualRent(editForm.annualRent)}
+                      {pricingHelperText(
+                        editForm.billingCyclePrice,
+                        editForm.billingFrequency,
+                      )}
                     </div>
                   </div>
+                </div>
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Lease End</label>
                     <input
@@ -482,29 +517,28 @@ export default function LandlordUnitsPage() {
                         }))
                       }
                     />
+                    <div className="helper-text">
+                      DoorRent uses this lease end date to move the unit between occupied,
+                      expiring, and lease expired automatically.
+                    </div>
                   </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select
-                    className="form-input"
-                    value={editForm.status}
-                    onChange={(event) =>
-                      setEditForm((current) => ({
-                        ...current,
-                        status: event.target.value,
-                      }))
-                    }
-                  >
-                    {editStatusOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="helper-text">
-                    Vacant is only allowed when no tenant is assigned to the unit.
-                  </div>
+                <div
+                  style={{
+                    padding: 14,
+                    borderRadius: "var(--radius-sm)",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface2)",
+                    fontSize: 12,
+                    color: "var(--ink2)",
+                    lineHeight: 1.7,
+                  }}
+                >
+                  Current system status:{" "}
+                  <strong>{editingUnit.statusLabel ?? editingUnit.status}</strong>.
+                  Landlords can choose the initial status only when creating a unit. After
+                  setup, DoorRent updates the status automatically from lease dates and
+                  payment activity.
                 </div>
               </div>
               <div className="modal-footer">

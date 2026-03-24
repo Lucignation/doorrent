@@ -4,6 +4,13 @@ import { useRouter } from "next/router";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import {
+  annualEquivalentFromBilling,
+  type BillingFrequency,
+  formatBillingSchedule,
+  formatNaira,
+  monthlyEquivalentFromBilling,
+} from "../../lib/rent";
 import type { ModalId } from "../../types/app";
 import SignaturePad from "./SignaturePad";
 
@@ -70,6 +77,9 @@ interface AgreementsLookupResponse {
         property: string;
         unitId?: string | null;
         unit: string;
+        billingFrequency?: string;
+        billingSchedule?: string;
+        billingCyclePrice?: number;
         annualRent?: number;
         monthlyRent?: number;
         rentAmount?: number;
@@ -120,14 +130,18 @@ const amenityOptions = [
   "Borehole",
 ];
 
-function calculateMonthlyEquivalent(annualRentValue: string) {
-  const parsed = Number(annualRentValue);
+function pricingHelperText(value: string, frequency: BillingFrequency) {
+  const parsed = Number(value);
 
   if (!Number.isFinite(parsed) || parsed <= 0) {
-    return "";
+    return "—";
   }
 
-  return Math.round(parsed / 12).toLocaleString("en-NG");
+  return `${formatBillingSchedule(parsed, frequency)} · Annual equivalent ${formatNaira(
+    annualEquivalentFromBilling(parsed, frequency),
+  )} · Monthly equivalent ${formatNaira(
+    monthlyEquivalentFromBilling(parsed, frequency),
+  )}`;
 }
 
 function readTextFile(file: File) {
@@ -230,7 +244,8 @@ export default function AppOverlays() {
     propertyId: "",
     unitNumber: "",
     type: "",
-    annualRent: "",
+    billingFrequency: "yearly" as BillingFrequency,
+    billingCyclePrice: "",
     leaseEnd: "",
     status: "VACANT",
   });
@@ -246,7 +261,8 @@ export default function AppOverlays() {
     agreementTemplateId: "",
     leaseStart: "",
     leaseEnd: "",
-    annualRent: "",
+    billingFrequency: "yearly" as BillingFrequency,
+    billingCyclePrice: "",
     depositAmount: "",
     message: "",
   });
@@ -262,7 +278,8 @@ export default function AppOverlays() {
     title: "",
     leaseStart: "",
     leaseEnd: "",
-    annualRent: "",
+    billingFrequency: "yearly" as BillingFrequency,
+    billingCyclePrice: "",
     depositAmount: "",
     notes: "",
     sendNow: true,
@@ -351,6 +368,9 @@ export default function AppOverlays() {
       ...current,
       propertyId: selectedAgreementTenant.propertyId,
       unitId: selectedAgreementTenant.unitId ?? "",
+      billingFrequency:
+        (selectedAgreementTenant.billingFrequency?.toLowerCase() as BillingFrequency) ??
+        current.billingFrequency,
       title:
         current.title ||
         `Tenancy Agreement - ${
@@ -360,13 +380,9 @@ export default function AppOverlays() {
         }`,
       leaseStart: current.leaseStart || selectedAgreementTenant.leaseStart.slice(0, 10),
       leaseEnd: current.leaseEnd || selectedAgreementTenant.leaseEnd.slice(0, 10),
-      annualRent:
-        current.annualRent ||
-        `${
-          selectedAgreementTenant.annualRent ??
-          (selectedAgreementTenant.monthlyRent ?? selectedAgreementTenant.rentAmount ?? 0) *
-            12
-        }`,
+      billingCyclePrice:
+        current.billingCyclePrice ||
+        `${selectedAgreementTenant.billingCyclePrice ?? selectedAgreementTenant.annualRent ?? selectedAgreementTenant.monthlyRent ?? selectedAgreementTenant.rentAmount ?? 0}`,
     }));
   }, [selectedAgreementTenant]);
 
@@ -515,7 +531,8 @@ export default function AppOverlays() {
       propertyId: "",
       unitNumber: "",
       type: "",
-      annualRent: "",
+      billingFrequency: "yearly",
+      billingCyclePrice: "",
       leaseEnd: "",
       status: "VACANT",
     });
@@ -530,7 +547,8 @@ export default function AppOverlays() {
       agreementTemplateId: "",
       leaseStart: "",
       leaseEnd: "",
-      annualRent: "",
+      billingFrequency: "yearly",
+      billingCyclePrice: "",
       depositAmount: "",
       message: "",
     });
@@ -545,7 +563,8 @@ export default function AppOverlays() {
       title: "",
       leaseStart: "",
       leaseEnd: "",
-      annualRent: "",
+      billingFrequency: "yearly",
+      billingCyclePrice: "",
       depositAmount: "",
       notes: "",
       sendNow: true,
@@ -655,8 +674,8 @@ export default function AppOverlays() {
       return;
     }
 
-    if (!unitForm.annualRent || Number(unitForm.annualRent) <= 0) {
-      setModalError("Enter the yearly rent for this unit.");
+    if (!unitForm.billingCyclePrice || Number(unitForm.billingCyclePrice) <= 0) {
+      setModalError("Enter the rent amount for this billing cycle.");
       return;
     }
 
@@ -671,7 +690,8 @@ export default function AppOverlays() {
           propertyId: unitForm.propertyId,
           unitNumber: unitForm.unitNumber.trim(),
           type: unitForm.type.trim(),
-          annualRent: Number(unitForm.annualRent),
+          billingFrequency: unitForm.billingFrequency.toUpperCase(),
+          billingCyclePrice: Number(unitForm.billingCyclePrice),
           leaseEnd: unitForm.leaseEnd || undefined,
           status: unitForm.status,
         },
@@ -697,6 +717,11 @@ export default function AppOverlays() {
       return;
     }
 
+    if (!invitationForm.billingCyclePrice || Number(invitationForm.billingCyclePrice) <= 0) {
+      setModalError("Enter the rent amount for this tenant invitation.");
+      return;
+    }
+
     setSavingInvitation(true);
     setModalError("");
 
@@ -714,7 +739,8 @@ export default function AppOverlays() {
             agreementTemplateId: invitationForm.agreementTemplateId || undefined,
             leaseStart: invitationForm.leaseStart,
             leaseEnd: invitationForm.leaseEnd,
-            annualRent: Number(invitationForm.annualRent),
+            billingFrequency: invitationForm.billingFrequency.toUpperCase(),
+            billingCyclePrice: Number(invitationForm.billingCyclePrice),
             depositAmount: invitationForm.depositAmount
               ? Number(invitationForm.depositAmount)
               : undefined,
@@ -748,6 +774,11 @@ export default function AppOverlays() {
       return;
     }
 
+    if (!agreementForm.billingCyclePrice || Number(agreementForm.billingCyclePrice) <= 0) {
+      setModalError("Enter the rent amount for this agreement.");
+      return;
+    }
+
     setSavingAgreement(true);
     setModalError("");
 
@@ -763,7 +794,8 @@ export default function AppOverlays() {
           title: agreementForm.title,
           leaseStart: agreementForm.leaseStart,
           leaseEnd: agreementForm.leaseEnd,
-          annualRent: Number(agreementForm.annualRent),
+          billingFrequency: agreementForm.billingFrequency.toUpperCase(),
+          billingCyclePrice: Number(agreementForm.billingCyclePrice),
           depositAmount: agreementForm.depositAmount
             ? Number(agreementForm.depositAmount)
             : undefined,
@@ -1078,21 +1110,46 @@ export default function AppOverlays() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Yearly Rent (₦) *</label>
+                <label className="form-label">Billing Frequency *</label>
+                <select
+                  className="form-input"
+                  value={unitForm.billingFrequency}
+                  onChange={(event) =>
+                    setUnitForm((current) => ({
+                      ...current,
+                      billingFrequency: event.target.value as BillingFrequency,
+                    }))
+                  }
+                >
+                  <option value="daily">Daily</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Price Per Billing Cycle (₦) *</label>
                 <input
                   className="form-input"
                   type="number"
-                  value={unitForm.annualRent}
+                  value={unitForm.billingCyclePrice}
                   onChange={(event) =>
-                    setUnitForm((current) => ({ ...current, annualRent: event.target.value }))
+                    setUnitForm((current) => ({
+                      ...current,
+                      billingCyclePrice: event.target.value,
+                    }))
                   }
                 />
-                {unitForm.annualRent ? (
+                {unitForm.billingCyclePrice ? (
                   <div className="td-muted" style={{ marginTop: 6 }}>
-                    Monthly equivalent: ₦{calculateMonthlyEquivalent(unitForm.annualRent)}
+                    {pricingHelperText(
+                      unitForm.billingCyclePrice,
+                      unitForm.billingFrequency,
+                    )}
                   </div>
                 ) : null}
               </div>
+            </div>
+            <div className="form-row">
               <div className="form-group">
                 <label className="form-label">Lease End</label>
                 <input
@@ -1103,6 +1160,10 @@ export default function AppOverlays() {
                     setUnitForm((current) => ({ ...current, leaseEnd: event.target.value }))
                   }
                 />
+                <div className="td-muted" style={{ marginTop: 6 }}>
+                  Once the unit is created, DoorRent will use the lease end date and rent
+                  activity to handle future status changes automatically.
+                </div>
               </div>
             </div>
             <div className="form-group">
@@ -1118,8 +1179,12 @@ export default function AppOverlays() {
                 <option value="OCCUPIED">Occupied</option>
                 <option value="MAINTENANCE">Maintenance</option>
                 <option value="EXPIRING">Expiring</option>
-                <option value="OVERDUE">Overdue</option>
+                <option value="OVERDUE">Lease Expired</option>
               </select>
+              <div className="td-muted" style={{ marginTop: 6 }}>
+                This is only for the initial setup. After creation, landlords can no longer
+                change the unit status manually.
+              </div>
             </div>
           </>
         )}
@@ -1302,22 +1367,42 @@ export default function AppOverlays() {
               </div>
               <div className="form-row">
                 <div className="form-group">
-                  <label className="form-label">Yearly Rent (₦) *</label>
+                  <label className="form-label">Billing Frequency *</label>
+                  <select
+                    className="form-input"
+                    value={invitationForm.billingFrequency}
+                    onChange={(event) =>
+                      setInvitationForm((current) => ({
+                        ...current,
+                        billingFrequency: event.target.value as BillingFrequency,
+                      }))
+                    }
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Price Per Billing Cycle (₦) *</label>
                   <input
                     className="form-input"
                     type="number"
                     placeholder="2160000"
-                    value={invitationForm.annualRent}
+                    value={invitationForm.billingCyclePrice}
                     onChange={(event) =>
                       setInvitationForm((current) => ({
                         ...current,
-                        annualRent: event.target.value,
+                        billingCyclePrice: event.target.value,
                       }))
                     }
                   />
-                  {invitationForm.annualRent ? (
+                  {invitationForm.billingCyclePrice ? (
                     <div className="td-muted" style={{ marginTop: 6 }}>
-                      Monthly equivalent: ₦{calculateMonthlyEquivalent(invitationForm.annualRent)}
+                      {pricingHelperText(
+                        invitationForm.billingCyclePrice,
+                        invitationForm.billingFrequency,
+                      )}
                     </div>
                   ) : null}
                 </div>
@@ -1353,6 +1438,10 @@ export default function AppOverlays() {
               </div>
               <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.7 }}>
                 The tenant will open the onboarding link from their email, upload their ID, provide their guarantor&apos;s full name, job, workplace, phone, email, and relationship, then both the tenant and guarantor will sign before submission.
+              </div>
+              <div style={{ fontSize: 12, color: "var(--amber)", lineHeight: 1.7, marginTop: 10 }}>
+                DoorRent will block duplicate onboarding if the same tenant already has an
+                existing or expired lease on this property and unit within the last 4 years.
               </div>
             </div>
           </>
@@ -1396,7 +1485,7 @@ export default function AppOverlays() {
                     title: "",
                     leaseStart: "",
                     leaseEnd: "",
-                    annualRent: "",
+                    billingCyclePrice: "",
                   }))
                 }
               >
@@ -1512,21 +1601,41 @@ export default function AppOverlays() {
             </div>
             <div className="form-row">
               <div className="form-group">
-                <label className="form-label">Yearly Rent (₦) *</label>
-                <input
+                <label className="form-label">Billing Frequency *</label>
+                <select
                   className="form-input"
-                  type="number"
-                  value={agreementForm.annualRent}
+                  value={agreementForm.billingFrequency}
                   onChange={(event) =>
                     setAgreementForm((current) => ({
                       ...current,
-                      annualRent: event.target.value,
+                      billingFrequency: event.target.value as BillingFrequency,
+                    }))
+                  }
+                >
+                  <option value="daily">Daily</option>
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Price Per Billing Cycle (₦) *</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  value={agreementForm.billingCyclePrice}
+                  onChange={(event) =>
+                    setAgreementForm((current) => ({
+                      ...current,
+                      billingCyclePrice: event.target.value,
                     }))
                   }
                 />
-                {agreementForm.annualRent ? (
+                {agreementForm.billingCyclePrice ? (
                   <div className="td-muted" style={{ marginTop: 6 }}>
-                    Monthly equivalent: ₦{calculateMonthlyEquivalent(agreementForm.annualRent)}
+                    {pricingHelperText(
+                      agreementForm.billingCyclePrice,
+                      agreementForm.billingFrequency,
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -1719,7 +1828,7 @@ export default function AppOverlays() {
             style={{ minHeight: 120 }}
             defaultValue={`Dear Tenant,
 
-We wish to inform you that effective from July 1, 2026, your annual rent will be adjusted in line with current market rates. A monthly equivalent breakdown will be shared for planning purposes.
+We wish to inform you that effective from July 1, 2026, your rent will be adjusted in line with current market rates and your updated billing schedule.
 Please contact us if you have any questions.
 
 DoorRent Property Management`}
@@ -1758,7 +1867,7 @@ DoorRent Property Management`}
           <br />
           <p><strong>2. TERM:</strong> The tenancy shall commence on April 1, 2026 and expire on March 31, 2027 (12 months).</p>
           <br />
-          <p><strong>3. RENT:</strong> The Tenant shall pay an annual rent of ₦1,800,000 for the tenancy term, with a monthly equivalent of ₦150,000 for reference only.</p>
+          <p><strong>3. RENT:</strong> The Tenant shall pay rent according to the agreed billing schedule of ₦150,000/month for the tenancy term.</p>
         </div>
         <div className="form-group">
           <label className="form-label">Your Signature *</label>

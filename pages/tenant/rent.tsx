@@ -40,7 +40,14 @@ interface TenantRentResponse {
     unitType: string;
   };
   rent: {
+    annualRent: number;
     annualRentFormatted: string;
+    billingFrequency: string;
+    billingFrequencyLabel: string;
+    billingCyclePrice: number;
+    billingCyclePriceFormatted: string;
+    billingSchedule: string;
+    leaseTotalFormatted: string;
     monthlyEquivalentFormatted: string;
     currentDueFormatted: string;
     totalPaidThisLeaseFormatted: string;
@@ -160,7 +167,7 @@ export default function TenantRentPage() {
 
   const paymentStatus = rentData?.rent.paymentStatus ?? "unpaid";
   const description = rentData
-    ? `${rentData.property.name} · Unit ${rentData.property.unitNumber} · ${rentData.rent.annualRentFormatted} yearly rent`
+    ? `${rentData.property.name} · Unit ${rentData.property.unitNumber} · ${rentData.rent.billingSchedule}`
     : loading
       ? "Loading your live rent details..."
       : error || "Your rent details are not available right now.";
@@ -181,9 +188,9 @@ export default function TenantRentPage() {
 
         <div className="stats-grid" style={{ marginBottom: 16 }}>
           <div className="stat-card accent-green">
-            <div className="stat-label">Annual Rent</div>
-            <div className="stat-value">{rentData?.rent.annualRentFormatted ?? "—"}</div>
-            <div className="stat-sub">Set by your landlord</div>
+            <div className="stat-label">Billing Cycle</div>
+            <div className="stat-value">{rentData?.rent.billingCyclePriceFormatted ?? "—"}</div>
+            <div className="stat-sub">{rentData?.rent.billingSchedule ?? "Set by your landlord"}</div>
           </div>
           <div className="stat-card accent-amber">
             <div className="stat-label">Current Due</div>
@@ -198,9 +205,9 @@ export default function TenantRentPage() {
             <div className="stat-sub">Last payment {rentData?.rent.lastPaymentDate ?? "—"}</div>
           </div>
           <div className="stat-card accent-gold">
-            <div className="stat-label">Deposit Held</div>
-            <div className="stat-value">{rentData?.rent.depositAmountFormatted ?? "—"}</div>
-            <div className="stat-sub">Security deposit</div>
+            <div className="stat-label">Lease Total</div>
+            <div className="stat-value">{rentData?.rent.leaseTotalFormatted ?? "—"}</div>
+            <div className="stat-sub">Across the active lease term</div>
           </div>
         </div>
 
@@ -210,7 +217,7 @@ export default function TenantRentPage() {
               <div>
                 <div className="card-title">Rent Overview</div>
                 <div className="card-subtitle">
-                  Track your yearly rent and payment progress at a glance.
+                  Track your live rent balance and payment progress at a glance.
                 </div>
               </div>
               <StatusBadge tone={paymentTone(paymentStatus)}>
@@ -273,10 +280,10 @@ export default function TenantRentPage() {
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Monthly Equivalent</label>
+                    <label className="form-label">Billing Schedule</label>
                     <input
                       className="form-input"
-                      value={rentData?.rent.monthlyEquivalentFormatted ?? "—"}
+                      value={rentData?.rent.billingSchedule ?? "—"}
                       disabled
                     />
                   </div>
@@ -285,6 +292,25 @@ export default function TenantRentPage() {
                     <input
                       className="form-input"
                       value={rentData?.rent.lastPaymentAmount ?? "—"}
+                      disabled
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Monthly Equivalent</label>
+                    <input
+                      className="form-input"
+                      value={rentData?.rent.monthlyEquivalentFormatted ?? "—"}
+                      disabled
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Annual Equivalent</label>
+                    <input
+                      className="form-input"
+                      value={rentData?.rent.annualRentFormatted ?? "—"}
                       disabled
                     />
                   </div>
@@ -349,6 +375,9 @@ export default function TenantRentPage() {
                   </div>
                   <div style={{ fontSize: 13, color: "var(--ink3)", marginTop: 4 }}>
                     {rentData?.landlord.email ?? "—"}
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--ink3)", marginTop: 8 }}>
+                    Deposit held: {rentData?.rent.depositAmountFormatted ?? "—"}
                   </div>
                 </div>
 
