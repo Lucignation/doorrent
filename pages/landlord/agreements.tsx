@@ -22,6 +22,7 @@ interface AgreementSummary {
 interface AgreementRow extends LandlordAgreementRow {
   id: string;
   title?: string;
+  property: string;
   annualRent?: number;
   billingFrequency?: string;
   billingFrequencyLabel?: string;

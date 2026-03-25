@@ -26,7 +26,8 @@ export type ModalId =
   | "upload-template"
   | "send-notice"
   | "sign-agreement"
-  | "notifications";
+  | "notifications"
+  | "new-default";
 
 export type ToastTone = "default" | "success" | "error" | "info";
 
