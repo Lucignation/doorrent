@@ -71,6 +71,8 @@ interface TenantAgreementResponse {
     notes?: string | null;
     contentSections: string[];
     canSign: boolean;
+    tenantSignatureDataUrl?: string | null;
+    tenantSignedDate?: string | null;
   } | null;
   timeline: AgreementTimelineRow[];
 }
@@ -276,7 +278,7 @@ export default function TenantAgreementPage() {
                     agreementRef: agreement.id,
                     generatedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
                     landlord: { companyName: agreement.landlordCompany, name: agreement.landlordName, email: agreement.landlordEmail, phone: agreement.landlordPhone },
-                    tenant: { name: agreementData?.tenant.name ?? "", email: agreement.tenantEmail, phone: agreement.tenantPhone, residentialAddress: agreement.tenantResidentialAddress, idType: agreement.tenantIdType, idNumber: agreement.tenantIdNumber, signatureDataUrl: savedSignature || undefined },
+                    tenant: { name: agreementData?.tenant.name ?? "", email: agreement.tenantEmail, phone: agreement.tenantPhone, residentialAddress: agreement.tenantResidentialAddress, idType: agreement.tenantIdType, idNumber: agreement.tenantIdNumber, signatureDataUrl: savedSignature || agreement.tenantSignatureDataUrl || undefined, signedDate: agreement.tenantSignedDate || undefined },
                     premises: { propertyName: agreement.propertyName, address: agreement.propertyAddress, unitNumber: agreement.unitNumber },
                     lease: { title: agreement.title, startDate: agreement.leaseStartIso, endDate: agreement.leaseEndIso },
                     financial: { annualRent: agreement.annualRent, billingFrequency: agreement.billingFrequency, billingFrequencyLabel: agreement.billingFrequencyLabel, billingCyclePrice: agreement.billingCyclePrice, billingSchedule: agreement.billingSchedule, depositAmount: agreement.depositAmount, serviceCharge: agreement.serviceCharge },
@@ -333,45 +335,43 @@ export default function TenantAgreementPage() {
                           marginBottom: 16,
                         }}
                       >
-                        You have signed this agreement. Share the link below with your guarantor so they can sign their copy.
+                        You have signed this agreement.{agreement.guarantor ? " Share the link below with your guarantor so they can sign their copy." : ""}
                       </div>
-                      {agreement.guarantor?.name ? (
-                        <div
-                          style={{
-                            padding: 14,
-                            borderRadius: "var(--radius)",
-                            background: "var(--surface2)",
-                            border: "1px solid var(--border)",
-                            fontSize: 13,
-                          }}
-                        >
-                          <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                            Guarantor link — {agreement.guarantor.name}
-                          </div>
-                          <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 10 }}>
-                            Send this link to your guarantor. They can view the agreement, sign it, and save their copy — without needing a DoorRent account.
-                          </div>
-                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <input
-                              readOnly
-                              className="form-input"
-                              style={{ fontSize: 12, flex: 1 }}
-                              value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${agreement.id}`}
-                            />
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => {
-                                void navigator.clipboard.writeText(`${window.location.origin}/agreement/guarantor/${agreement.id}`);
-                                setGuarantorLinkCopied(true);
-                                setTimeout(() => setGuarantorLinkCopied(false), 2000);
-                              }}
-                            >
-                              {guarantorLinkCopied ? "Copied!" : "Copy link"}
-                            </button>
-                          </div>
+                      <div
+                        style={{
+                          padding: 14,
+                          borderRadius: "var(--radius)",
+                          background: "var(--surface2)",
+                          border: "1px solid var(--border)",
+                          fontSize: 13,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                          {agreement.guarantor?.name ? `Guarantor link — ${agreement.guarantor.name}` : "Guarantor link"}
                         </div>
-                      ) : null}
+                        <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 10 }}>
+                          Send this link to your guarantor. They can view the agreement, sign it, and save their copy — without needing a DoorRent account.
+                        </div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            readOnly
+                            className="form-input"
+                            style={{ fontSize: 12, flex: 1 }}
+                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${agreement.id}`}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(`${window.location.origin}/agreement/guarantor/${agreement.id}`);
+                              setGuarantorLinkCopied(true);
+                              setTimeout(() => setGuarantorLinkCopied(false), 2000);
+                            }}
+                          >
+                            {guarantorLinkCopied ? "Copied!" : "Copy link"}
+                          </button>
+                        </div>
+                      </div>
                     </>
                   )}
                 </div>

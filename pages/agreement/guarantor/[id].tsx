@@ -20,6 +20,8 @@ interface GuarantorAgreementResponse {
     tenantResidentialAddress?: string | null;
     tenantIdType?: string | null;
     tenantIdNumber?: string | null;
+    tenantSignatureDataUrl?: string | null;
+    tenantSignedDate?: string | null;
     propertyName: string;
     propertyAddress: string;
     unitNumber: string;
@@ -52,6 +54,10 @@ interface GuarantorAgreementResponse {
     } | null;
     notes?: string | null;
     guarantorSigned: boolean;
+    witnessName?: string | null;
+    witnessDate?: string | null;
+    witnessSignatureDataUrl?: string | null;
+    witnessAddress?: string | null;
   };
 }
 
@@ -62,6 +68,8 @@ export default function GuarantorSigningPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [signatureData, setSignatureData] = useState("");
+  const [witnessName, setWitnessName] = useState("");
+  const [witnessAddress, setWitnessAddress] = useState("");
   const [signing, setSigning] = useState(false);
   const [signed, setSigned] = useState(false);
   const [savedSignature, setSavedSignature] = useState("");
@@ -91,12 +99,12 @@ export default function GuarantorSigningPage() {
   }, [id]);
 
   async function handleSign() {
-    if (!signatureData || !id) return;
+    if (!signatureData || !witnessName.trim() || !id) return;
     setSigning(true);
     try {
       await apiRequest(`/agreements/guarantor-sign/${id}`, {
         method: "POST",
-        body: { signatureData },
+        body: { signatureData, witnessName: witnessName.trim(), witnessAddress: witnessAddress.trim() || undefined },
       });
       setSavedSignature(signatureData);
       setSigned(true);
@@ -114,12 +122,18 @@ export default function GuarantorSigningPage() {
       agreementRef: a.id,
       generatedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
       landlord: { companyName: a.landlordCompany, name: a.landlordName, email: a.landlordEmail, phone: a.landlordPhone },
-      tenant: { name: a.tenantName, email: a.tenantEmail, phone: a.tenantPhone, residentialAddress: a.tenantResidentialAddress, idType: a.tenantIdType, idNumber: a.tenantIdNumber },
+      tenant: { name: a.tenantName, email: a.tenantEmail, phone: a.tenantPhone, residentialAddress: a.tenantResidentialAddress, idType: a.tenantIdType, idNumber: a.tenantIdNumber, signatureDataUrl: a.tenantSignatureDataUrl || undefined },
       premises: { propertyName: a.propertyName, address: a.propertyAddress, unitNumber: a.unitNumber },
       lease: { title: a.title, startDate: a.leaseStartIso, endDate: a.leaseEndIso },
       financial: { annualRent: a.annualRent, billingFrequency: a.billingFrequency, billingFrequencyLabel: a.billingFrequencyLabel, billingCyclePrice: a.billingCyclePrice, billingSchedule: a.billingSchedule, depositAmount: a.depositAmount, serviceCharge: a.serviceCharge },
       conditions: a.conditions,
-      guarantor: { ...a.guarantor, signatureDataUrl: savedSignature || undefined },
+      guarantor: {
+        ...a.guarantor,
+        signatureDataUrl: savedSignature || a.witnessSignatureDataUrl || undefined,
+        name: witnessName.trim() || a.witnessName || undefined,
+        address: witnessAddress.trim() || a.witnessAddress || a.guarantor?.address || undefined,
+        witnessDate: a.witnessDate || (savedSignature ? new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : undefined),
+      },
       notes: a.notes,
       templateName: a.templateName,
     });
@@ -131,12 +145,20 @@ export default function GuarantorSigningPage() {
         agreementRef: agreement.id,
         generatedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
         landlord: { companyName: agreement.landlordCompany, name: agreement.landlordName, email: agreement.landlordEmail, phone: agreement.landlordPhone },
-        tenant: { name: agreement.tenantName, email: agreement.tenantEmail, phone: agreement.tenantPhone, residentialAddress: agreement.tenantResidentialAddress, idType: agreement.tenantIdType, idNumber: agreement.tenantIdNumber },
+        tenant: { name: agreement.tenantName, email: agreement.tenantEmail, phone: agreement.tenantPhone, residentialAddress: agreement.tenantResidentialAddress, idType: agreement.tenantIdType, idNumber: agreement.tenantIdNumber, signatureDataUrl: agreement.tenantSignatureDataUrl || undefined, signedDate: agreement.tenantSignedDate || undefined },
         premises: { propertyName: agreement.propertyName, address: agreement.propertyAddress, unitNumber: agreement.unitNumber },
         lease: { title: agreement.title, startDate: agreement.leaseStartIso, endDate: agreement.leaseEndIso },
         financial: { annualRent: agreement.annualRent, billingFrequency: agreement.billingFrequency, billingFrequencyLabel: agreement.billingFrequencyLabel, billingCyclePrice: agreement.billingCyclePrice, billingSchedule: agreement.billingSchedule, depositAmount: agreement.depositAmount, serviceCharge: agreement.serviceCharge },
         conditions: agreement.conditions,
-        guarantor: { ...agreement.guarantor, signatureDataUrl: savedSignature || undefined },
+        guarantor: {
+          ...agreement.guarantor,
+          signatureDataUrl: savedSignature || agreement.witnessSignatureDataUrl || undefined,
+          name: witnessName.trim() || agreement.witnessName || undefined,
+          address: witnessAddress.trim() || agreement.witnessAddress || agreement.guarantor?.address || undefined,
+          witnessDate: signed
+            ? new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
+            : agreement.witnessDate || undefined,
+        },
         notes: agreement.notes,
         templateName: agreement.templateName,
       })
@@ -176,7 +198,7 @@ export default function GuarantorSigningPage() {
                     <div className="card-title">{agreement.title}</div>
                     <div className="card-subtitle">{agreement.landlordCompany} · {agreement.propertyName}, Unit {agreement.unitNumber}</div>
                   </div>
-                  <span className="badge badge-amber">Guarantor signature required</span>
+                  <span className="badge badge-amber">Witness signature required</span>
                 </div>
                 <iframe
                   srcDoc={iframeSrc ?? ""}
@@ -204,13 +226,40 @@ export default function GuarantorSigningPage() {
               ) : (
                 <div className="card">
                   <div className="card-header">
-                    <div className="card-title">Add Your Signature as Guarantor</div>
+                    <div className="card-title">Sign as Witness to Tenant&apos;s Signature</div>
                   </div>
                   <div className="card-body">
                     <div style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 16, lineHeight: 1.6 }}>
-                      By signing, you confirm that you have read this agreement in full and agree to act as guarantor for <strong>{agreement.tenantName}</strong>, jointly guaranteeing their obligations under this tenancy. Both you and the tenant must be based in Nigeria.
+                      By signing, you confirm that you were present when <strong>{agreement.tenantName}</strong> signed this tenancy agreement and that you are signing as witness to their signature.
                     </div>
                     {error ? <div style={{ color: "var(--red)", fontSize: 13, marginBottom: 12 }}>{error}</div> : null}
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>
+                        Your full name *
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Type your full name as witness"
+                        value={witnessName}
+                        onChange={(e) => setWitnessName(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                      <label style={{ fontSize: 13, fontWeight: 600, display: "block", marginBottom: 6 }}>
+                        Your address
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="Your residential address"
+                        value={witnessAddress}
+                        onChange={(e) => setWitnessAddress(e.target.value)}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 16, fontSize: 12, color: "var(--ink3)" }}>
+                      Date: <strong>{new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</strong>
+                    </div>
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>Your signature *</div>
                       <SignaturePad onChange={setSignatureData} />
@@ -220,9 +269,9 @@ export default function GuarantorSigningPage() {
                         type="button"
                         className="btn btn-primary"
                         onClick={() => void handleSign()}
-                        disabled={signing || !signatureData}
+                        disabled={signing || !signatureData || !witnessName.trim()}
                       >
-                        {signing ? "Submitting..." : "Sign as Guarantor"}
+                        {signing ? "Submitting..." : "Sign as Witness"}
                       </button>
                     </div>
                   </div>

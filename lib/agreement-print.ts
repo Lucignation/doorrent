@@ -84,6 +84,7 @@ export interface AgreementPrintData {
     idType?: string | null;
     idNumber?: string | null;
     signatureDataUrl?: string | null;
+    signedDate?: string | null;
   };
 
   premises: {
@@ -125,6 +126,7 @@ export interface AgreementPrintData {
     company?: string | null;
     address?: string | null;
     signatureDataUrl?: string | null;
+    witnessDate?: string | null;
   } | null;
 
   notes?: string | null;
@@ -850,32 +852,11 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
         ? `<div style="margin:10pt 0 4pt;"><img src="${data.tenant.signatureDataUrl}" style="height:48pt;max-width:200pt;display:block;" alt="Tenant Signature" /></div>`
         : '<div class="sig-line"></div>'}
       <div class="sig-meta">Tenant's Signature</div>
-      <div class="sig-date-line"></div>
-      <div class="sig-meta">Date</div>
+      ${data.tenant.signedDate
+        ? `<div class="sig-meta" style="margin-top:6pt;">Date: <strong>${esc(data.tenant.signedDate)}</strong></div>`
+        : '<div class="sig-date-line"></div><div class="sig-meta">Date</div>'}
     </div>
   </div>
-
-  ${hasGuarantor ? `
-  <div class="sig-pair avoid-break">
-    <div class="sig-block">
-      <div class="sig-label">Signed by the Guarantor</div>
-      <div class="sig-name">${esc(data.guarantor!.name)}</div>
-      <div class="sig-meta">
-        ${data.guarantor!.phone ? `Phone: ${esc(data.guarantor!.phone)}<br>` : ""}
-        ${data.guarantor!.email ? `Email: ${esc(data.guarantor!.email)}<br>` : ""}
-        ${data.guarantor!.relationship ? `Relationship to Tenant: ${esc(data.guarantor!.relationship)}<br>` : ""}
-        ${data.guarantor!.occupation ? `Occupation: ${esc(data.guarantor!.occupation)}<br>` : ""}
-      </div>
-      ${data.guarantor?.signatureDataUrl
-        ? `<div style="margin:10pt 0 4pt;"><img src="${data.guarantor.signatureDataUrl}" style="height:48pt;max-width:200pt;display:block;" alt="Guarantor Signature" /></div>`
-        : '<div class="sig-line"></div>'}
-      <div class="sig-meta">Guarantor's Signature</div>
-      <div class="sig-date-line"></div>
-      <div class="sig-meta">Date</div>
-    </div>
-    <div class="sig-block"></div>
-  </div>
-  ` : ""}
 
   <div class="avoid-break" style="margin-top:24pt;">
     <h2 class="sub-heading">Witness / Commissioner for Oaths (if applicable)</h2>
@@ -891,12 +872,26 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
       </div>
       <div class="sig-block">
         <div class="sig-label">Witness to Tenant's Signature</div>
-        <div class="sig-line"></div>
-        <div class="sig-meta">Full Name: ___________________________________</div>
+        ${data.guarantor?.signatureDataUrl
+          ? `<div style="margin:10pt 0 4pt;"><img src="${data.guarantor.signatureDataUrl}" style="height:48pt;max-width:200pt;display:block;" alt="Witness Signature" /></div>`
+          : '<div class="sig-line"></div>'}
+        <div class="sig-meta">
+          ${data.guarantor?.name
+            ? `Full Name: <strong>${esc(data.guarantor.name)}</strong>`
+            : "Full Name: ___________________________________"}
+        </div>
         <div style="height:6pt;"></div>
-        <div class="sig-meta">Address: ___________________________________</div>
-        <div class="sig-date-line"></div>
-        <div class="sig-meta">Date</div>
+        <div class="sig-meta">
+          ${data.guarantor?.address
+            ? `Address: <strong>${esc(data.guarantor.address)}</strong>`
+            : "Address: ___________________________________"}
+        </div>
+        <div style="height:6pt;"></div>
+        <div class="sig-meta">
+          ${data.guarantor?.witnessDate
+            ? `Date: <strong>${esc(data.guarantor.witnessDate)}</strong>`
+            : "Date: ___________________________________"}
+        </div>
       </div>
     </div>
   </div>
