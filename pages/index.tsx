@@ -225,10 +225,16 @@ const BASIC_YEARLY_SAVINGS_PERCENT = Math.round(
 );
 
 const basicPlanFeatures = [
+  "Properties management (unlimited properties)",
+  "Units management (unlimited units)",
+  "Tenant directory & profiles",
+  "Occupancy tracking & status overview",
+  "Lease end date tracking & renewal alerts",
   "Arranging Google Meet meetings with one tenant",
   "Arranging Google Meet meetings with all tenants",
-  "Units management",
-  "Properties management",
+  "Caretaker access (read-only property view)",
+  "Basic reporting & occupancy summary",
+  "Email notifications for key events",
 ];
 
 const fullServiceFeatures = [
@@ -334,10 +340,7 @@ export default function LandingPage() {
                 <Link href="/marketplace" className="btn btn-ghost-light marketing-mobile-marketplace">
                   Marketplace
                 </Link>
-                <Link href="/portal" className="btn btn-secondary">
-                  Sign in
-                </Link>
-                <Link href="/portal" className="btn btn-primary">
+<Link href="/portal" className="btn btn-primary">
                   Get started →
                 </Link>
               </div>
@@ -903,7 +906,7 @@ export default function LandingPage() {
                 </ul>
               </div>
 
-              <div>
+<div>
                 <h4>Company</h4>
                 <ul>
                   <li><a href="#testimonials">Testimonials</a></li>
@@ -1038,6 +1041,54 @@ export default function LandingPage() {
 
         .marketing-mobile-marketplace {
           display: none;
+        }
+
+        .portal-menu-wrap {
+          position: relative;
+        }
+        .portal-menu-wrap:hover .portal-menu,
+        .portal-menu-wrap:focus-within .portal-menu {
+          display: flex;
+        }
+        .portal-menu-btn {
+          cursor: pointer;
+        }
+        .portal-menu {
+          display: none;
+          flex-direction: column;
+          position: absolute;
+          top: calc(100% + 8px);
+          right: 0;
+          min-width: 180px;
+          background: #fff;
+          border: 1px solid var(--border, #e8e6df);
+          border-radius: 10px;
+          box-shadow: 0 8px 28px rgba(0,0,0,0.14);
+          z-index: 200;
+          padding: 6px;
+        }
+        .portal-menu-item {
+          display: block;
+          padding: 9px 14px;
+          border-radius: 7px;
+          font-size: 14px;
+          color: var(--ink, #1a1916);
+          font-weight: 500;
+          transition: background 0.12s;
+          text-decoration: none;
+        }
+        .portal-menu-item:hover {
+          background: var(--bg, #f5f4f0);
+        }
+        .portal-menu-item-muted {
+          color: var(--ink2, #6b6860);
+          font-size: 13px;
+          font-weight: 400;
+        }
+        .portal-menu-divider {
+          height: 1px;
+          background: var(--border, #e8e6df);
+          margin: 4px 0;
         }
 
         .marketing-nav-links a {
@@ -1229,7 +1280,18 @@ export default function LandingPage() {
           z-index: 1;
         }
 
+        .marketing-hero-visual::before {
+          content: "";
+          position: absolute;
+          inset: 20px -30px 0 -30px;
+          background: radial-gradient(ellipse at 50% 40%, rgba(26, 107, 74, 0.18) 0%, transparent 70%);
+          pointer-events: none;
+          z-index: 0;
+        }
+
         .marketing-dashboard {
+          position: relative;
+          z-index: 1;
           background: var(--surface);
           border-radius: 24px;
           box-shadow: 0 24px 64px rgba(26, 25, 22, 0.18), 0 8px 24px rgba(26, 25, 22, 0.08);
@@ -1394,6 +1456,7 @@ export default function LandingPage() {
 
         .marketing-floating-card {
           position: absolute;
+          z-index: 2;
           background: var(--surface);
           border: 1px solid var(--border);
           border-radius: var(--radius-lg);
@@ -2220,6 +2283,8 @@ export default function LandingPage() {
         @media (max-width: 1024px) {
           .marketing-hero-body {
             display: block;
+            min-height: auto;
+            padding-bottom: 64px;
           }
 
           .marketing-hero-grid {
@@ -2227,7 +2292,22 @@ export default function LandingPage() {
           }
 
           .marketing-hero-visual {
-            display: none;
+            display: block;
+            width: 100%;
+            max-width: 560px;
+            margin: 56px auto 52px;
+            padding: 20px 70px 0;
+            justify-self: unset;
+          }
+
+          .marketing-floating-card.left {
+            left: -8px;
+            bottom: -24px;
+          }
+
+          .marketing-floating-card.right {
+            right: -8px;
+            top: 16px;
           }
 
           .marketing-role-panel {
@@ -2277,6 +2357,15 @@ export default function LandingPage() {
           .marketing-hero-body {
             padding-top: 100px;
             padding-bottom: 60px;
+          }
+
+          .marketing-hero-visual {
+            padding: 16px 12px 28px;
+            margin-top: 40px;
+          }
+
+          .marketing-floating-card {
+            display: none;
           }
 
           .marketing-proof {

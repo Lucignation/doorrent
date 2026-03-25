@@ -74,6 +74,20 @@ interface OnboardingForm {
   guarantorPhone: string;
   guarantorOccupation: string;
   guarantorCompanyName: string;
+  guarantorAddress: string;
+}
+
+const NIGERIAN_STATES = [
+  "abia","adamawa","akwa ibom","anambra","bauchi","bayelsa","benue","borno",
+  "cross river","delta","ebonyi","edo","ekiti","enugu","fct","abuja","gombe",
+  "imo","jigawa","kaduna","kano","katsina","kebbi","kogi","kwara","lagos",
+  "nasarawa","niger","ogun","ondo","osun","oyo","plateau","rivers","sokoto",
+  "taraba","yobe","zamfara","nigeria",
+];
+
+function isNigerianAddress(address: string): boolean {
+  const lower = address.toLowerCase();
+  return NIGERIAN_STATES.some((state) => lower.includes(state));
 }
 
 function splitInviteeName(name?: string | null) {
@@ -125,6 +139,7 @@ export default function TenantOnboardingPage() {
     guarantorPhone: "",
     guarantorOccupation: "",
     guarantorCompanyName: "",
+    guarantorAddress: "",
   });
   const [idDocument, setIdDocument] = useState<UploadedDocument | null>(null);
   const [tenantSignatureData, setTenantSignatureData] = useState("");
@@ -132,6 +147,8 @@ export default function TenantOnboardingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [submittedAgreementId, setSubmittedAgreementId] = useState<string | null>(null);
+  const [guarantorLinkCopied, setGuarantorLinkCopied] = useState(false);
   const lockedNameParts = useMemo(
     () => splitInviteeName(invitationData?.invitation.inviteeName),
     [invitationData?.invitation.inviteeName],
@@ -198,6 +215,9 @@ export default function TenantOnboardingPage() {
 
   const inviteTag = token || "Loading...";
 
+  const tenantAddressValid = !form.residentialAddress.trim() || isNigerianAddress(form.residentialAddress);
+  const guarantorAddressValid = !form.guarantorAddress.trim() || isNigerianAddress(form.guarantorAddress);
+
   const canSubmit =
     !invitationData?.duplicateLeaseWarning &&
     Boolean(form.firstName.trim()) &&
@@ -205,17 +225,17 @@ export default function TenantOnboardingPage() {
     Boolean(form.email.trim()) &&
     Boolean(form.phone.trim()) &&
     Boolean(form.residentialAddress.trim()) &&
+    tenantAddressValid &&
+    guarantorAddressValid &&
     Boolean(form.idType.trim()) &&
-    Boolean(form.idNumber.trim()) &&
-    Boolean(idDocument?.content) &&
     Boolean(form.guarantorFullName.trim()) &&
     Boolean(form.guarantorRelationship.trim()) &&
     Boolean(form.guarantorEmail.trim()) &&
     Boolean(form.guarantorPhone.trim()) &&
     Boolean(form.guarantorOccupation.trim()) &&
     Boolean(form.guarantorCompanyName.trim()) &&
-    Boolean(tenantSignatureData) &&
-    Boolean(guarantorSignatureData);
+    Boolean(form.guarantorAddress.trim()) &&
+    Boolean(tenantSignatureData);
 
   async function handleIdUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -252,14 +272,14 @@ export default function TenantOnboardingPage() {
   async function submitOnboarding(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!token || !idDocument) {
+    if (!token) {
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      await apiRequest(`/tenant-onboarding/${token}/submit`, {
+      const { data } = await apiRequest<{ agreementId?: string }>(`/tenant-onboarding/${token}/submit`, {
         method: "POST",
         body: {
           firstName: form.firstName,
@@ -268,10 +288,14 @@ export default function TenantOnboardingPage() {
           phone: form.phone,
           residentialAddress: form.residentialAddress,
           idType: form.idType,
-          idNumber: form.idNumber,
-          idDocumentName: idDocument.name,
-          idDocumentMimeType: idDocument.mimeType,
-          idDocumentContent: idDocument.content,
+          ...(form.idNumber.trim() ? { idNumber: form.idNumber } : {}),
+          ...(idDocument
+            ? {
+                idDocumentName: idDocument.name,
+                idDocumentMimeType: idDocument.mimeType,
+                idDocumentContent: idDocument.content,
+              }
+            : {}),
           tenantSignatureData,
           guarantor: {
             fullName: form.guarantorFullName,
@@ -280,16 +304,16 @@ export default function TenantOnboardingPage() {
             occupation: form.guarantorOccupation,
             companyName: form.guarantorCompanyName,
             relationship: form.guarantorRelationship,
-            signatureData: guarantorSignatureData,
+            address: form.guarantorAddress,
           },
         },
       });
 
       showToast(
-        "Tenant onboarding submitted. Use the same email in the portal to receive your sign-in code.",
+        "Onboarding submitted. Share the guarantor link below, then use your email to sign into the portal.",
         "success",
       );
-      await router.push("/tenant/login");
+      setSubmittedAgreementId(data?.agreementId ?? "pending");
     } catch (requestError) {
       showToast(
         requestError instanceof Error
@@ -443,15 +467,21 @@ export default function TenantOnboardingPage() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Residential Address *</label>
+                  <label className="form-label">Residential Address * <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(must be a Nigerian address)</span></label>
                   <textarea
                     className="form-input"
                     value={form.residentialAddress}
+                    placeholder="e.g. 14 Broad Street, Lagos Island, Lagos State"
                     onChange={(event) =>
                       updateField("residentialAddress", event.target.value)
                     }
                     required
                   />
+                  {form.residentialAddress.trim() && !tenantAddressValid ? (
+                    <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>
+                      Address must be within Nigeria. Include a Nigerian state or city.
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="form-row">
@@ -469,18 +499,18 @@ export default function TenantOnboardingPage() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">ID Number *</label>
+                    <label className="form-label">ID Number <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(optional)</span></label>
                     <input
                       className="form-input"
+                      placeholder="Leave blank if not available"
                       value={form.idNumber}
                       onChange={(event) => updateField("idNumber", event.target.value)}
-                      required
                     />
                   </div>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Upload Your ID *</label>
+                  <label className="form-label">Upload Your ID <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(optional)</span></label>
                   <input className="form-input" type="file" onChange={handleIdUpload} />
                   {idDocument ? (
                     <div style={{ marginTop: 8, fontSize: 12, color: "var(--ink2)" }}>
@@ -571,43 +601,137 @@ export default function TenantOnboardingPage() {
                     />
                   </div>
                 </div>
+
+                <div className="form-group">
+                  <label className="form-label">
+                    Guarantor Residential Address * <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(must be a Nigerian address)</span>
+                  </label>
+                  <textarea
+                    className="form-input"
+                    placeholder="e.g. 5 Adeola Odeku Street, Victoria Island, Lagos State"
+                    value={form.guarantorAddress}
+                    onChange={(event) => updateField("guarantorAddress", event.target.value)}
+                    required
+                  />
+                  {form.guarantorAddress.trim() && !guarantorAddressValid ? (
+                    <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>
+                      Guarantor address must be within Nigeria. Include a Nigerian state or city.
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
 
             <div className="card">
               <div className="card-header">
-                <div className="card-title">Signatures</div>
+                <div className="card-title">Your Signature</div>
               </div>
               <div className="card-body">
-                <div className="form-group" style={{ marginBottom: 20 }}>
-                  <label className="form-label">Tenant Signature *</label>
-                  <SignaturePad onChange={setTenantSignatureData} />
-                </div>
+                {submittedAgreementId ? (
+                  <>
+                    <div
+                      style={{
+                        padding: 16,
+                        borderRadius: "var(--radius)",
+                        background: "var(--green-light)",
+                        border: "1px solid rgba(26,107,74,0.18)",
+                        color: "var(--green)",
+                        fontWeight: 600,
+                        fontSize: 14,
+                        marginBottom: 16,
+                      }}
+                    >
+                      Onboarding submitted successfully.
+                    </div>
 
-                <div className="form-group">
-                  <label className="form-label">Guarantor Signature *</label>
-                  <SignaturePad onChange={setGuarantorSignatureData} />
-                </div>
+                    {submittedAgreementId !== "pending" ? (
+                      <div
+                        style={{
+                          padding: 14,
+                          borderRadius: "var(--radius)",
+                          background: "var(--surface2)",
+                          border: "1px solid var(--border)",
+                          fontSize: 13,
+                          marginBottom: 16,
+                        }}
+                      >
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>
+                          Share with your guarantor — {form.guarantorFullName}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 10, lineHeight: 1.6 }}>
+                          Send this link to your guarantor. They can review the agreement and sign their own copy without needing a DoorRent account.
+                        </div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <input
+                            readOnly
+                            className="form-input"
+                            style={{ fontSize: 12, flex: 1 }}
+                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${submittedAgreementId}`}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              void navigator.clipboard.writeText(
+                                `${window.location.origin}/agreement/guarantor/${submittedAgreementId}`,
+                              );
+                              setGuarantorLinkCopied(true);
+                              setTimeout(() => setGuarantorLinkCopied(false), 2000);
+                            }}
+                          >
+                            {guarantorLinkCopied ? "Copied!" : "Copy"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
 
-                <div className="checkbox-wrap" style={{ marginTop: 12, marginBottom: 16 }}>
-                  <input type="checkbox" id="tenant-confirm" defaultChecked />
-                  <label htmlFor="tenant-confirm">
-                    I confirm that the information provided is correct and the guarantor has approved this submission.
-                  </label>
-                </div>
+                    <Link href="/tenant/login" className="btn btn-primary">
+                      Sign in to the Tenant Portal
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: 20 }}>
+                      <label className="form-label" style={{ marginBottom: 8, display: "block" }}>Tenant Signature *</label>
+                      <SignaturePad onChange={setTenantSignatureData} />
+                    </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={isSubmitting || !canSubmit}
-                  >
-                    {isSubmitting ? "Submitting..." : "Submit Onboarding"}
-                  </button>
-                  <Link href="/tenant/login" className="btn btn-secondary">
-                    Return to Portal
-                  </Link>
-                </div>
+                    <div
+                      style={{
+                        marginBottom: 14,
+                        padding: "10px 14px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--surface2)",
+                        border: "1px solid var(--border)",
+                        fontSize: 12,
+                        color: "var(--ink2)",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      After submitting, you will receive a link to share with your guarantor ({form.guarantorFullName || "your guarantor"}). They can sign their copy independently — no DoorRent account needed.
+                    </div>
+
+                    <div className="checkbox-wrap" style={{ marginBottom: 16 }}>
+                      <input type="checkbox" id="tenant-confirm" defaultChecked />
+                      <label htmlFor="tenant-confirm">
+                        I confirm that the information provided is correct and I am based in Nigeria.
+                      </label>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={isSubmitting || !canSubmit}
+                      >
+                        {isSubmitting ? "Submitting..." : "Submit Onboarding"}
+                      </button>
+                      <Link href="/tenant/login" className="btn btn-secondary">
+                        Return to Portal
+                      </Link>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </form>
@@ -699,7 +823,7 @@ export default function TenantOnboardingPage() {
                   <div>1. Complete your personal contact and address details.</div>
                   <div>2. Upload your government-issued ID for the landlord to review and download.</div>
                   <div>3. Add your guarantor&apos;s occupation, company, and relationship to you.</div>
-                  <div>4. Capture your signature and your guarantor&apos;s signature before submitting.</div>
+                  <div>4. Capture your signature and submit. A guarantor signing link will be provided after submission.</div>
                 </div>
               </div>
             </div>

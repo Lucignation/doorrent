@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import AdminPortalShell from "../../components/auth/AdminPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
@@ -46,6 +47,7 @@ function statusTone(status: AdminLandlordRow["status"]): BadgeTone {
 }
 
 export default function AdminLandlordsPage() {
+  const router = useRouter();
   const { dataRefreshVersion, showToast } = usePrototypeUI();
   const { adminSession } = useAdminPortalSession();
   const [landlordData, setLandlordData] = useState<AdminLandlordsResponse | null>(
@@ -180,7 +182,11 @@ export default function AdminLandlordsPage() {
           label: "Actions",
           render: (row) => (
             <div style={{ display: "flex", gap: 4 }}>
-              <button type="button" className="btn btn-ghost btn-xs">
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs"
+                onClick={() => void router.push(`/admin/landlords/${row.id}`)}
+              >
                 View
               </button>
               <button
@@ -201,7 +207,7 @@ export default function AdminLandlordsPage() {
           ),
         },
       ],
-      [showToast],
+      [showToast, router],
     );
 
   const description = landlordData

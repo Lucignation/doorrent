@@ -252,6 +252,7 @@ export default function AppOverlays() {
     billingCyclePrice: "",
     leaseEnd: "",
     status: "VACANT",
+    meterNumber: "",
   });
   const [savingUnit, setSavingUnit] = useState(false);
 
@@ -552,6 +553,7 @@ export default function AppOverlays() {
       billingCyclePrice: "",
       leaseEnd: "",
       status: "VACANT",
+      meterNumber: "",
     });
   }
 
@@ -724,6 +726,7 @@ export default function AppOverlays() {
           billingCyclePrice: Number(unitForm.billingCyclePrice),
           leaseEnd: unitForm.leaseEnd || undefined,
           status: unitForm.status,
+          meterNumber: unitForm.meterNumber.trim() || undefined,
         },
       });
 
@@ -1304,6 +1307,20 @@ export default function AppOverlays() {
               <div className="td-muted" style={{ marginTop: 6 }}>
                 This is only for the initial setup. After creation, landlords can no longer
                 change the unit status manually.
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Electricity Meter Number <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(optional)</span></label>
+              <input
+                className="form-input"
+                placeholder="e.g. 45110012345678"
+                value={unitForm.meterNumber}
+                onChange={(event) =>
+                  setUnitForm((current) => ({ ...current, meterNumber: event.target.value }))
+                }
+              />
+              <div className="td-muted" style={{ marginTop: 6 }}>
+                Tenants will be able to see this meter number from their portal when they need to buy prepaid electricity.
               </div>
             </div>
           </>

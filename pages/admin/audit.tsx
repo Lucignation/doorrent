@@ -1,69 +1,75 @@
+import { useEffect, useState } from "react";
 import AdminPortalShell from "../../components/auth/AdminPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
 import IdentityCell from "../../components/ui/IdentityCell";
-import { SearchIcon } from "../../components/ui/Icons";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
-import { adminAuditLogs } from "../../data/admin";
-import type { AdminAuditRow, BadgeTone, TableColumn } from "../../types/app";
+import { useAdminPortalSession } from "../../context/TenantSessionContext";
+import { usePrototypeUI } from "../../context/PrototypeUIContext";
+import { apiRequest } from "../../lib/api";
+import type { BadgeTone, TableColumn } from "../../types/app";
 
-function roleTone(role: AdminAuditRow["role"]): BadgeTone {
-  if (role === "super_admin") {
-    return "red";
-  }
+interface AuditRow {
+  id: string;
+  timestamp: string;
+  actor: string;
+  role: "landlord" | "tenant" | "super_admin";
+  action: string;
+  entity: string;
+  ipAddress: string;
+}
 
-  if (role === "landlord") {
-    return "blue";
-  }
+interface AuditResponse {
+  count: number;
+  logs: AuditRow[];
+}
 
+function roleTone(role: AuditRow["role"]): BadgeTone {
+  if (role === "super_admin") return "red";
+  if (role === "landlord") return "blue";
   return "gray";
 }
 
 export default function AdminAuditPage() {
-  const auditColumns: TableColumn<AdminAuditRow>[] = [
+  const { adminSession } = useAdminPortalSession();
+  const { dataRefreshVersion } = usePrototypeUI();
+  const [data, setData] = useState<AuditResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!adminSession?.token) return;
+    const token = adminSession.token;
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError("");
+      try {
+        const { data: result } = await apiRequest<AuditResponse>("/admin/audit", { token });
+        if (!cancelled) setData(result);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Could not load audit logs.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => { cancelled = true; };
+  }, [dataRefreshVersion, adminSession?.token]);
+
+  const columns: TableColumn<AuditRow>[] = [
+    { key: "timestamp", label: "Timestamp", render: (row) => <span style={{ fontSize: 11, color: "var(--ink3)", whiteSpace: "nowrap" }}>{row.timestamp}</span> },
+    { key: "actor", label: "Actor", render: (row) => <IdentityCell primary={row.actor} /> },
+    { key: "role", label: "Role", render: (row) => <StatusBadge tone={roleTone(row.role)}>{row.role}</StatusBadge> },
     {
-      key: "timestamp",
-      label: "Timestamp",
-      render: (row) => (
-        <span style={{ fontSize: 11, color: "var(--ink3)", whiteSpace: "nowrap" }}>
-          {row.timestamp}
-        </span>
-      ),
+      key: "action", label: "Action",
+      render: (row) => <code style={{ fontSize: 11, background: "var(--bg)", padding: "2px 6px", borderRadius: 3 }}>{row.action}</code>,
     },
-    {
-      key: "actor",
-      label: "Actor",
-      render: (row) => <IdentityCell primary={row.actor} />,
-    },
-    {
-      key: "role",
-      label: "Role",
-      render: (row) => <StatusBadge tone={roleTone(row.role)}>{row.role}</StatusBadge>,
-    },
-    {
-      key: "action",
-      label: "Action",
-      render: (row) => (
-        <code style={{ fontSize: 11, background: "var(--bg)", padding: "2px 6px", borderRadius: 3 }}>
-          {row.action}
-        </code>
-      ),
-    },
-    {
-      key: "entity",
-      label: "Entity",
-      render: (row) => <span className="td-muted">{row.entity}</span>,
-    },
-    {
-      key: "ipAddress",
-      label: "IP Address",
-      render: (row) => (
-        <span style={{ fontSize: 11, color: "var(--ink3)", fontFamily: "monospace" }}>
-          {row.ipAddress}
-        </span>
-      ),
-    },
+    { key: "entity", label: "Entity", render: (row) => <span className="td-muted">{row.entity}</span> },
+    { key: "ipAddress", label: "IP", render: (row) => <span style={{ fontSize: 11, color: "var(--ink3)", fontFamily: "monospace" }}>{row.ipAddress}</span> },
   ];
 
   return (
@@ -72,48 +78,23 @@ export default function AdminAuditPage() {
       <AdminPortalShell topbarTitle="Audit Logs" breadcrumb="Dashboard → Audit Logs">
         <PageHeader
           title="Audit Logs"
-          description="Full platform activity trail"
+          description={data ? `${data.count} events recorded` : loading ? "Loading..." : error || "No audit events."}
           actions={[{ label: "Export CSV", variant: "secondary" }]}
         />
 
-        <div className="filters-bar">
-          <div className="search-input-wrap">
-            <SearchIcon />
-            <input className="search-input" placeholder="Search actions…" />
+        {error ? (
+          <div className="card">
+            <div className="card-body" style={{ color: "var(--red)" }}>{error}</div>
           </div>
-          <select className="filter-select" defaultValue="All Actions">
-            <option>All Actions</option>
-            <option>Login</option>
-            <option>Create</option>
-            <option>Update</option>
-            <option>Delete</option>
-            <option>Suspend</option>
-          </select>
-          <select className="filter-select" defaultValue="All Roles">
-            <option>All Roles</option>
-            <option>Super Admin</option>
-            <option>Landlord</option>
-            <option>Tenant</option>
-          </select>
-          <select className="filter-select" defaultValue="Last 24h">
-            <option>Last 24h</option>
-            <option>Last 7 days</option>
-            <option>Last 30 days</option>
-          </select>
-        </div>
-
-        <div className="card">
-          <DataTable columns={auditColumns} rows={adminAuditLogs} />
-          <div className="pagination">
-            <span>Showing 6 of 24,180 events</span>
-            <div className="pagination-pages">
-              <div className="page-btn active">1</div>
-              <div className="page-btn">2</div>
-              <div className="page-btn">3</div>
-              <div className="page-btn">→</div>
-            </div>
+        ) : (
+          <div className="card">
+            <DataTable
+              columns={columns}
+              rows={data?.logs ?? []}
+              emptyMessage={loading ? "Loading audit logs..." : "No audit events found."}
+            />
           </div>
-        </div>
+        )}
       </AdminPortalShell>
     </>
   );

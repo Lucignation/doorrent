@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import AdminPortalShell from "../../components/auth/AdminPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
@@ -47,6 +48,7 @@ function statusTone(status: AdminPropertyRow["status"]): BadgeTone {
 }
 
 export default function AdminPropertiesPage() {
+  const router = useRouter();
   const { dataRefreshVersion } = usePrototypeUI();
   const { adminSession } = useAdminPortalSession();
   const [propertyData, setPropertyData] = useState<AdminPropertiesResponse | null>(
@@ -140,8 +142,21 @@ export default function AdminPropertiesPage() {
           <StatusBadge tone={statusTone(row.status)}>{row.status}</StatusBadge>
         ),
       },
+      {
+        key: "actions",
+        label: "Actions",
+        render: (row) => (
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => void router.push(`/admin/properties/${row.id}`)}
+          >
+            View
+          </button>
+        ),
+      },
     ],
-    [],
+    [router],
   );
 
   const description = propertyData

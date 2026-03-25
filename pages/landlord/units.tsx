@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
@@ -31,6 +32,7 @@ interface LandlordUnitRecord extends LandlordUnitRow {
   billingCyclePrice?: number;
   billingCyclePriceFormatted?: string;
   billingSchedule?: string;
+  meterNumber?: string | null;
 }
 
 interface UnitsResponse {
@@ -87,6 +89,7 @@ function statusTone(status: LandlordUnitRow["status"]): BadgeTone {
 }
 
 export default function LandlordUnitsPage() {
+  const router = useRouter();
   const { dataRefreshVersion, openModal, refreshData, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [unitsData, setUnitsData] = useState<UnitsResponse | null>(null);
@@ -104,6 +107,7 @@ export default function LandlordUnitsPage() {
     billingFrequency: "yearly" as BillingFrequency,
     billingCyclePrice: "",
     leaseEnd: "",
+    meterNumber: "",
   });
   const [editError, setEditError] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
@@ -184,6 +188,7 @@ export default function LandlordUnitsPage() {
           ? String(unit.annualRent)
           : "",
       leaseEnd: unit.leaseEndIso ? unit.leaseEndIso.slice(0, 10) : "",
+      meterNumber: unit.meterNumber ?? "",
     });
   }
 
@@ -219,6 +224,7 @@ export default function LandlordUnitsPage() {
           billingFrequency: editForm.billingFrequency.toUpperCase(),
           billingCyclePrice: Number(editForm.billingCyclePrice),
           leaseEnd: editForm.leaseEnd || null,
+          meterNumber: editForm.meterNumber.trim() || null,
         },
       });
 
@@ -294,6 +300,13 @@ export default function LandlordUnitsPage() {
             <button
               type="button"
               className="btn btn-ghost btn-xs"
+              onClick={() => void router.push(`/landlord/units/${row.id}`)}
+            >
+              View
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
               onClick={() => openEditUnit(row)}
             >
               Edit
@@ -311,7 +324,7 @@ export default function LandlordUnitsPage() {
         ),
       },
     ],
-    [openModal],
+    [openModal, router],
   );
 
   const description = unitsData
@@ -521,6 +534,25 @@ export default function LandlordUnitsPage() {
                     <div className="helper-text">
                       DoorRent uses this lease end date to move the unit between occupied,
                       expiring, and lease expired automatically.
+                    </div>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Electricity Meter Number</label>
+                    <input
+                      className="form-input"
+                      placeholder="e.g. 45123678901"
+                      value={editForm.meterNumber}
+                      onChange={(event) =>
+                        setEditForm((current) => ({
+                          ...current,
+                          meterNumber: event.target.value,
+                        }))
+                      }
+                    />
+                    <div className="helper-text">
+                      Tenants can view this meter number when they need to buy electricity units for the property.
                     </div>
                   </div>
                 </div>

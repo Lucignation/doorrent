@@ -38,6 +38,7 @@ interface TenantRentResponse {
     name: string;
     unitNumber: string;
     unitType: string;
+    meterNumber?: string | null;
   };
   rent: {
     annualRent: number;
@@ -246,6 +247,26 @@ export default function TenantRentPage() {
                     Unit {rentData?.property.unitNumber ?? "—"} ·{" "}
                     {rentData?.property.unitType ?? "—"}
                   </div>
+                  {rentData?.property.meterNumber ? (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: "8px 12px",
+                        borderRadius: "var(--radius-sm)",
+                        background: "var(--surface2)",
+                        border: "1px solid var(--border)",
+                        fontSize: 12,
+                      }}
+                    >
+                      <span style={{ color: "var(--ink3)" }}>Electricity meter number</span>
+                      <div style={{ fontWeight: 700, fontSize: 15, letterSpacing: "0.04em", marginTop: 2 }}>
+                        {rentData.property.meterNumber}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 2 }}>
+                        Use this number when buying prepaid electricity (EKEDC / IKEDC / EEDC etc.)
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div>

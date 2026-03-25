@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/router";
 import CaretakerPortalShell from "../../components/auth/CaretakerPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
@@ -32,6 +33,7 @@ interface CaretakerPropertiesResponse {
 }
 
 export default function CaretakerPropertiesPage() {
+  const router = useRouter();
   const { caretakerSession } = useCaretakerPortalSession();
   const { dataRefreshVersion } = usePrototypeUI();
   const [propertyData, setPropertyData] = useState<CaretakerPropertiesResponse | null>(
@@ -99,6 +101,19 @@ export default function CaretakerPropertiesPage() {
       render: (row) => <span>{row.occupancyPercent}%</span>,
     },
     { key: "monthlyRevenue", label: "Revenue" },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (row) => (
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs"
+          onClick={() => void router.push(`/caretaker/properties/${row.id}`)}
+        >
+          View
+        </button>
+      ),
+    },
   ];
 
   return (

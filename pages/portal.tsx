@@ -1506,6 +1506,49 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
             </p>
           </div>
 
+          <div className="auth-activity">
+            <div className="auth-activity-item">
+              <div className="auth-activity-icon" style={{ background: "rgba(46,160,67,0.18)" }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 4.5L6.5 11.5L3 8" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <div className="auth-activity-body">
+                <span className="auth-activity-title">Rent received</span>
+                <span className="auth-activity-sub">Chidinma Eze · ₦320,000</span>
+              </div>
+              <span className="auth-activity-time">2m ago</span>
+            </div>
+            <div className="auth-activity-item">
+              <div className="auth-activity-icon" style={{ background: "rgba(200,169,110,0.18)" }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="#c8a96e" strokeWidth="1.6"/><path d="M2 6h12" stroke="#c8a96e" strokeWidth="1.4"/></svg>
+              </div>
+              <div className="auth-activity-body">
+                <span className="auth-activity-title">Agreement signed</span>
+                <span className="auth-activity-sub">Kelechi Dike · Unit B2, Lekki</span>
+              </div>
+              <span className="auth-activity-time">18m ago</span>
+            </div>
+            <div className="auth-activity-item">
+              <div className="auth-activity-icon" style={{ background: "rgba(96,165,250,0.15)" }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke="#60a5fa" strokeWidth="1.6"/><path d="M2.5 13.5c0-2.485 2.462-4.5 5.5-4.5s5.5 2.015 5.5 4.5" stroke="#60a5fa" strokeWidth="1.6" strokeLinecap="round"/></svg>
+              </div>
+              <div className="auth-activity-body">
+                <span className="auth-activity-title">New tenant onboarded</span>
+                <span className="auth-activity-sub">Amara Okonkwo · Victoria Island</span>
+              </div>
+              <span className="auth-activity-time">1h ago</span>
+            </div>
+            <div className="auth-activity-item">
+              <div className="auth-activity-icon" style={{ background: "rgba(251,146,60,0.15)" }}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v4M8 10v.5M8 13a5 5 0 100-10A5 5 0 008 13z" stroke="#fb923c" strokeWidth="1.6" strokeLinecap="round"/></svg>
+              </div>
+              <div className="auth-activity-body">
+                <span className="auth-activity-title">Overdue reminder sent</span>
+                <span className="auth-activity-sub">Tunde Adeola · ₦180,000 due</span>
+              </div>
+              <span className="auth-activity-time">3h ago</span>
+            </div>
+          </div>
+
           <div className="auth-stats">
             <div className="auth-stat">
               <strong>12K+</strong>
@@ -1555,6 +1598,17 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
               renderTenantAccess()
             ) : (
               renderWorkspaceAccess()
+            )}
+
+            {role === "landlord" && (
+              <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border)", textAlign: "center", fontSize: 13, color: "var(--ink3)" }}>
+                <Link href="/tenant/login" style={{ color: "var(--accent)", fontWeight: 600, marginRight: 16 }}>
+                  Tenant Login
+                </Link>
+                <Link href="/caretaker/login" style={{ color: "var(--accent)", fontWeight: 600 }}>
+                  Caretaker Login
+                </Link>
+              </div>
             )}
           </div>
         </div>

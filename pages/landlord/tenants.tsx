@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
@@ -77,6 +78,7 @@ function statusTone(status: TenantLedgerRow["status"]): BadgeTone {
 }
 
 export default function LandlordTenantsPage() {
+  const router = useRouter();
   const { dataRefreshVersion, openModal } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [tenantData, setTenantData] = useState<TenantResponse | null>(null);
@@ -195,7 +197,11 @@ export default function LandlordTenantsPage() {
         label: "Actions",
         render: (row) => (
           <div style={{ display: "flex", gap: 4 }}>
-            <button type="button" className="btn btn-ghost btn-xs">
+            <button
+              type="button"
+              className="btn btn-ghost btn-xs"
+              onClick={() => void router.push(`/landlord/tenants/${row.id}`)}
+            >
               View
             </button>
             {row.status === "overdue" ? (
@@ -220,7 +226,7 @@ export default function LandlordTenantsPage() {
         ),
       },
     ],
-    [openModal],
+    [openModal, router],
   );
 
   const inviteRows: TenantInvitationRecord[] = (inviteData?.invitations ?? []).map(

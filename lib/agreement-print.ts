@@ -83,6 +83,7 @@ export interface AgreementPrintData {
     residentialAddress?: string | null;
     idType?: string | null;
     idNumber?: string | null;
+    signatureDataUrl?: string | null;
   };
 
   premises: {
@@ -123,21 +124,20 @@ export interface AgreementPrintData {
     occupation?: string | null;
     company?: string | null;
     address?: string | null;
+    signatureDataUrl?: string | null;
   } | null;
 
   notes?: string | null;
   templateName?: string | null;
 }
 
-export function printAgreementDocument(data: AgreementPrintData) {
-  const win = window.open("", "_blank", "width=900,height=700");
-  if (!win) return;
+export function buildAgreementHtml(data: AgreementPrintData): string {
 
   const duration = leaseDurationText(data.lease.startDate, data.lease.endDate);
   const noticeDays = data.conditions?.noticePeriodDays ?? 30;
   const hasGuarantor = Boolean(data.guarantor?.name);
 
-  const html = `<!DOCTYPE html>
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
@@ -846,7 +846,9 @@ export function printAgreementDocument(data: AgreementPrintData) {
         ${data.tenant.phone ? `Phone: ${esc(data.tenant.phone)}<br>` : ""}
         ${data.tenant.idType && data.tenant.idNumber ? `ID: ${esc(data.tenant.idType)} — ${esc(data.tenant.idNumber)}<br>` : ""}
       </div>
-      <div class="sig-line"></div>
+      ${data.tenant.signatureDataUrl
+        ? `<div style="margin:10pt 0 4pt;"><img src="${data.tenant.signatureDataUrl}" style="height:48pt;max-width:200pt;display:block;" alt="Tenant Signature" /></div>`
+        : '<div class="sig-line"></div>'}
       <div class="sig-meta">Tenant's Signature</div>
       <div class="sig-date-line"></div>
       <div class="sig-meta">Date</div>
@@ -864,7 +866,9 @@ export function printAgreementDocument(data: AgreementPrintData) {
         ${data.guarantor!.relationship ? `Relationship to Tenant: ${esc(data.guarantor!.relationship)}<br>` : ""}
         ${data.guarantor!.occupation ? `Occupation: ${esc(data.guarantor!.occupation)}<br>` : ""}
       </div>
-      <div class="sig-line"></div>
+      ${data.guarantor?.signatureDataUrl
+        ? `<div style="margin:10pt 0 4pt;"><img src="${data.guarantor.signatureDataUrl}" style="height:48pt;max-width:200pt;display:block;" alt="Guarantor Signature" /></div>`
+        : '<div class="sig-line"></div>'}
       <div class="sig-meta">Guarantor's Signature</div>
       <div class="sig-date-line"></div>
       <div class="sig-meta">Date</div>
@@ -921,7 +925,12 @@ export function printAgreementDocument(data: AgreementPrintData) {
 </script>
 </body>
 </html>`;
+}
 
+export function printAgreementDocument(data: AgreementPrintData) {
+  const win = window.open("", "_blank", "width=900,height=700");
+  if (!win) return;
+  const html = buildAgreementHtml(data);
   win.document.write(html);
   win.document.close();
 }

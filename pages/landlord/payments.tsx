@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
@@ -114,6 +115,7 @@ function paymentTone(status: string): BadgeTone {
 }
 
 export default function LandlordPaymentsPage() {
+  const router = useRouter();
   const { landlordSession } = useLandlordPortalSession();
   const { dataRefreshVersion, openModal, showToast } = usePrototypeUI();
   const [paymentData, setPaymentData] = useState<LandlordPaymentsResponse | null>(null);
@@ -399,14 +401,23 @@ export default function LandlordPaymentsPage() {
       key: "receipt",
       label: "Receipt",
       render: (row) => (
-        <button
-          type="button"
-          className="btn btn-ghost btn-xs"
-          onClick={() => openReceipt(row)}
-          disabled={!row.receiptNumber}
-        >
-          {row.receiptNumber ? "Print" : "Pending"}
-        </button>
+        <div style={{ display: "flex", gap: 4 }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => void router.push(`/landlord/payments/${row.id}`)}
+          >
+            View
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => openReceipt(row)}
+            disabled={!row.receiptNumber}
+          >
+            {row.receiptNumber ? "Print" : "Pending"}
+          </button>
+        </div>
       ),
     },
   ];

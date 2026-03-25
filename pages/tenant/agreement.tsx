@@ -6,6 +6,7 @@ import SignaturePad from "../../components/ui/SignaturePad";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
+import { buildAgreementHtml, printAgreementDocument } from "../../lib/agreement-print";
 
 interface AgreementTimelineRow {
   label: string;
@@ -28,16 +29,46 @@ interface TenantAgreementResponse {
     unitNumber: string;
     leaseStartLabel: string;
     leaseEndLabel: string;
+    leaseStartIso: string;
+    leaseEndIso: string;
     billingFrequency: string;
     billingFrequencyLabel: string;
+    billingCyclePrice: number;
     billingCyclePriceFormatted: string;
     billingSchedule: string;
+    annualRent: number;
     annualRentFormatted: string;
+    depositAmount: number;
     depositFormatted: string;
+    serviceCharge?: number | null;
     landlordName: string;
     landlordCompany: string;
+    landlordEmail: string;
+    landlordPhone?: string | null;
+    tenantEmail: string;
+    tenantPhone?: string | null;
+    tenantResidentialAddress?: string | null;
+    tenantIdType?: string | null;
+    tenantIdNumber?: string | null;
+    propertyAddress: string;
     templateName: string;
     templateFileUrl: string | null;
+    conditions?: {
+      noticePeriodDays?: number | null;
+      utilities?: string | null;
+      permittedUse?: string | null;
+      specialConditions?: string | null;
+    } | null;
+    guarantor?: {
+      name?: string | null;
+      phone?: string | null;
+      email?: string | null;
+      relationship?: string | null;
+      occupation?: string | null;
+      company?: string | null;
+      address?: string | null;
+    } | null;
+    notes?: string | null;
     contentSections: string[];
     canSign: boolean;
   } | null;
@@ -61,6 +92,8 @@ export default function TenantAgreementPage() {
   const [error, setError] = useState("");
   const [signatureData, setSignatureData] = useState("");
   const [signing, setSigning] = useState(false);
+  const [savedSignature, setSavedSignature] = useState("");
+  const [guarantorLinkCopied, setGuarantorLinkCopied] = useState(false);
 
   useEffect(() => {
     const tenantToken = tenantSession?.token;
@@ -127,6 +160,7 @@ export default function TenantAgreementPage() {
         },
       });
       showToast("Agreement signed successfully", "success");
+      setSavedSignature(signatureData);
       setSignatureData("");
       refreshData();
     } catch (requestError) {
@@ -142,14 +176,51 @@ export default function TenantAgreementPage() {
   }
 
   function handleDownload() {
-    const templateFileUrl = agreementData?.agreement?.templateFileUrl;
+    const a = agreementData?.agreement;
+    const t = agreementData?.tenant;
+    if (!a || !t) return;
 
-    if (templateFileUrl) {
-      window.open(templateFileUrl, "_blank", "noopener,noreferrer");
-      return;
-    }
-
-    showToast("No PDF file is attached yet. Review the agreement summary below.", "info");
+    printAgreementDocument({
+      agreementRef: a.id,
+      generatedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+      landlord: {
+        companyName: a.landlordCompany,
+        name: a.landlordName,
+        email: a.landlordEmail,
+        phone: a.landlordPhone,
+      },
+      tenant: {
+        name: t.name,
+        email: a.tenantEmail,
+        phone: a.tenantPhone,
+        residentialAddress: a.tenantResidentialAddress,
+        idType: a.tenantIdType,
+        idNumber: a.tenantIdNumber,
+      },
+      premises: {
+        propertyName: a.propertyName,
+        address: a.propertyAddress,
+        unitNumber: a.unitNumber,
+      },
+      lease: {
+        title: a.title,
+        startDate: a.leaseStartIso,
+        endDate: a.leaseEndIso,
+      },
+      financial: {
+        annualRent: a.annualRent,
+        billingFrequency: a.billingFrequency,
+        billingFrequencyLabel: a.billingFrequencyLabel,
+        billingCyclePrice: a.billingCyclePrice,
+        billingSchedule: a.billingSchedule,
+        depositAmount: a.depositAmount,
+        serviceCharge: a.serviceCharge,
+      },
+      conditions: a.conditions,
+      guarantor: a.guarantor,
+      notes: a.notes,
+      templateName: a.templateName,
+    });
   }
 
   const agreement = agreementData?.agreement;
@@ -200,56 +271,28 @@ export default function TenantAgreementPage() {
                     {agreement.statusLabel}
                   </span>
                 </div>
-                <div
-                  style={{
-                    padding: 20,
-                    background: "var(--bg)",
-                    borderBottom: "1px solid var(--border)",
-                    maxHeight: 360,
-                    overflowY: "auto",
-                    fontSize: 13,
-                    lineHeight: 1.8,
-                    color: "var(--ink2)",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontWeight: 700,
-                      fontSize: 15,
-                      textAlign: "center",
-                      color: "var(--ink)",
-                      marginBottom: 16,
-                    }}
-                  >
-                    TENANCY AGREEMENT
-                  </div>
-                  <p>
-                    <strong>Landlord:</strong> {agreement.landlordName}
-                  </p>
-                  <p>
-                    <strong>Tenant:</strong> {agreementData?.tenant.name ?? "Tenant"}
-                  </p>
-                  <p>
-                    <strong>Property:</strong> {agreement.propertyName} · Unit {agreement.unitNumber}
-                  </p>
-                  <p>
-                    <strong>Lease:</strong> {agreement.leaseStartLabel} to {agreement.leaseEndLabel}
-                  </p>
-                  <p>
-                    <strong>Billing:</strong> {agreement.billingSchedule}
-                  </p>
-                  <p>
-                    <strong>Annual equivalent:</strong> {agreement.annualRentFormatted}
-                  </p>
-                  <p>
-                    <strong>Deposit:</strong> {agreement.depositFormatted}
-                  </p>
-                  <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-                    {agreement.contentSections.map((section) => (
-                      <p key={section}>{section}</p>
-                    ))}
-                  </div>
-                </div>
+                {(() => {
+                  const htmlSrc = buildAgreementHtml({
+                    agreementRef: agreement.id,
+                    generatedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
+                    landlord: { companyName: agreement.landlordCompany, name: agreement.landlordName, email: agreement.landlordEmail, phone: agreement.landlordPhone },
+                    tenant: { name: agreementData?.tenant.name ?? "", email: agreement.tenantEmail, phone: agreement.tenantPhone, residentialAddress: agreement.tenantResidentialAddress, idType: agreement.tenantIdType, idNumber: agreement.tenantIdNumber, signatureDataUrl: savedSignature || undefined },
+                    premises: { propertyName: agreement.propertyName, address: agreement.propertyAddress, unitNumber: agreement.unitNumber },
+                    lease: { title: agreement.title, startDate: agreement.leaseStartIso, endDate: agreement.leaseEndIso },
+                    financial: { annualRent: agreement.annualRent, billingFrequency: agreement.billingFrequency, billingFrequencyLabel: agreement.billingFrequencyLabel, billingCyclePrice: agreement.billingCyclePrice, billingSchedule: agreement.billingSchedule, depositAmount: agreement.depositAmount, serviceCharge: agreement.serviceCharge },
+                    conditions: agreement.conditions,
+                    guarantor: agreement.guarantor,
+                    notes: agreement.notes,
+                    templateName: agreement.templateName,
+                  });
+                  return (
+                    <iframe
+                      srcDoc={htmlSrc}
+                      style={{ width: "100%", height: 520, border: "none", borderBottom: "1px solid var(--border)" }}
+                      title="Agreement Document"
+                    />
+                  );
+                })()}
                 <div className="card-body">
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 16 }}>
                     <button
@@ -278,18 +321,58 @@ export default function TenantAgreementPage() {
                       </button>
                     </div>
                   ) : (
-                    <div
-                      style={{
-                        padding: 14,
-                        borderRadius: "var(--radius)",
-                        background: "var(--green-light)",
-                        border: "1px solid rgba(26,107,74,0.18)",
-                        color: "var(--green)",
-                        fontSize: 13,
-                      }}
-                    >
-                      This agreement has been fully signed and is active in your workspace.
-                    </div>
+                    <>
+                      <div
+                        style={{
+                          padding: 14,
+                          borderRadius: "var(--radius)",
+                          background: "var(--green-light)",
+                          border: "1px solid rgba(26,107,74,0.18)",
+                          color: "var(--green)",
+                          fontSize: 13,
+                          marginBottom: 16,
+                        }}
+                      >
+                        You have signed this agreement. Share the link below with your guarantor so they can sign their copy.
+                      </div>
+                      {agreement.guarantor?.name ? (
+                        <div
+                          style={{
+                            padding: 14,
+                            borderRadius: "var(--radius)",
+                            background: "var(--surface2)",
+                            border: "1px solid var(--border)",
+                            fontSize: 13,
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                            Guarantor link — {agreement.guarantor.name}
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 10 }}>
+                            Send this link to your guarantor. They can view the agreement, sign it, and save their copy — without needing a DoorRent account.
+                          </div>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <input
+                              readOnly
+                              className="form-input"
+                              style={{ fontSize: 12, flex: 1 }}
+                              value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${agreement.id}`}
+                            />
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => {
+                                void navigator.clipboard.writeText(`${window.location.origin}/agreement/guarantor/${agreement.id}`);
+                                setGuarantorLinkCopied(true);
+                                setTimeout(() => setGuarantorLinkCopied(false), 2000);
+                              }}
+                            >
+                              {guarantorLinkCopied ? "Copied!" : "Copy link"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
                   )}
                 </div>
               </div>

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/router";
 import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
@@ -112,6 +113,7 @@ const tabs: Array<{
 ];
 
 export default function LandlordAgreementsPage() {
+  const router = useRouter();
   const { dataRefreshVersion, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const [agreementData, setAgreementData] = useState<AgreementsResponse | null>(null);
@@ -302,7 +304,7 @@ export default function LandlordAgreementsPage() {
               <button
                 type="button"
                 className="btn btn-ghost btn-xs"
-                onClick={() => handleViewAgreement(row)}
+                onClick={() => void router.push(`/landlord/agreements/${row.id}`)}
               >
                 View
               </button>
@@ -329,7 +331,7 @@ export default function LandlordAgreementsPage() {
           ),
         },
       ],
-      [showToast, resendingId, handleViewAgreement, handleResendAgreement],
+      [showToast, resendingId, router, handleViewAgreement, handleResendAgreement],
     );
 
   const description = agreementData
