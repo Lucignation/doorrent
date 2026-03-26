@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
+import type { WorkspaceBranding } from "../../lib/branding";
+import { buildBrandShellStyle } from "../../lib/branding";
 import type { AppUser, NavSection } from "../../types/app";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
@@ -9,6 +11,7 @@ interface AppShellProps {
   topbarTitle: string;
   breadcrumb: string;
   navSections: NavSection[];
+  branding?: WorkspaceBranding | null;
   children: ReactNode;
 }
 
@@ -17,16 +20,18 @@ export default function AppShell({
   topbarTitle,
   breadcrumb,
   navSections,
+  branding,
   children,
 }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="app-page">
+    <div className="app-page" style={buildBrandShellStyle(branding)}>
       <div className="app-layout">
         <Sidebar
           user={user}
           navSections={navSections}
+          branding={branding}
           mobileOpen={mobileOpen}
           onNavigate={() => setMobileOpen(false)}
         />

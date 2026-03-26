@@ -47,6 +47,21 @@ interface TenantDashboardResponse {
     status: string;
     sentAt: string;
   } | null;
+  gracePeriod: {
+    defaultId: string;
+    workflowStatus:
+      | "AWAITING_TENANT_SIGNATURE"
+      | "AWAITING_LANDLORD_APPROVAL"
+      | "GRANTED";
+    workflowLabel: string;
+    outstandingAmount: number;
+    agreedAmount: number;
+    currency?: string;
+    newDeadline: string;
+    newDeadlineLabel: string;
+    tenantSignedAt?: string | null;
+    landlordApprovedAt?: string | null;
+  } | null;
   paymentHistory: RentHistoryRow[];
 }
 
@@ -144,6 +159,35 @@ export default function TenantDashboardPage() {
         | null;
     }
 
+    if (dashboardData.gracePeriod) {
+      return {
+        tone: (
+          dashboardData.gracePeriod.workflowStatus === "GRANTED"
+            ? "green"
+            : dashboardData.gracePeriod.workflowStatus === "AWAITING_LANDLORD_APPROVAL"
+              ? "blue"
+              : "amber"
+        ) as HighlightTone,
+        title:
+          dashboardData.gracePeriod.workflowStatus === "AWAITING_TENANT_SIGNATURE"
+            ? "Your landlord offered a grace arrangement"
+            : dashboardData.gracePeriod.workflowStatus === "AWAITING_LANDLORD_APPROVAL"
+              ? "Your signed grace agreement is pending approval"
+              : "Your grace period has been granted",
+        description:
+          dashboardData.gracePeriod.workflowStatus === "AWAITING_TENANT_SIGNATURE"
+            ? `Review and sign the grace agreement before ${dashboardData.gracePeriod.newDeadlineLabel}.`
+            : dashboardData.gracePeriod.workflowStatus === "AWAITING_LANDLORD_APPROVAL"
+              ? "The landlord has received your signed grace agreement and will review it next."
+              : `Your landlord approved the grace arrangement through ${dashboardData.gracePeriod.newDeadlineLabel}.`,
+        actionLabel:
+          dashboardData.gracePeriod.workflowStatus === "AWAITING_TENANT_SIGNATURE"
+            ? "Review and sign"
+            : "View grace agreement",
+        actionHref: "/tenant/grace-period",
+      };
+    }
+
     if (dashboardData.agreement && dashboardData.agreement.status !== "signed") {
       return {
         tone: "amber" as HighlightTone,
@@ -207,6 +251,66 @@ export default function TenantDashboardPage() {
           />
         ) : null}
 
+        {/* ── Emergency strip ── */}
+        <Link
+          href="/tenant/emergency"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 16,
+            background: "var(--red-light, #fff1f1)",
+            border: "1.5px solid var(--red)",
+            borderRadius: "var(--radius)",
+            padding: "14px 20px",
+            marginBottom: 24,
+            textDecoration: "none",
+            transition: "box-shadow 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 0 0 3px rgba(220,38,38,0.18)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none";
+          }}
+        >
+          <div
+            style={{
+              width: 44,
+              height: 44,
+              borderRadius: "50%",
+              background: "var(--red)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 22,
+              flexShrink: 0,
+            }}
+          >
+            🆘
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--red)", marginBottom: 2 }}>
+              Emergency
+            </div>
+            <div style={{ fontSize: 12, color: "var(--ink2)", lineHeight: 1.4 }}>
+              Report an urgent safety issue, building emergency, or call for immediate help.
+            </div>
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: "var(--red)",
+              whiteSpace: "nowrap",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            Get help →
+          </div>
+        </Link>
+
         <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
           <div className="stat-card accent-gold">
             <div className="stat-label">Billing Cycle</div>
@@ -238,9 +342,31 @@ export default function TenantDashboardPage() {
             </div>
             <div className="card-body">
               {tenantQuickActions.map((action) => (
+                (() => {
+                  const isGraceAction =
+                    action.label === "Sign Agreement" && dashboardData?.gracePeriod;
+                  const actionHref = isGraceAction ? "/tenant/grace-period" : action.href;
+                  const actionDescription =
+                    action.label === "Pay Rent Now" && dashboardData
+                      ? `Outstanding: ${dashboardData.rent.currentDueFormatted}`
+                      : action.label === "Download Receipt" && dashboardData?.paymentHistory[0]
+                        ? `Last receipt: ${dashboardData.paymentHistory[0].date}`
+                        : isGraceAction
+                          ? dashboardData.gracePeriod?.workflowStatus === "AWAITING_TENANT_SIGNATURE"
+                            ? `Grace deadline ${dashboardData.gracePeriod.newDeadlineLabel}`
+                            : dashboardData.gracePeriod?.workflowStatus === "AWAITING_LANDLORD_APPROVAL"
+                              ? "Signed and waiting for approval"
+                              : `Approved until ${dashboardData.gracePeriod?.newDeadlineLabel ?? "—"}`
+                          : action.label === "Sign Agreement" &&
+                              dashboardData?.agreement &&
+                              dashboardData.agreement.status !== "signed"
+                            ? `Last shared ${dashboardData.agreement.sentAt}`
+                            : action.description;
+
+                  return (
                 <Link
                   key={action.label}
-                  href={action.href}
+                  href={actionHref}
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -266,20 +392,12 @@ export default function TenantDashboardPage() {
                   </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 500 }}>{action.label}</div>
-                    <div style={{ fontSize: 11, color: "var(--ink3)" }}>
-                      {action.label === "Pay Rent Now" && dashboardData
-                        ? `Outstanding: ${dashboardData.rent.currentDueFormatted}`
-                        : action.label === "Download Receipt" && dashboardData?.paymentHistory[0]
-                          ? `Last receipt: ${dashboardData.paymentHistory[0].date}`
-                          : action.label === "Sign Agreement" &&
-                              dashboardData?.agreement &&
-                              dashboardData.agreement.status !== "signed"
-                            ? `Last shared ${dashboardData.agreement.sentAt}`
-                            : action.description}
-                    </div>
+                    <div style={{ fontSize: 11, color: "var(--ink3)" }}>{actionDescription}</div>
                   </div>
                   <span style={{ color: "var(--ink3)" }}>→</span>
                 </Link>
+                  );
+                })()
               ))}
             </div>
           </div>

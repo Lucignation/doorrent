@@ -72,6 +72,7 @@ export default function TenantPortalShell({
       topbarTitle={topbarTitle}
       breadcrumb={breadcrumb}
       navSections={tenantNav}
+      branding={tenantSession.tenant.branding}
     >
       {children}
     </AppShell>

@@ -22,6 +22,14 @@ interface DefaultRow {
   deadline: string | null;
   bothAcknowledged: boolean;
   noticeCount: number;
+  workflowStatus:
+    | "AWAITING_TENANT_SIGNATURE"
+    | "AWAITING_LANDLORD_APPROVAL"
+    | "GRANTED"
+    | null;
+  workflowLabel: string | null;
+  tenantSigned: boolean;
+  landlordApproved: boolean;
 }
 
 interface RentDefaultsResponse {
@@ -269,9 +277,14 @@ export default function RentDefaultsPage() {
                     {row.deadline ? fmtDate(row.deadline) : "—"}
                   </div>
                   <div>
-                    <StatusBadge tone={statusTone(row.status)}>
-                      {STATUS_LABELS[row.status]}
-                    </StatusBadge>
+                    <div className="rd-stage-cell">
+                      <StatusBadge tone={statusTone(row.status)}>
+                        {STATUS_LABELS[row.status]}
+                      </StatusBadge>
+                      {row.status === "GRACE_PERIOD" && row.workflowLabel ? (
+                        <span className="rd-stage-meta">{row.workflowLabel}</span>
+                      ) : null}
+                    </div>
                   </div>
                   <div className="rd-date">{fmtDate(row.createdAt)}</div>
                 </article>
@@ -489,6 +502,17 @@ export default function RentDefaultsPage() {
           .rd-tenant span, .rd-property span, .rd-date, .rd-deadline { color: var(--ink2); font-size: 13px; }
 
           .rd-amount { font-size: 15px; font-weight: 700; }
+
+          .rd-stage-cell {
+            display: grid;
+            gap: 6px;
+            justify-items: start;
+          }
+
+          .rd-stage-meta {
+            font-size: 12px;
+            color: var(--ink2);
+          }
 
           .rd-empty {
             padding: 40px 22px;

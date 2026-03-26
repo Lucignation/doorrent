@@ -3,6 +3,7 @@ import { useRouter } from "next/router";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
+import type { WorkspaceBranding } from "../../lib/branding";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
@@ -15,11 +16,18 @@ interface LandlordSettingsResponse {
   profile: {
     id: string;
     companyName: string;
+    brandDisplayName?: string | null;
+    brandLogoUrl?: string | null;
+    brandPrimaryColor?: string | null;
+    brandAccentColor?: string | null;
+    branding?: WorkspaceBranding;
     firstName: string;
     lastName: string;
     fullName: string;
     email: string;
     phone: string;
+    emergencyContactName?: string | null;
+    emergencyContactPhone?: string | null;
     photoUrl?: string | null;
     initials: string;
   };
@@ -105,7 +113,8 @@ function normalizePayoutValue(value?: string | null) {
 export default function LandlordSettingsPage() {
   const router = useRouter();
   const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
-  const { landlordSession, clearLandlordSession } = useLandlordPortalSession();
+  const { landlordSession, clearLandlordSession, saveLandlordSession } =
+    useLandlordPortalSession();
   const [settings, setSettings] = useState<LandlordSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -498,9 +507,15 @@ export default function LandlordSettingsPage() {
           token: landlordSession.token,
           body: {
             companyName: settings.profile.companyName,
+            brandDisplayName: settings.profile.brandDisplayName || undefined,
+            brandLogoUrl: settings.profile.brandLogoUrl || undefined,
+            brandPrimaryColor: settings.profile.brandPrimaryColor || undefined,
+            brandAccentColor: settings.profile.brandAccentColor || undefined,
             firstName: settings.profile.firstName,
             lastName: settings.profile.lastName,
             phone: settings.profile.phone,
+            emergencyContactName: settings.profile.emergencyContactName || undefined,
+            emergencyContactPhone: settings.profile.emergencyContactPhone || undefined,
             photoUrl: settings.profile.photoUrl || undefined,
           },
           offline: {
@@ -512,17 +527,33 @@ export default function LandlordSettingsPage() {
       );
 
       if (!(response as { offline?: boolean }).offline) {
+        const nextProfile = response.data;
         setSettings((current) =>
           current
             ? {
                 ...current,
                 profile: {
                   ...current.profile,
-                  ...response.data,
+                  ...nextProfile,
                 },
               }
             : current,
         );
+
+        if (landlordSession) {
+          saveLandlordSession({
+            ...landlordSession,
+            landlord: {
+              ...landlordSession.landlord,
+              companyName: nextProfile.companyName,
+              firstName: nextProfile.firstName,
+              lastName: nextProfile.lastName,
+              fullName: nextProfile.fullName,
+              phone: nextProfile.phone,
+              branding: nextProfile.branding,
+            },
+          });
+        }
       }
       refreshData();
       showToast(response.message || "Profile saved", "success");
@@ -771,6 +802,108 @@ export default function LandlordSettingsPage() {
 
                 <div className="form-row">
                   <div className="form-group">
+                    <label className="form-label">Platform Display Name</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.brandDisplayName ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("brandDisplayName", event.target.value)
+                      }
+                      placeholder="Defaults to company name"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Logo URL</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.brandLogoUrl ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("brandLogoUrl", event.target.value)
+                      }
+                      placeholder="https://..."
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Primary Color</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.brandPrimaryColor ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("brandPrimaryColor", event.target.value)
+                      }
+                      placeholder="#1A6B4A"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Accent Color</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.brandAccentColor ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("brandAccentColor", event.target.value)
+                      }
+                      placeholder="#C8A96E"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 16,
+                    background: "var(--surface2)",
+                  }}
+                >
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+                    Workspace Brand Preview
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    {settings?.profile.brandLogoUrl ? (
+                      <img
+                        src={settings.profile.brandLogoUrl}
+                        alt={`${settings.profile.brandDisplayName || settings.profile.companyName} logo`}
+                        style={{
+                          width: 52,
+                          height: 52,
+                          borderRadius: 14,
+                          objectFit: "cover",
+                          border: "1px solid var(--border)",
+                          background: "#fff",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="user-avatar"
+                        style={{
+                          width: 52,
+                          height: 52,
+                          background: settings?.profile.branding?.primaryColor ?? "var(--accent)",
+                          color: "#fff",
+                        }}
+                      >
+                        {settings?.profile.initials ?? "DR"}
+                      </div>
+                    )}
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700 }}>
+                        {settings?.profile.brandDisplayName ??
+                          settings?.profile.companyName ??
+                          "DoorRent"}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--ink3)" }}>
+                        This name, logo, and color theme will brand the shared workspace.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
                     <label className="form-label">First Name</label>
                     <input
                       className="form-input"
@@ -799,6 +932,59 @@ export default function LandlordSettingsPage() {
                     value={settings?.profile.phone ?? ""}
                     onChange={(event) => updateProfileField("phone", event.target.value)}
                   />
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Emergency Contact Name</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.emergencyContactName ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("emergencyContactName", event.target.value)
+                      }
+                      placeholder="Optional responder"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Emergency Contact Phone</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.emergencyContactPhone ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("emergencyContactPhone", event.target.value)
+                      }
+                      placeholder="+234..."
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid rgba(26, 107, 74, 0.12)",
+                    background: "var(--accent-light)",
+                    borderRadius: 12,
+                    padding: 16,
+                    marginBottom: 16,
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                    Emergency Access
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--ink2)",
+                      lineHeight: 1.6,
+                      marginBottom: 12,
+                    }}
+                  >
+                    Emergency tools now live inside your profile settings so you can
+                    launch an alert or review your response numbers from one place.
+                  </div>
+                  <Link href="/landlord/emergency" className="btn btn-secondary btn-sm">
+                    Open Emergency
+                  </Link>
                 </div>
 
                 <button type="submit" className="btn btn-primary btn-sm" disabled={savingProfile}>

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { LOGO_PATH } from "../../lib/site";
+import type { WorkspaceBranding } from "../../lib/branding";
+import { resolveBrandDisplayName } from "../../lib/branding";
 import type { AppUser, NavSection } from "../../types/app";
 import { NavIcon } from "../ui/Icons";
 
@@ -15,6 +18,7 @@ function isActivePath(currentPath: string, href: string): boolean {
 interface SidebarProps {
   user: AppUser;
   navSections: NavSection[];
+  branding?: WorkspaceBranding | null;
   mobileOpen: boolean;
   onNavigate: () => void;
 }
@@ -22,18 +26,68 @@ interface SidebarProps {
 export default function Sidebar({
   user,
   navSections,
+  branding,
   mobileOpen,
   onNavigate,
 }: SidebarProps) {
   const router = useRouter();
+  const {
+    clearAdminSession,
+    clearCaretakerSession,
+    clearLandlordSession,
+    clearTenantSession,
+  } = useTenantPortalSession();
   const homeHref = navSections[0]?.items[0]?.href ?? "/";
+  const isTenantRoute = router.pathname.startsWith("/tenant");
+  const isLandlordRoute = router.pathname.startsWith("/landlord");
+  const isAdminRoute = router.pathname.startsWith("/admin");
+  const isCaretakerRoute = router.pathname.startsWith("/caretaker");
+  const signOutHref = isTenantRoute
+    ? "/tenant/login"
+    : isAdminRoute
+      ? "/admin/login"
+      : isCaretakerRoute
+        ? "/caretaker/login"
+        : "/portal";
+
+  function handleSignOut() {
+    onNavigate();
+
+    if (isTenantRoute) {
+      clearTenantSession();
+      return;
+    }
+
+    if (isAdminRoute) {
+      clearAdminSession();
+      return;
+    }
+
+    if (isCaretakerRoute) {
+      clearCaretakerSession();
+      return;
+    }
+
+    if (isLandlordRoute) {
+      clearLandlordSession();
+      return;
+    }
+
+    clearLandlordSession();
+  }
 
   return (
     <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
       <div className="sidebar-header">
         <Link href={homeHref} className="sidebar-logo" onClick={onNavigate}>
-          <img src={LOGO_PATH} alt="DoorRent logo" className="logo-image" />
-          <span className="logo-name">DoorRent</span>
+          <img
+            src={branding?.logoUrl || LOGO_PATH}
+            alt={`${resolveBrandDisplayName(branding, "DoorRent")} logo`}
+            className="logo-image"
+          />
+          <span className="logo-name">
+            {resolveBrandDisplayName(branding, "DoorRent")}
+          </span>
         </Link>
         <button
           type="button"
@@ -73,12 +127,17 @@ export default function Sidebar({
         ))}
       </nav>
 
-      <div className="sidebar-user">
-        <div className="user-avatar">{user.initials}</div>
-        <div className="user-info">
-          <div className="user-name">{user.name}</div>
-          <div className="user-role">{user.role}</div>
+      <div className="sidebar-footer">
+        <div className="sidebar-user">
+          <div className="user-avatar">{user.initials}</div>
+          <div className="user-info">
+            <div className="user-name">{user.name}</div>
+            <div className="user-role">{user.role}</div>
+          </div>
         </div>
+        <Link href={signOutHref} className="sidebar-signout" onClick={handleSignOut}>
+          Sign out
+        </Link>
       </div>
     </aside>
   );

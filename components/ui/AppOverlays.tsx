@@ -237,6 +237,9 @@ export default function AppOverlays() {
     address: "",
     city: "",
     state: "",
+    estateName: "",
+    estateSecurityPhones: "",
+    policeEmergencyPhone: "",
     totalFloors: "",
     description: "",
     amenities: ["24/7 Security", "Parking", "Generator", "Borehole"],
@@ -538,6 +541,9 @@ export default function AppOverlays() {
       address: "",
       city: "",
       state: "",
+      estateName: "",
+      estateSecurityPhones: "",
+      policeEmergencyPhone: "",
       totalFloors: "",
       description: "",
       amenities: ["24/7 Security", "Parking", "Generator", "Borehole"],
@@ -663,6 +669,12 @@ export default function AppOverlays() {
           address: propertyForm.address,
           city: propertyForm.city,
           state: propertyForm.state,
+          estateName: propertyForm.estateName || undefined,
+          estateSecurityPhones: propertyForm.estateSecurityPhones
+            .split(",")
+            .map((value) => value.trim())
+            .filter(Boolean),
+          policeEmergencyPhone: propertyForm.policeEmergencyPhone || undefined,
           totalFloors: propertyForm.totalFloors
             ? Number(propertyForm.totalFloors)
             : undefined,
@@ -1113,6 +1125,54 @@ export default function AppOverlays() {
                     }))
                   }
                 />
+              </div>
+            </div>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Estate Name</label>
+                <input
+                  className="form-input"
+                  placeholder="Optional estate or compound name"
+                  value={propertyForm.estateName}
+                  onChange={(event) =>
+                    setPropertyForm((current) => ({
+                      ...current,
+                      estateName: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Police Emergency Number</label>
+                <input
+                  className="form-input"
+                  placeholder="Local police line or leave blank for 112"
+                  value={propertyForm.policeEmergencyPhone}
+                  onChange={(event) =>
+                    setPropertyForm((current) => ({
+                      ...current,
+                      policeEmergencyPhone: event.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Estate Security Numbers</label>
+              <input
+                className="form-input"
+                placeholder="Comma-separated phone numbers"
+                value={propertyForm.estateSecurityPhones}
+                onChange={(event) =>
+                  setPropertyForm((current) => ({
+                    ...current,
+                    estateSecurityPhones: event.target.value,
+                  }))
+                }
+              />
+              <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 6 }}>
+                These numbers are shown to tenants and will receive emergency SMS
+                alerts with the tenant&apos;s full property address.
               </div>
             </div>
             <div className="form-group">

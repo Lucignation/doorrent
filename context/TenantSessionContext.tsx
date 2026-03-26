@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { LandlordCapabilities } from "../lib/landlord-access";
+import type { WorkspaceBranding } from "../lib/branding";
 import {
   createContext,
   useCallback,
@@ -22,6 +23,7 @@ export interface TenantPortalIdentity {
   unitType?: string | null;
   landlordCompany: string;
   landlordName: string;
+  branding?: WorkspaceBranding;
   billingFrequency?: string;
   billingFrequencyLabel?: string;
   billingCyclePrice?: number;
@@ -61,6 +63,7 @@ export interface LandlordPortalIdentity {
   subscriptionModel?: string | null;
   subscriptionInterval?: string | null;
   capabilities?: LandlordCapabilities;
+  branding?: WorkspaceBranding;
 }
 
 export interface LandlordPortalSession {

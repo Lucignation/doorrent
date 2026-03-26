@@ -4,6 +4,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
 import { apiRequest } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
+import { buildBrandShellStyle, resolveBrandDisplayName, type WorkspaceBranding } from "../lib/branding";
 import {
   TENANT_LAST_EMAIL_STORAGE_KEY,
   type AdminPortalIdentity,
@@ -20,6 +21,7 @@ type TenantRequestResult = {
   expiresAt: string;
   expiresInMinutes: number;
   delivery: "sent" | "failed" | "preview";
+  branding?: WorkspaceBranding;
   magicLinkPreview?: string;
   loginCodePreview?: string;
 };
@@ -1485,6 +1487,8 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
     );
   }
 
+  const tenantBranding = role === "tenant" ? tenantPreview?.branding ?? null : null;
+
   return (
     <>
       <PageMeta
@@ -1504,11 +1508,17 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
         }
       />
 
-      <div id="auth-screen">
+      <div id="auth-screen" style={buildBrandShellStyle(tenantBranding)}>
         <div className="auth-left">
           <div className="auth-logo">
-            <img src={LOGO_PATH} alt="DoorRent logo" className="auth-logo-image" />
-            <span className="auth-logo-name">DoorRent</span>
+            <img
+              src={tenantBranding?.logoUrl || LOGO_PATH}
+              alt={`${resolveBrandDisplayName(tenantBranding, "DoorRent")} logo`}
+              className="auth-logo-image"
+            />
+            <span className="auth-logo-name">
+              {resolveBrandDisplayName(tenantBranding, "DoorRent")}
+            </span>
           </div>
 
           <div className="auth-tagline">

@@ -67,6 +67,8 @@ interface TenantAgreementResponse {
       occupation?: string | null;
       company?: string | null;
       address?: string | null;
+      signatureDataUrl?: string | null;
+      witnessDate?: string | null;
     } | null;
     notes?: string | null;
     contentSections: string[];
@@ -287,9 +289,26 @@ export default function TenantAgreementPage() {
                     notes: agreement.notes,
                     templateName: agreement.templateName,
                   });
+                  // Strip the grey screen-mode padding so the document fills
+                  // the card without side gutters when embedded in the iframe.
+                  const embeddedHtml = htmlSrc.replace(
+                    "</head>",
+                    `<style>
+                      @media screen {
+                        body { background: #fff !important; padding: 0 !important; }
+                        .page {
+                          max-width: 100% !important;
+                          margin: 0 !important;
+                          box-shadow: none !important;
+                          padding: 20px 24px !important;
+                        }
+                        .print-bar { display: none !important; }
+                      }
+                    </style></head>`,
+                  );
                   return (
                     <iframe
-                      srcDoc={htmlSrc}
+                      srcDoc={embeddedHtml}
                       style={{ width: "100%", height: 520, border: "none", borderBottom: "1px solid var(--border)" }}
                       title="Agreement Document"
                     />

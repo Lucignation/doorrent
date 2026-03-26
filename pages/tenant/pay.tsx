@@ -19,6 +19,7 @@ interface InitializePaymentResponse {
   reference: string;
   authorizationUrl: string;
   accessCode: string;
+  provider: "paystack";
   amount: string;
   platformFee: string;
   landlordSettlement: string;
@@ -59,7 +60,7 @@ export default function TenantPayPage() {
   );
   const [amount, setAmount] = useState("");
   const [paymentPreset, setPaymentPreset] = useState<PaymentPreset>("due");
-  const [isInitializing, setIsInitializing] = useState(false);
+  const [initializingAction, setInitializingAction] = useState<"open" | "share" | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
@@ -245,7 +246,7 @@ export default function TenantPayPage() {
     };
   }, [refreshData, router, router.query.reference, showToast, tenantSession?.token]);
 
-  async function initializePayment() {
+  async function initializePayment(action: "open" | "share") {
     if (!tenantSession?.token) {
       showToast("Tenant session missing. Please sign in again.", "error");
       return;
@@ -256,7 +257,7 @@ export default function TenantPayPage() {
       return;
     }
 
-    setIsInitializing(true);
+    setInitializingAction(action);
     setVerificationMessage("");
 
     try {
@@ -272,6 +273,25 @@ export default function TenantPayPage() {
         },
       );
 
+      if (action === "share") {
+        const shareMessage = `Help me complete my DoorRent rent payment for ${propertyName}, ${unitLabel}. Pay securely via Paystack: ${data.authorizationUrl}`;
+
+        if (typeof navigator !== "undefined" && navigator.share) {
+          await navigator.share({
+            title: "DoorRent rent payment link",
+            text: shareMessage,
+            url: data.authorizationUrl,
+          });
+        } else if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(data.authorizationUrl);
+        } else {
+          setVerificationMessage(`Share this Paystack payment link with your helper: ${data.authorizationUrl}`);
+        }
+
+        showToast("Paystack payment link is ready to share.", "success");
+        return;
+      }
+
       showToast("Redirecting to Paystack checkout...", "info");
       window.location.href = data.authorizationUrl;
     } catch (error) {
@@ -280,9 +300,12 @@ export default function TenantPayPage() {
           ? error.message
           : "We could not initialize Paystack checkout.",
       );
-      showToast("Payment could not be started", "error");
+      showToast(
+        action === "share" ? "Payment link could not be created" : "Payment could not be started",
+        "error",
+      );
     } finally {
-      setIsInitializing(false);
+      setInitializingAction(null);
     }
   }
 
@@ -714,20 +737,33 @@ export default function TenantPayPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            className="btn btn-primary btn-full"
-            style={{ padding: 14, fontSize: 15 }}
-            onClick={() => void initializePayment()}
-            disabled={isInitializing || !amount || currentDueAmount <= 0}
-          >
-            <CardIcon />
-            {isInitializing
-              ? "Connecting to Paystack..."
-              : currentDueAmount <= 0
-                ? "No balance due"
-                : `Pay ${checkoutAmount ? formatNaira(checkoutAmount) : "₦0"} via Paystack`}
-          </button>
+          <div style={{ display: "grid", gap: 10 }}>
+            <button
+              type="button"
+              className="btn btn-primary btn-full"
+              style={{ padding: 14, fontSize: 15 }}
+              onClick={() => void initializePayment("open")}
+              disabled={Boolean(initializingAction) || !amount || currentDueAmount <= 0}
+            >
+              <CardIcon />
+              {initializingAction === "open"
+                ? "Connecting to Paystack..."
+                : currentDueAmount <= 0
+                  ? "No balance due"
+                  : `Pay ${checkoutAmount ? formatNaira(checkoutAmount) : "₦0"} via Paystack`}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-full"
+              style={{ padding: 14, fontSize: 15 }}
+              onClick={() => void initializePayment("share")}
+              disabled={Boolean(initializingAction) || !amount || currentDueAmount <= 0}
+            >
+              {initializingAction === "share"
+                ? "Creating share link..."
+                : "Share Paystack link with a helper"}
+            </button>
+          </div>
           <div style={{ textAlign: "center", marginTop: 12, fontSize: 11, color: "var(--ink3)" }}>
             Secured by Paystack. DoorRent applies a 3% base commission per rent year covered,
             so multi-year upfront rent can carry a higher total commission in the same

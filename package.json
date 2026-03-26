@@ -6,7 +6,8 @@
     "dev:api": "npm --prefix api run dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:mobile-no-alerts": "node scripts/check-mobile-no-alerts.mjs"
   },
   "dependencies": {
     "next": "^14.2.0",

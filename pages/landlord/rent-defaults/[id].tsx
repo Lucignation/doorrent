@@ -27,6 +27,17 @@ interface GracePeriod {
   landlordApprovedAt: string | null;
   landlordAcknowledgedAt: string | null;
   tenantAcknowledgedAt: string | null;
+  tenantSignedAt: string | null;
+  tenantSignatureDataUrl: string | null;
+  workflowStatus:
+    | "AWAITING_TENANT_SIGNATURE"
+    | "AWAITING_LANDLORD_APPROVAL"
+    | "GRANTED"
+    | null;
+  workflowLabel: string | null;
+  tenantSigned: boolean;
+  landlordApproved: boolean;
+  canLandlordApprove: boolean;
   notes: string | null;
   reminders: Reminder[];
 }
@@ -108,6 +119,7 @@ const ACTION_LABELS: Record<string, string> = {
   GRACE_PERIOD_APPROVED: "Grace period approved by landlord",
   LANDLORD_ACKNOWLEDGED: "Landlord acknowledged agreement",
   TENANT_ACKNOWLEDGED: "Tenant acknowledged agreement",
+  TENANT_SIGNED_GRACE_PERIOD: "Tenant signed grace agreement",
   AUTO_ESCALATED_TO_DEFAULT: "Automatically escalated to default (deadline passed)",
   ESCALATED_TO_DEFAULT: "Manually escalated to default",
   ESCALATION_NOTICE_SENT: "Escalation notice sent to tenant",
@@ -123,6 +135,12 @@ function actionLabel(action: string) {
     return `Reminder sent — ${days} day(s) before deadline`;
   }
   return ACTION_LABELS[action] ?? action.replace(/_/g, " ");
+}
+
+function workflowTone(status?: GracePeriod["workflowStatus"]): BadgeTone {
+  if (status === "GRANTED") return "green";
+  if (status === "AWAITING_LANDLORD_APPROVAL") return "blue";
+  return "amber";
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
@@ -297,6 +315,14 @@ export default function RentDefaultDetailPage() {
                     </div>
                   </div>
 
+                  {gp.workflowLabel ? (
+                    <div style={{ marginTop: 16 }}>
+                      <StatusBadge tone={workflowTone(gp.workflowStatus)}>
+                        {gp.workflowLabel}
+                      </StatusBadge>
+                    </div>
+                  ) : null}
+
                   {gp.notes ? (
                     <p className="rd-notes">Notes: {gp.notes}</p>
                   ) : null}
@@ -317,14 +343,30 @@ export default function RentDefaultDetailPage() {
                         <span>{gp.landlordAcknowledgedAt ? fmt(gp.landlordAcknowledgedAt) : "Pending"}</span>
                       </div>
                     </div>
-                    <div className={`rd-check ${gp.tenantAcknowledgedAt ? "done" : ""}`}>
+                    <div className={`rd-check ${gp.tenantSigned ? "done" : ""}`}>
                       <span className="rd-check-dot" />
                       <div>
-                        <strong>Tenant Acknowledged</strong>
-                        <span>{gp.tenantAcknowledgedAt ? fmt(gp.tenantAcknowledgedAt) : "Pending"}</span>
+                        <strong>Tenant Signed</strong>
+                        <span>{gp.tenantSignedAt ? fmt(gp.tenantSignedAt) : "Pending"}</span>
                       </div>
                     </div>
                   </div>
+
+                  {gp.tenantSignatureDataUrl ? (
+                    <div className="rd-signature-card">
+                      <div className="rd-reminders-label">Tenant Signature</div>
+                      <div className="rd-signature-frame">
+                        <img
+                          src={gp.tenantSignatureDataUrl}
+                          alt="Tenant signature"
+                          className="rd-signature-image"
+                        />
+                      </div>
+                      <div className="rd-signature-meta">
+                        Signed {gp.tenantSignedAt ? fmtDateTime(gp.tenantSignedAt) : "recently"}
+                      </div>
+                    </div>
+                  ) : null}
 
                   {/* Reminders */}
                   {gp.reminders.length > 0 ? (
@@ -345,7 +387,7 @@ export default function RentDefaultDetailPage() {
                   {/* Actions */}
                   {isGrace ? (
                     <div className="rd-action-row">
-                      {!gp.landlordApprovedAt ? (
+                      {gp.canLandlordApprove ? (
                         <button
                           type="button"
                           className="btn btn-primary"
@@ -355,6 +397,11 @@ export default function RentDefaultDetailPage() {
                           {acting === "approve" ? "Approving..." : "Approve Grace Period"}
                         </button>
                       ) : null}
+                      {!gp.tenantSigned ? (
+                        <div className="rd-awaiting-note">
+                          The tenant must review and sign this grace agreement before you can approve it.
+                        </div>
+                      ) : null}
                       {gp.landlordApprovedAt && !gp.landlordAcknowledgedAt ? (
                         <button
                           type="button"
@@ -363,16 +410,6 @@ export default function RentDefaultDetailPage() {
                           onClick={() => doAction("acknowledge", { actorType: "LANDLORD" })}
                         >
                           {acting === "acknowledge-landlord" ? "Recording..." : "I Acknowledge (Landlord)"}
-                        </button>
-                      ) : null}
-                      {gp.landlordApprovedAt && !gp.tenantAcknowledgedAt ? (
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          disabled={acting === "acknowledge-tenant"}
-                          onClick={() => doAction("acknowledge", { actorType: "TENANT" })}
-                        >
-                          {acting === "acknowledge-tenant" ? "Recording..." : "Record Tenant Acknowledgement"}
                         </button>
                       ) : null}
                     </div>
@@ -390,8 +427,9 @@ export default function RentDefaultDetailPage() {
 
               <div className="rd-stage-body">
                 <p className="rd-stage-desc">
-                  When the grace period expires unpaid, the tenancy is recorded as defaulted and formal
-                  notices are issued. Escalation also triggers automatically when the deadline passes.
+                  Once the grace period is approved, an unpaid deadline automatically escalates the tenancy
+                  to default and formal notices are issued. You can also escalate this case manually if the
+                  tenant refuses to sign or the arrangement should no longer stand.
                 </p>
 
                 {!isGrace ? (
@@ -432,7 +470,7 @@ export default function RentDefaultDetailPage() {
                   </p>
                 )}
 
-                {isGrace && gp?.landlordApprovedAt ? (
+                {isGrace ? (
                   <div className="rd-action-row">
                     <button
                       type="button"
@@ -636,6 +674,39 @@ export default function RentDefaultDetailPage() {
             align-items: flex-start;
             gap: 24px;
             margin-bottom: 28px;
+          }
+
+          .rd-signature-card {
+            margin-top: 16px;
+          }
+
+          .rd-signature-frame {
+            margin-top: 8px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: #fff;
+          }
+
+          .rd-signature-image {
+            width: 100%;
+            max-height: 130px;
+            object-fit: contain;
+          }
+
+          .rd-signature-meta {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--ink2);
+          }
+
+          .rd-awaiting-note {
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(180, 83, 9, 0.08);
+            color: #9a5a00;
+            font-size: 13px;
+            line-height: 1.5;
           }
 
           .rd-detail-title {

@@ -66,6 +66,21 @@ interface TenantRentResponse {
     status: string;
     sentAt: string;
   } | null;
+  gracePeriod: {
+    defaultId: string;
+    workflowStatus:
+      | "AWAITING_TENANT_SIGNATURE"
+      | "AWAITING_LANDLORD_APPROVAL"
+      | "GRANTED";
+    workflowLabel: string;
+    outstandingAmount: number;
+    agreedAmount: number;
+    currency?: string;
+    newDeadline: string;
+    newDeadlineLabel: string;
+    tenantSignedAt?: string | null;
+    landlordApprovedAt?: string | null;
+  } | null;
   paymentHistory: RentHistoryRow[];
 }
 
@@ -365,6 +380,104 @@ export default function TenantRentPage() {
                   </Link>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Grace Period</div>
+                <div className="card-subtitle">
+                  Review any rent-relief arrangement that needs your action.
+                </div>
+              </div>
+              <StatusBadge
+                tone={
+                  rentData?.gracePeriod?.workflowStatus === "GRANTED"
+                    ? "green"
+                    : rentData?.gracePeriod?.workflowStatus === "AWAITING_LANDLORD_APPROVAL"
+                      ? "blue"
+                      : "amber"
+                }
+              >
+                {rentData?.gracePeriod?.workflowLabel ?? "No active grace"}
+              </StatusBadge>
+            </div>
+            <div className="card-body">
+              {rentData?.gracePeriod ? (
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div
+                    style={{
+                      padding: 14,
+                      borderRadius: "var(--radius)",
+                      border: "1px solid var(--border)",
+                      background:
+                        rentData.gracePeriod.workflowStatus === "GRANTED"
+                          ? "var(--green-light)"
+                          : rentData.gracePeriod.workflowStatus === "AWAITING_LANDLORD_APPROVAL"
+                            ? "rgba(11,98,176,0.08)"
+                            : "rgba(180,83,9,0.08)",
+                    }}
+                  >
+                    <div style={{ fontWeight: 700 }}>{rentData.gracePeriod.workflowLabel}</div>
+                    <div style={{ fontSize: 13, color: "var(--ink2)", marginTop: 6, lineHeight: 1.6 }}>
+                      {rentData.gracePeriod.workflowStatus === "AWAITING_TENANT_SIGNATURE"
+                        ? `Review and sign this grace agreement before ${rentData.gracePeriod.newDeadlineLabel}.`
+                        : rentData.gracePeriod.workflowStatus === "AWAITING_LANDLORD_APPROVAL"
+                          ? "Your signed grace agreement has been submitted to the landlord for approval."
+                          : `Grace has been granted until ${rentData.gracePeriod.newDeadlineLabel}.`}
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Outstanding Amount</label>
+                      <input
+                        className="form-input"
+                        value={`₦${rentData.gracePeriod.outstandingAmount.toLocaleString()}`}
+                        disabled
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Agreed Amount</label>
+                      <input
+                        className="form-input"
+                        value={`₦${rentData.gracePeriod.agreedAmount.toLocaleString()}`}
+                        disabled
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Deadline</label>
+                      <input
+                        className="form-input"
+                        value={rentData.gracePeriod.newDeadlineLabel}
+                        disabled
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Tenant Signature</label>
+                      <input
+                        className="form-input"
+                        value={rentData.gracePeriod.tenantSignedAt ? "Submitted" : "Pending"}
+                        disabled
+                      />
+                    </div>
+                  </div>
+
+                  <Link href="/tenant/grace-period" className="btn btn-secondary btn-sm">
+                    {rentData.gracePeriod.workflowStatus === "AWAITING_TENANT_SIGNATURE"
+                      ? "Review & Sign Grace Agreement"
+                      : "View Grace Agreement"}
+                  </Link>
+                </div>
+              ) : (
+                <div style={{ color: "var(--ink2)", fontSize: 13 }}>
+                  No active grace arrangement is attached to this tenancy right now.
+                </div>
+              )}
             </div>
           </div>
 

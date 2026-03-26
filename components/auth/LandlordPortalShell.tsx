@@ -64,6 +64,7 @@ export default function LandlordPortalShell({
       topbarTitle={topbarTitle}
       breadcrumb={breadcrumb}
       navSections={buildLandlordNav(landlordCapabilities)}
+      branding={landlordSession.landlord.branding}
     >
       {children}
     </AppShell>

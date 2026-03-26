@@ -1,6 +1,3 @@
-import Link from "next/link";
-import { useRouter } from "next/router";
-import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { BellIcon, MenuIcon, MessageIcon } from "../ui/Icons";
 
@@ -18,24 +15,6 @@ export default function Topbar({
   onToggleSidebar,
 }: TopbarProps) {
   const { openModal, showToast } = usePrototypeUI();
-  const router = useRouter();
-  const {
-    clearAdminSession,
-    clearCaretakerSession,
-    clearLandlordSession,
-    clearTenantSession,
-  } = useTenantPortalSession();
-
-  const isTenantRoute = router.pathname.startsWith("/tenant");
-  const isAdminRoute = router.pathname.startsWith("/admin");
-  const isCaretakerRoute = router.pathname.startsWith("/caretaker");
-  const signOutHref = isTenantRoute
-    ? "/tenant/login"
-    : isAdminRoute
-      ? "/admin/login"
-      : isCaretakerRoute
-        ? "/caretaker/login"
-      : "/portal";
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -69,30 +48,6 @@ export default function Topbar({
         >
           {initials}
         </div>
-        <Link
-          href={signOutHref}
-          className="btn btn-ghost btn-sm"
-          onClick={() => {
-            if (isTenantRoute) {
-              clearTenantSession();
-              return;
-            }
-
-            if (isAdminRoute) {
-              clearAdminSession();
-              return;
-            }
-
-            if (isCaretakerRoute) {
-              clearCaretakerSession();
-              return;
-            }
-
-            clearLandlordSession();
-          }}
-        >
-          Sign out
-        </Link>
       </div>
     </header>
   );

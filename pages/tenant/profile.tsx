@@ -18,6 +18,9 @@ interface TenantProfileResponse {
     email: string;
     phone: string;
     residentialAddress: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+    emergencyContactRelationship?: string;
     idType: string;
     idNumber: string;
     propertyName: string;
@@ -44,6 +47,9 @@ interface TenantProfileResponse {
 type ProfileFormState = {
   phone: string;
   residentialAddress: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
+  emergencyContactRelationship: string;
   idType: string;
   idNumber: string;
   guarantor: {
@@ -59,6 +65,9 @@ type ProfileFormState = {
 const initialFormState: ProfileFormState = {
   phone: "",
   residentialAddress: "",
+  emergencyContactName: "",
+  emergencyContactPhone: "",
+  emergencyContactRelationship: "",
   idType: "",
   idNumber: "",
   guarantor: {
@@ -106,6 +115,9 @@ export default function TenantProfilePage() {
           setFormState({
             phone: data.profile.phone ?? "",
             residentialAddress: data.profile.residentialAddress ?? "",
+            emergencyContactName: data.profile.emergencyContactName ?? "",
+            emergencyContactPhone: data.profile.emergencyContactPhone ?? "",
+            emergencyContactRelationship: data.profile.emergencyContactRelationship ?? "",
             idType: data.profile.idType ?? "",
             idNumber: data.profile.idNumber ?? "",
             guarantor: {
@@ -181,6 +193,10 @@ export default function TenantProfilePage() {
         body: {
           phone: formState.phone,
           residentialAddress: formState.residentialAddress,
+          emergencyContactName: formState.emergencyContactName || undefined,
+          emergencyContactPhone: formState.emergencyContactPhone || undefined,
+          emergencyContactRelationship:
+            formState.emergencyContactRelationship || undefined,
           idType: formState.idType || undefined,
           idNumber: formState.idNumber || undefined,
           guarantor: guarantorCompleted ? formState.guarantor : undefined,
@@ -201,6 +217,10 @@ export default function TenantProfilePage() {
                   ...current.profile,
                   phone: formState.phone,
                   residentialAddress: formState.residentialAddress,
+                  emergencyContactName: formState.emergencyContactName,
+                  emergencyContactPhone: formState.emergencyContactPhone,
+                  emergencyContactRelationship:
+                    formState.emergencyContactRelationship,
                   idType: formState.idType,
                   idNumber: formState.idNumber,
                 },
@@ -409,6 +429,74 @@ export default function TenantProfilePage() {
                     placeholder="Current residential address"
                   />
                 </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Emergency Contact Name</label>
+                  <input
+                    className="form-input"
+                    value={formState.emergencyContactName}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      updateField("emergencyContactName", event.target.value)
+                    }
+                    placeholder="Optional responder"
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Emergency Contact Phone</label>
+                  <input
+                    className="form-input"
+                    value={formState.emergencyContactPhone}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      updateField("emergencyContactPhone", event.target.value)
+                    }
+                    placeholder="+234..."
+                  />
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">Emergency Contact Relationship</label>
+                  <input
+                    className="form-input"
+                    value={formState.emergencyContactRelationship}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                      updateField("emergencyContactRelationship", event.target.value)
+                    }
+                    placeholder="Sibling, Parent, Friend..."
+                  />
+                </div>
+                <div className="form-group" />
+              </div>
+
+              <div
+                style={{
+                  border: "1px solid rgba(26, 107, 74, 0.12)",
+                  background: "var(--accent-light)",
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 16,
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                  Emergency Access
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--ink2)",
+                    lineHeight: 1.6,
+                    marginBottom: 12,
+                  }}
+                >
+                  Need urgent help? Open your emergency page here to call the right line
+                  and alert the contacts linked to this tenancy.
+                </div>
+                <Link href="/tenant/emergency" className="btn btn-secondary btn-sm">
+                  Open Emergency
+                </Link>
               </div>
 
               <div className="form-row">
