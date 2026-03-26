@@ -918,9 +918,11 @@ export default function LandingPage() {
               <div>
                 <h4>Legal</h4>
                 <ul>
-                  <li><a href="/">Privacy Policy</a></li>
-                  <li><a href="/">Terms of Service</a></li>
-                  <li><a href="/">Security</a></li>
+                  <li><Link href="/privacy">Privacy Policy</Link></li>
+                  <li><Link href="/terms">Terms of Use</Link></li>
+                  <li><Link href="/refund-policy">Refund Policy</Link></li>
+                  <li><Link href="/account-deletion">Account Deletion</Link></li>
+                  <li><Link href="/security">Security</Link></li>
                 </ul>
               </div>
             </div>

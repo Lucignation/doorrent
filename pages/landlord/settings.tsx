@@ -1,9 +1,12 @@
+import Link from "next/link";
+import { useRouter } from "next/router";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import AccountDeletionConsentModal from "../../components/ui/AccountDeletionConsentModal";
 import PageHeader from "../../components/ui/PageHeader";
 import type { LandlordCapabilities } from "../../lib/landlord-access";
 
@@ -100,14 +103,17 @@ function normalizePayoutValue(value?: string | null) {
 }
 
 export default function LandlordSettingsPage() {
+  const router = useRouter();
   const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
+  const { landlordSession, clearLandlordSession } = useLandlordPortalSession();
   const [settings, setSettings] = useState<LandlordSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPayout, setSavingPayout] = useState(false);
   const [invitingMember, setInvitingMember] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [availableBanks, setAvailableBanks] = useState<PayoutBanksResponse["banks"]>([]);
   const [loadingBanks, setLoadingBanks] = useState(false);
   const [bankSearch, setBankSearch] = useState("");
@@ -485,7 +491,7 @@ export default function LandlordSettingsPage() {
     setSavingProfile(true);
 
     try {
-      const { data } = await apiRequest<LandlordSettingsResponse["profile"]>(
+      const response = await apiRequest<LandlordSettingsResponse["profile"]>(
         "/landlord/settings/profile",
         {
           method: "PATCH",
@@ -497,22 +503,29 @@ export default function LandlordSettingsPage() {
             phone: settings.profile.phone,
             photoUrl: settings.profile.photoUrl || undefined,
           },
+          offline: {
+            queue: true,
+            dedupeKey: "landlord-settings-profile",
+            invalidatePaths: ["/landlord/settings", "/landlord/overview"],
+          },
         },
       );
 
-      setSettings((current) =>
-        current
-          ? {
-              ...current,
-              profile: {
-                ...current.profile,
-                ...data,
-              },
-            }
-          : current,
-      );
+      if (!(response as { offline?: boolean }).offline) {
+        setSettings((current) =>
+          current
+            ? {
+                ...current,
+                profile: {
+                  ...current.profile,
+                  ...response.data,
+                },
+              }
+            : current,
+        );
+      }
       refreshData();
-      showToast("Profile saved", "success");
+      showToast(response.message || "Profile saved", "success");
     } catch (requestError) {
       showToast(
         requestError instanceof Error
@@ -601,7 +614,7 @@ export default function LandlordSettingsPage() {
     });
 
     try {
-      const { data } = await apiRequest<LandlordSettingsResponse["notifications"]>(
+      const response = await apiRequest<LandlordSettingsResponse["notifications"]>(
         "/landlord/settings/notifications",
         {
           method: "PATCH",
@@ -612,19 +625,26 @@ export default function LandlordSettingsPage() {
               enabled: item.enabled,
             })),
           },
+          offline: {
+            queue: true,
+            dedupeKey: "landlord-settings-notifications",
+            invalidatePaths: ["/landlord/settings"],
+          },
         },
       );
 
-      setSettings((current) =>
-        current
-          ? {
-              ...current,
-              notifications: data,
-            }
-          : current,
-      );
+      if (!(response as { offline?: boolean }).offline) {
+        setSettings((current) =>
+          current
+            ? {
+                ...current,
+                notifications: response.data,
+              }
+            : current,
+        );
+      }
       refreshData();
-      showToast("Preference saved", "success");
+      showToast(response.message || "Preference saved", "success");
     } catch (requestError) {
       showToast(
         requestError instanceof Error
@@ -674,6 +694,33 @@ export default function LandlordSettingsPage() {
       );
     } finally {
       setInvitingMember(false);
+    }
+  }
+
+  async function deleteAccount() {
+    if (!landlordSession?.token || deletingAccount) {
+      return;
+    }
+
+    setDeletingAccount(true);
+
+    try {
+      await apiRequest("/landlord/account", {
+        method: "DELETE",
+        token: landlordSession.token,
+      });
+      setShowDeleteModal(false);
+      await router.replace("/account-deletion");
+      clearLandlordSession();
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not delete this account.",
+        "error",
+      );
+    } finally {
+      setDeletingAccount(false);
     }
   }
 
@@ -1170,8 +1217,90 @@ export default function LandlordSettingsPage() {
                 </div>
               </div>
             ) : null}
+
+            <div className="card" style={{ marginTop: 16 }}>
+              <div className="card-header">
+                <div>
+                  <div className="card-title">Legal & Account Deletion</div>
+                  <div className="card-subtitle">
+                    Review DoorRent policies and permanently close this landlord account.
+                  </div>
+                </div>
+              </div>
+              <div className="card-body">
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 10,
+                    marginBottom: 18,
+                  }}
+                >
+                  <Link href="/terms" className="btn btn-secondary btn-xs">
+                    Terms of Use
+                  </Link>
+                  <Link href="/privacy" className="btn btn-secondary btn-xs">
+                    Privacy Policy
+                  </Link>
+                  <Link href="/refund-policy" className="btn btn-secondary btn-xs">
+                    Refund Policy
+                  </Link>
+                  <Link href="/account-deletion" className="btn btn-secondary btn-xs">
+                    Account Deletion
+                  </Link>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid rgba(220, 64, 64, 0.18)",
+                    background: "rgba(220, 64, 64, 0.05)",
+                    borderRadius: 12,
+                    padding: 16,
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                    Danger Zone
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--ink2)",
+                      lineHeight: 1.6,
+                      marginBottom: 14,
+                    }}
+                  >
+                    Deleting this account revokes access for this landlord workspace and removes
+                    landlord-managed data tied to it. Review the account deletion policy before you
+                    continue.
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-sm"
+                    onClick={() => setShowDeleteModal(true)}
+                    disabled={deletingAccount}
+                  >
+                    {deletingAccount ? "Deleting..." : "Delete Account"}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <AccountDeletionConsentModal
+          open={showDeleteModal}
+          title="Delete landlord account?"
+          description="Deleting this landlord account permanently closes the landlord workspace tied to it."
+          consequences={[
+            "Landlord access and active sessions will be revoked immediately.",
+            "Landlord-managed workspace records will be removed from active product access.",
+            "Some legal, payment, audit, and security records may still be retained where required.",
+          ]}
+          consentLabel="I understand that this landlord account deletion is permanent."
+          busy={deletingAccount}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={deleteAccount}
+        />
       </LandlordPortalShell>
     </>
   );

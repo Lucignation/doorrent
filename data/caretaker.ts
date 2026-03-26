@@ -9,6 +9,7 @@ export const caretakerNav: NavSection[] = [
       { label: "Notices", href: "/caretaker/notices", icon: "doc" },
       { label: "Reports", href: "/caretaker/reports", icon: "chart" },
       { label: "Notifications", href: "/caretaker/notifications", icon: "bell" },
+      { label: "Settings", href: "/caretaker/settings", icon: "settings" },
     ],
   },
 ];

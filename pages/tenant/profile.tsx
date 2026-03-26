@@ -1,7 +1,10 @@
+import Link from "next/link";
+import { useRouter } from "next/router";
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import TenantPortalShell from "../../components/auth/TenantPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import PageHeader from "../../components/ui/PageHeader";
+import AccountDeletionConsentModal from "../../components/ui/AccountDeletionConsentModal";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
@@ -69,13 +72,16 @@ const initialFormState: ProfileFormState = {
 };
 
 export default function TenantProfilePage() {
-  const { tenantSession } = useTenantPortalSession();
+  const router = useRouter();
+  const { tenantSession, clearTenantSession } = useTenantPortalSession();
   const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
   const [profileData, setProfileData] = useState<TenantProfileResponse | null>(null);
   const [formState, setFormState] = useState<ProfileFormState>(initialFormState);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     const tenantToken = tenantSession?.token;
@@ -169,7 +175,7 @@ export default function TenantProfilePage() {
     );
 
     try {
-      const { data } = await apiRequest<TenantProfileResponse>("/tenant/profile", {
+      const response = await apiRequest<TenantProfileResponse>("/tenant/profile", {
         method: "PATCH",
         token: tenantSession.token,
         body: {
@@ -179,9 +185,34 @@ export default function TenantProfilePage() {
           idNumber: formState.idNumber || undefined,
           guarantor: guarantorCompleted ? formState.guarantor : undefined,
         },
+        offline: {
+          queue: true,
+          dedupeKey: "tenant-profile",
+          invalidatePaths: ["/tenant/profile"],
+        },
       });
-      setProfileData(data);
-      showToast("Profile saved successfully", "success");
+
+      if ((response as { offline?: boolean }).offline) {
+        setProfileData((current) =>
+          current
+            ? {
+                ...current,
+                profile: {
+                  ...current.profile,
+                  phone: formState.phone,
+                  residentialAddress: formState.residentialAddress,
+                  idType: formState.idType,
+                  idNumber: formState.idNumber,
+                },
+                guarantor: guarantorCompleted ? { ...formState.guarantor } : current.guarantor,
+              }
+            : current,
+        );
+      } else {
+        setProfileData(response.data);
+      }
+
+      showToast(response.message || "Profile saved successfully", "success");
       refreshData();
     } catch (requestError) {
       showToast(
@@ -192,6 +223,33 @@ export default function TenantProfilePage() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function deleteAccount() {
+    if (!tenantSession?.token || deletingAccount) {
+      return;
+    }
+
+    setDeletingAccount(true);
+
+    try {
+      await apiRequest("/tenant/account", {
+        method: "DELETE",
+        token: tenantSession.token,
+      });
+      setShowDeleteModal(false);
+      await router.replace("/account-deletion");
+      clearTenantSession();
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not delete your tenant account.",
+        "error",
+      );
+    } finally {
+      setDeletingAccount(false);
     }
   }
 
@@ -449,6 +507,87 @@ export default function TenantProfilePage() {
             </div>
           </form>
         </div>
+
+        <div className="card" style={{ marginTop: 16 }}>
+          <div className="card-header">
+            <div>
+              <div className="card-title">Legal & Account Deletion</div>
+              <div className="card-subtitle">
+                Review DoorRent policies and permanently close this tenant account.
+              </div>
+            </div>
+          </div>
+          <div className="card-body">
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 10,
+                marginBottom: 18,
+              }}
+            >
+              <Link href="/terms" className="btn btn-secondary btn-xs">
+                Terms of Use
+              </Link>
+              <Link href="/privacy" className="btn btn-secondary btn-xs">
+                Privacy Policy
+              </Link>
+              <Link href="/refund-policy" className="btn btn-secondary btn-xs">
+                Refund Policy
+              </Link>
+              <Link href="/account-deletion" className="btn btn-secondary btn-xs">
+                Account Deletion
+              </Link>
+            </div>
+
+            <div
+              style={{
+                border: "1px solid rgba(220, 64, 64, 0.18)",
+                background: "rgba(220, 64, 64, 0.05)",
+                borderRadius: 12,
+                padding: 16,
+              }}
+            >
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                Danger Zone
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "var(--ink2)",
+                  lineHeight: 1.6,
+                  marginBottom: 14,
+                }}
+              >
+                Deleting your account removes your tenant portal access. Some billing, legal, or
+                audit records may be retained where required by law or platform security needs.
+              </div>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={() => setShowDeleteModal(true)}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? "Deleting..." : "Delete Account"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <AccountDeletionConsentModal
+          open={showDeleteModal}
+          title="Delete tenant account?"
+          description="This permanently removes your tenant portal access from DoorRent."
+          consequences={[
+            "Your tenant portal session and sign-in access will be revoked.",
+            "Tenant-specific portal records may be deleted or detached from active access.",
+            "Some billing, legal, audit, or security records may still be retained where required.",
+          ]}
+          consentLabel="I understand that deleting my tenant account is permanent."
+          busy={deletingAccount}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={deleteAccount}
+        />
       </TenantPortalShell>
     </>
   );

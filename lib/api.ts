@@ -1,3 +1,12 @@
+import {
+  buildOfflineCacheKey,
+  clearOfflineMutationQueue,
+  flushOfflineMutations,
+  getOfflineCachedResponse,
+  queueOfflineMutation,
+  setOfflineCachedResponse,
+} from "./offline-store";
+
 export interface ApiSuccessEnvelope<T> {
   success?: boolean;
   message?: string;
@@ -22,6 +31,12 @@ interface ApiRequestOptions {
   token?: string;
   body?: unknown;
   headers?: HeadersInit;
+  offline?: {
+    cache?: boolean;
+    queue?: boolean;
+    dedupeKey?: string;
+    invalidatePaths?: string[];
+  };
 }
 
 export class ApiError extends Error {
@@ -36,29 +51,81 @@ export class ApiError extends Error {
 
 export async function apiRequest<T>(
   path: string,
-  { method = "GET", token, body, headers }: ApiRequestOptions = {},
+  { method = "GET", token, body, headers, offline }: ApiRequestOptions = {},
 ) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: {
-      ...(body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  const payload = (await response.json().catch(() => null)) as ApiSuccessEnvelope<T> | null;
-  const issuesMessage = payload?.issues?.find((issue) => issue.message)?.message;
-  const message =
-    payload?.message ?? issuesMessage ?? "We could not complete your request.";
-
-  if (!response.ok) {
-    throw new ApiError(message, response.status);
-  }
-
-  return {
-    data: payload?.data as T,
-    message,
+  const requestHeaders = {
+    ...(body ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...headers,
   };
+  const requestBody = body ? JSON.stringify(body) : undefined;
+  const cacheEnabled = offline?.cache ?? method === "GET";
+  const cacheKey = buildOfflineCacheKey(path, token);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: requestHeaders,
+      body: requestBody,
+    });
+
+    const payload = (await response.json().catch(() => null)) as ApiSuccessEnvelope<T> | null;
+    const issuesMessage = payload?.issues?.find((issue) => issue.message)?.message;
+    const message =
+      payload?.message ?? issuesMessage ?? "We could not complete your request.";
+
+    if (!response.ok) {
+      throw new ApiError(message, response.status);
+    }
+
+    const result = {
+      data: payload?.data as T,
+      message,
+    };
+
+    if (cacheEnabled) {
+      await setOfflineCachedResponse(cacheKey, result);
+    }
+
+    void flushOfflineMutations(API_BASE_URL);
+
+    return result;
+  } catch (error) {
+    if (method === "GET" && cacheEnabled) {
+      const cached = await getOfflineCachedResponse<{ data: T; message: string }>(cacheKey);
+
+      if (cached) {
+        return {
+          ...cached,
+          offline: true as const,
+        };
+      }
+    }
+
+    if (error instanceof ApiError) {
+      throw error;
+    }
+
+    if (method !== "GET" && offline?.queue) {
+      await queueOfflineMutation({
+        method,
+        path,
+        body,
+        headers: requestHeaders,
+        token,
+        dedupeKey: offline.dedupeKey,
+        invalidatePaths: offline.invalidatePaths,
+      });
+
+      return {
+        data: (body as T) ?? (null as T),
+        message: "Saved offline. We will sync your latest change once the network is back.",
+        offline: true as const,
+      };
+    }
+
+    throw new ApiError("Network error. Please check your connection.", 0);
+  }
 }
+
+export { clearOfflineMutationQueue };

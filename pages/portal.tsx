@@ -109,9 +109,9 @@ const roles: Record<RoleKey, { label: string; href: string; button: string }> = 
     button: "Sign in as Landlord",
   },
   admin: {
-    label: "Admin",
+    label: "Super Admin",
     href: "/admin",
-    button: "Sign in as Admin",
+    button: "Sign in as Super Admin",
   },
   tenant: {
     label: "Tenant",
@@ -1242,9 +1242,29 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                     rel="noopener noreferrer"
                     style={{ color: "var(--accent)", fontWeight: 600 }}
                   >
-                    Terms and Conditions
+                    Terms of Use
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "var(--accent)", fontWeight: 600 }}
+                  >
+                    Privacy Policy
                   </Link>
                 </label>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.6 }}>
+                Refunds and account deletion are governed by our{" "}
+                <Link href="/refund-policy" target="_blank" rel="noopener noreferrer">
+                  Refund Policy
+                </Link>{" "}
+                and{" "}
+                <Link href="/account-deletion" target="_blank" rel="noopener noreferrer">
+                  Account Deletion Policy
+                </Link>
+                .
               </div>
             </div>
           ) : null}
@@ -1472,14 +1492,14 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
           role === "tenant"
             ? "DoorRent — Tenant Login"
             : role === "admin"
-              ? "DoorRent — Internal Admin Login"
+              ? "DoorRent — Internal Super Admin Login"
               : "DoorRent — Landlord Login"
         }
         description={
           role === "tenant"
             ? "Passwordless tenant login for DoorRent."
             : role === "admin"
-              ? "Internal DoorRent admin access."
+              ? "Internal DoorRent super admin access."
               : "Landlord sign-in and registration for DoorRent."
         }
       />
@@ -1575,7 +1595,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
                   : workspaceAuthView === "reset"
                     ? "Set a new password"
                 : role === "admin"
-                  ? "Internal admin access"
+                  ? "Internal super admin access"
                   : landlordMode === "register"
                     ? "Create your account"
                     : "Welcome back"}

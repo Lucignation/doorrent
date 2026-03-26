@@ -97,7 +97,7 @@ export const fallbackLandingContent: LandingPageData = {
   announcement: "Separate Express API, Prisma models, Swagger docs, and a new marketing front door are all included.",
   hero: {
     eyebrow: "Property operations, notices, payments, agreements, and tenant comms in one product surface.",
-    title: "Run every landlord, admin, and tenant workflow from a single operating layer.",
+    title: "Run every landlord, super admin, and tenant workflow from a single operating layer.",
     subtitle:
       "DoorRent gives property teams a shared command center for rent collection, agreements, support operations, reminders, and self-serve tenant experiences.",
     trustNote: "Built for multi-role property operations teams that need both workflow speed and a clean API surface.",
@@ -105,10 +105,10 @@ export const fallbackLandingContent: LandingPageData = {
     secondaryActionId: "landing.open-portal",
   },
   statStrip: [
-    { label: "Properties managed", value: "12K+", detail: "Across landlord and admin workspaces" },
+    { label: "Properties managed", value: "12K+", detail: "Across landlord and super admin workspaces" },
     { label: "Rent processed", value: "N4.2B", detail: "Representative monthly platform volume" },
-    { label: "Uptime target", value: "99.6%", detail: "Operational benchmark tracked by the admin console" },
-    { label: "Portal roles", value: "3", detail: "Landlord, admin, and tenant experiences" },
+    { label: "Uptime target", value: "99.6%", detail: "Operational benchmark tracked by the super admin console" },
+    { label: "Portal roles", value: "3", detail: "Landlord, super admin, and tenant experiences" },
   ],
   featureBlocks: [
     {
@@ -117,7 +117,7 @@ export const fallbackLandingContent: LandingPageData = {
       bullets: ["Portfolio and payment snapshots", "Bulk notices and reminder automations", "Agreement lifecycle visibility"],
     },
     {
-      title: "Admin visibility across the full platform",
+      title: "Super admin visibility across the full platform",
       body: "Support, landlord management, audit trails, and growth reporting share one back office view for the DoorRent team.",
       bullets: ["Landlord account monitoring", "Support center and ticket queue", "Audit-ready activity logs"],
     },
@@ -135,7 +135,7 @@ export const fallbackLandingContent: LandingPageData = {
       highlights: ["Overview, properties, units, tenants", "Payments, receipts, agreements", "Reports, reminders, settings"],
     },
     {
-      name: "Admin Console",
+      name: "Super Admin Console",
       path: "/admin",
       summary: "Give the platform team operational visibility across subscriptions, support, audit logs, and landlord accounts.",
       highlights: ["Overview and landlord management", "Support center and audit trail", "Operations placeholders ready for expansion"],
@@ -171,7 +171,7 @@ export const fallbackLandingContent: LandingPageData = {
       role: "Property Operations Lead",
     },
     {
-      quote: "The admin side makes it much easier to monitor landlord health, support load, and product activity from the same screen.",
+      quote: "The super admin side makes it much easier to monitor landlord health, support load, and product activity from the same screen.",
       person: "Olu Johnson",
       role: "Platform Operations",
     },
@@ -179,7 +179,7 @@ export const fallbackLandingContent: LandingPageData = {
   faqs: [
     {
       question: "What does the new API cover?",
-      answer: "The API exposes landing content, every current landlord, admin, and tenant page payload, CTA tracking, modal definitions, modal submissions, and the notification feed.",
+      answer: "The API exposes landing content, every current landlord, super admin, and tenant page payload, CTA tracking, modal definitions, modal submissions, and the notification feed.",
     },
     {
       question: "Where does Prisma fit in?",

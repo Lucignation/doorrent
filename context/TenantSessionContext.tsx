@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { clearOfflineMutationQueue } from "../lib/api";
 
 export interface TenantPortalIdentity {
   id: string;
@@ -240,6 +241,8 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(TENANT_SESSION_STORAGE_KEY);
     }
+
+    void clearOfflineMutationQueue();
   }, []);
 
   const clearLandlordSession = useCallback(() => {
@@ -248,6 +251,8 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(LANDLORD_SESSION_STORAGE_KEY);
     }
+
+    void clearOfflineMutationQueue();
   }, []);
 
   const clearAdminSession = useCallback(() => {
@@ -256,6 +261,8 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
     }
+
+    void clearOfflineMutationQueue();
   }, []);
 
   const clearCaretakerSession = useCallback(() => {
@@ -264,6 +271,8 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(CARETAKER_SESSION_STORAGE_KEY);
     }
+
+    void clearOfflineMutationQueue();
   }, []);
 
   const clearAllSessions = useCallback(() => {

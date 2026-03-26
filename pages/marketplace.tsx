@@ -438,17 +438,17 @@ function MarketplaceSiteFooter() {
             <h4 style={headingStyle}>Legal</h4>
             <ul style={listStyle}>
               <li>
-                <a href="/" style={linkStyle}>
+                <a href="/privacy" style={linkStyle}>
                   Privacy Policy
                 </a>
               </li>
               <li>
-                <a href="/" style={linkStyle}>
-                  Terms of Service
+                <a href="/terms" style={linkStyle}>
+                  Terms of Use
                 </a>
               </li>
               <li>
-                <a href="/" style={linkStyle}>
+                <a href="/security" style={linkStyle}>
                   Security
                 </a>
               </li>
