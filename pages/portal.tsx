@@ -1,3 +1,8 @@
+import type {
+  GetServerSideProps,
+  GetServerSidePropsContext,
+  InferGetServerSidePropsType,
+} from "next";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { type FormEvent, useEffect, useState } from "react";
@@ -5,6 +10,7 @@ import PageMeta from "../components/layout/PageMeta";
 import { apiRequest } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
 import { buildBrandShellStyle, resolveBrandDisplayName, type WorkspaceBranding } from "../lib/branding";
+import { fetchWorkspaceContextByHost } from "../lib/workspace-context";
 import {
   TENANT_LAST_EMAIL_STORAGE_KEY,
   type AdminPortalIdentity,
@@ -175,6 +181,7 @@ function persistLandlordOnboarding(value: LandlordOnboardingState | null) {
 
 type PortalExperienceProps = {
   forcedRole: RoleKey;
+  workspaceBranding?: WorkspaceBranding | null;
 };
 
 function buildQueryString(query: Record<string, string | string[] | undefined>) {
@@ -197,7 +204,10 @@ function getWorkspaceLoginPath(role: RoleKey) {
   return role === "admin" ? "/admin/login" : "/portal";
 }
 
-export function PortalExperience({ forcedRole }: PortalExperienceProps) {
+export function PortalExperience({
+  forcedRole,
+  workspaceBranding = null,
+}: PortalExperienceProps) {
   const router = useRouter();
   const { showToast } = usePrototypeUI();
   const {
@@ -1487,7 +1497,19 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
     );
   }
 
-  const tenantBranding = role === "tenant" ? tenantPreview?.branding ?? null : null;
+  const tenantBranding =
+    role === "tenant"
+      ? tenantPreview?.branding ?? workspaceBranding ?? null
+      : role === "admin"
+        ? null
+        : workspaceBranding ?? null;
+  const authHeroStyle = tenantBranding?.loginBackgroundUrl
+    ? {
+        backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.52), rgba(17, 19, 18, 0.6)), url(${tenantBranding.loginBackgroundUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
 
   return (
     <>
@@ -1509,7 +1531,7 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
       />
 
       <div id="auth-screen" style={buildBrandShellStyle(tenantBranding)}>
-        <div className="auth-left">
+        <div className="auth-left" style={authHeroStyle}>
           <div className="auth-logo">
             <img
               src={tenantBranding?.logoUrl || LOGO_PATH}
@@ -1647,6 +1669,31 @@ export function PortalExperience({ forcedRole }: PortalExperienceProps) {
   );
 }
 
-export default function PortalPage() {
-  return <PortalExperience forcedRole="landlord" />;
+export const getWorkspaceAuthServerSideProps: GetServerSideProps<{
+  workspaceBranding: WorkspaceBranding | null;
+}> = async (context: GetServerSidePropsContext) => {
+  const hostHeader =
+    (Array.isArray(context.req.headers["x-forwarded-host"])
+      ? context.req.headers["x-forwarded-host"][0]
+      : context.req.headers["x-forwarded-host"]) ??
+    context.req.headers.host ??
+    null;
+  const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
+
+  return {
+    props: {
+      workspaceBranding: workspaceContext?.workspace?.branding ?? null,
+    },
+  };
+};
+
+export default function PortalPage({
+  workspaceBranding,
+}: InferGetServerSidePropsType<typeof getWorkspaceAuthServerSideProps>) {
+  return (
+    <PortalExperience
+      forcedRole="landlord"
+      workspaceBranding={workspaceBranding}
+    />
+  );
 }

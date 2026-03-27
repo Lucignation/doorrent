@@ -1,10 +1,13 @@
+import type { GetServerSideProps, GetServerSidePropsContext, InferGetServerSidePropsType } from "next";
 import { useRouter } from "next/router";
 import { type FormEvent, useEffect, useState } from "react";
 import PageMeta from "../../components/layout/PageMeta";
 import { useCaretakerPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
+import { buildBrandShellStyle, resolveBrandDisplayName, type WorkspaceBranding } from "../../lib/branding";
 import { LOGO_PATH } from "../../lib/site";
+import { fetchWorkspaceContextByHost } from "../../lib/workspace-context";
 
 interface CaretakerRequestResult {
   email: string;
@@ -36,7 +39,27 @@ interface CaretakerVerifyResult {
   };
 }
 
-export default function CaretakerLoginPage() {
+export const getServerSideProps: GetServerSideProps<{
+  workspaceBranding: WorkspaceBranding | null;
+}> = async (context: GetServerSidePropsContext) => {
+  const hostHeader =
+    (Array.isArray(context.req.headers["x-forwarded-host"])
+      ? context.req.headers["x-forwarded-host"][0]
+      : context.req.headers["x-forwarded-host"]) ??
+    context.req.headers.host ??
+    null;
+  const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
+
+  return {
+    props: {
+      workspaceBranding: workspaceContext?.workspace?.branding ?? null,
+    },
+  };
+};
+
+export default function CaretakerLoginPage({
+  workspaceBranding,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const { showToast } = usePrototypeUI();
   const { caretakerSession, saveCaretakerSession } = useCaretakerPortalSession();
@@ -49,6 +72,13 @@ export default function CaretakerLoginPage() {
   );
   const [feedback, setFeedback] = useState("");
   const [preview, setPreview] = useState<CaretakerRequestResult | null>(null);
+  const authHeroStyle = workspaceBranding?.loginBackgroundUrl
+    ? {
+        backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.52), rgba(17, 19, 18, 0.6)), url(${workspaceBranding.loginBackgroundUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
 
   useEffect(() => {
     if (caretakerSession) {
@@ -150,16 +180,22 @@ export default function CaretakerLoginPage() {
   return (
     <>
       <PageMeta
-        title="DoorRent — Caretaker Login"
+        title={`${resolveBrandDisplayName(workspaceBranding, "DoorRent")} — Caretaker Login`}
         description="Passwordless access for caretaker teams managing landlord properties on DoorRent."
         urlPath="/caretaker/login"
       />
 
-      <div id="auth-screen">
-        <div className="auth-left">
+      <div id="auth-screen" style={buildBrandShellStyle(workspaceBranding)}>
+        <div className="auth-left" style={authHeroStyle}>
           <div className="auth-logo">
-            <img src={LOGO_PATH} alt="DoorRent logo" className="auth-logo-image" />
-            <span className="auth-logo-name">DoorRent</span>
+            <img
+              src={workspaceBranding?.logoUrl || LOGO_PATH}
+              alt={`${resolveBrandDisplayName(workspaceBranding, "DoorRent")} logo`}
+              className="auth-logo-image"
+            />
+            <span className="auth-logo-name">
+              {resolveBrandDisplayName(workspaceBranding, "DoorRent")}
+            </span>
           </div>
 
           <div className="auth-tagline">

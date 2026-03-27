@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 export interface WorkspaceBranding {
   displayName: string;
   logoUrl?: string | null;
+  loginBackgroundUrl?: string | null;
   primaryColor?: string | null;
   accentColor?: string | null;
 }

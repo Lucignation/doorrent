@@ -1,5 +1,15 @@
-import { PortalExperience } from "../portal";
+import type { InferGetServerSidePropsType } from "next";
+import { PortalExperience, getWorkspaceAuthServerSideProps } from "../portal";
 
-export default function TenantLoginPage() {
-  return <PortalExperience forcedRole="tenant" />;
+export const getServerSideProps = getWorkspaceAuthServerSideProps;
+
+export default function TenantLoginPage({
+  workspaceBranding,
+}: InferGetServerSidePropsType<typeof getWorkspaceAuthServerSideProps>) {
+  return (
+    <PortalExperience
+      forcedRole="tenant"
+      workspaceBranding={workspaceBranding}
+    />
+  );
 }

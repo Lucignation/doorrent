@@ -16,8 +16,12 @@ interface LandlordSettingsResponse {
   profile: {
     id: string;
     companyName: string;
+    workspaceMode: WorkspaceMode;
+    workspaceSlug?: string | null;
+    workspaceOrigin?: string | null;
     brandDisplayName?: string | null;
     brandLogoUrl?: string | null;
+    brandLoginBackgroundUrl?: string | null;
     brandPrimaryColor?: string | null;
     brandAccentColor?: string | null;
     branding?: WorkspaceBranding;
@@ -67,6 +71,8 @@ interface LandlordSettingsResponse {
   }>;
 }
 
+type WorkspaceMode = "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY";
+
 interface PayoutUpdateResponse {
   payout: LandlordSettingsResponse["payout"];
   syncStatus: "synced" | "saved_without_sync";
@@ -106,6 +112,63 @@ const initialTeamInviteForm: TeamInviteForm = {
   role: "",
 };
 
+const WORKSPACE_MODE_OPTIONS: Array<{
+  value: WorkspaceMode;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "SOLO_LANDLORD",
+    label: "I manage my own properties",
+    description:
+      "Use this if you manage your properties directly and only add staff occasionally.",
+  },
+  {
+    value: "PROPERTY_MANAGER_COMPANY",
+    label: "We manage properties for clients",
+    description:
+      "Use this if your company operates properties on behalf of landlords or owners.",
+  },
+];
+
+function getWorkspaceModeCopy(mode?: WorkspaceMode) {
+  if (mode === "PROPERTY_MANAGER_COMPANY") {
+    return {
+      profileTitle: "Company Workspace",
+      nameLabel: "Company Name",
+      namePlaceholder: "Registered or trading company name",
+      displayLabel: "Company Platform Name",
+      displayPlaceholder: "Defaults to company name",
+      companyInfoLabel: "Operating company",
+      modeLabel: "Property manager company",
+      teamTitle: "Company Team",
+      teamDescription:
+        "Invite company staff into this workspace with the right access level.",
+      emptyTeamTitle: "No company staff yet",
+      emptyTeamText:
+        "Invited company staff will appear here once you add them.",
+      inviteNameLabel: "Company Staff Name",
+    };
+  }
+
+  return {
+    profileTitle: "Workspace Profile",
+    nameLabel: "Workspace / Business Name",
+    namePlaceholder: "Your name, business, or portfolio name",
+    displayLabel: "Workspace Display Name",
+    displayPlaceholder: "Defaults to workspace name",
+    companyInfoLabel: "Workspace name",
+    modeLabel: "Self-managed landlord",
+    teamTitle: "Team & Access",
+    teamDescription:
+      "Invite assistants or support staff only when you need extra help.",
+    emptyTeamTitle: "No support staff yet",
+    emptyTeamText:
+      "If you ever add staff or assistants, their workspace access will appear here.",
+    inviteNameLabel: "Staff Name",
+  };
+}
+
 function normalizePayoutValue(value?: string | null) {
   return (value ?? "").trim().toLowerCase();
 }
@@ -140,6 +203,9 @@ export default function LandlordSettingsPage() {
   const [payoutOtpPreview, setPayoutOtpPreview] = useState("");
   const [teamInviteForm, setTeamInviteForm] = useState<TeamInviteForm>(
     initialTeamInviteForm,
+  );
+  const workspaceModeCopy = getWorkspaceModeCopy(
+    settings?.profile.workspaceMode,
   );
 
   useEffect(() => {
@@ -507,8 +573,12 @@ export default function LandlordSettingsPage() {
           token: landlordSession.token,
           body: {
             companyName: settings.profile.companyName,
+            workspaceMode: settings.profile.workspaceMode,
+            workspaceSlug: settings.profile.workspaceSlug || undefined,
             brandDisplayName: settings.profile.brandDisplayName || undefined,
             brandLogoUrl: settings.profile.brandLogoUrl || undefined,
+            brandLoginBackgroundUrl:
+              settings.profile.brandLoginBackgroundUrl || undefined,
             brandPrimaryColor: settings.profile.brandPrimaryColor || undefined,
             brandAccentColor: settings.profile.brandAccentColor || undefined,
             firstName: settings.profile.firstName,
@@ -546,6 +616,8 @@ export default function LandlordSettingsPage() {
             landlord: {
               ...landlordSession.landlord,
               companyName: nextProfile.companyName,
+              workspaceMode: nextProfile.workspaceMode,
+              workspaceSlug: nextProfile.workspaceSlug,
               firstName: nextProfile.firstName,
               lastName: nextProfile.lastName,
               fullName: nextProfile.fullName,
@@ -772,7 +844,7 @@ export default function LandlordSettingsPage() {
           <div>
             <form className="card" style={{ marginBottom: 16 }} onSubmit={submitProfile}>
               <div className="card-header">
-                <div className="card-title">Company Profile</div>
+                <div className="card-title">{workspaceModeCopy.profileTitle}</div>
               </div>
               <div className="card-body">
                 <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
@@ -790,26 +862,75 @@ export default function LandlordSettingsPage() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Company Name</label>
+                  <label className="form-label">{workspaceModeCopy.nameLabel}</label>
                   <input
                     className="form-input"
                     value={settings?.profile.companyName ?? ""}
                     onChange={(event) =>
                       updateProfileField("companyName", event.target.value)
                     }
+                    placeholder={workspaceModeCopy.namePlaceholder}
                   />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Workspace Subdomain</label>
+                  <input
+                    className="form-input"
+                    value={settings?.profile.workspaceSlug ?? ""}
+                    onChange={(event) =>
+                      updateProfileField("workspaceSlug", event.target.value.toLowerCase())
+                    }
+                    placeholder="blueoak"
+                  />
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                    Your branded login page will use{" "}
+                    <strong>
+                      {(settings?.profile.workspaceOrigin ?? "https://usedoorrent.com")
+                        .replace(/^https?:\/\//, "")
+                        .replace(/^www\./, "")}
+                    </strong>
+                    .
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Workspace Mode</label>
+                  <select
+                    className="form-input"
+                    value={settings?.profile.workspaceMode ?? "SOLO_LANDLORD"}
+                    onChange={(event) =>
+                      updateProfileField(
+                        "workspaceMode",
+                        event.target.value as WorkspaceMode,
+                      )
+                    }
+                  >
+                    {WORKSPACE_MODE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                    {
+                      WORKSPACE_MODE_OPTIONS.find(
+                        (option) => option.value === settings?.profile.workspaceMode,
+                      )?.description
+                    }
+                  </div>
                 </div>
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Platform Display Name</label>
+                    <label className="form-label">{workspaceModeCopy.displayLabel}</label>
                     <input
                       className="form-input"
                       value={settings?.profile.brandDisplayName ?? ""}
                       onChange={(event) =>
                         updateProfileField("brandDisplayName", event.target.value)
                       }
-                      placeholder="Defaults to company name"
+                      placeholder={workspaceModeCopy.displayPlaceholder}
                     />
                   </div>
                   <div className="form-group">
@@ -822,6 +943,22 @@ export default function LandlordSettingsPage() {
                       }
                       placeholder="https://..."
                     />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Login Background Image URL</label>
+                  <input
+                    className="form-input"
+                    value={settings?.profile.brandLoginBackgroundUrl ?? ""}
+                    onChange={(event) =>
+                      updateProfileField("brandLoginBackgroundUrl", event.target.value)
+                    }
+                    placeholder="https://..."
+                  />
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                    This image will show on the left side of your branded landlord and tenant login
+                    page.
                   </div>
                 </div>
 
@@ -896,8 +1033,23 @@ export default function LandlordSettingsPage() {
                           "DoorRent"}
                       </div>
                       <div style={{ fontSize: 12, color: "var(--ink3)" }}>
-                        This name, logo, and color theme will brand the shared workspace.
+                        This name, logo, and color theme will brand the active workspace.
                       </div>
+                      {settings?.profile.brandLoginBackgroundUrl ? (
+                        <div
+                          style={{
+                            marginTop: 12,
+                            width: 220,
+                            height: 88,
+                            borderRadius: 12,
+                            border: "1px solid var(--border)",
+                            backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.4), rgba(17, 19, 18, 0.4)), url(${settings.profile.brandLoginBackgroundUrl})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                            boxShadow: "var(--shadow)",
+                          }}
+                        />
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -1327,9 +1479,19 @@ export default function LandlordSettingsPage() {
             {canManageTeamMembers ? (
               <div className="card">
                 <div className="card-header">
-                  <div className="card-title">Team Members</div>
+                  <div className="card-title">{workspaceModeCopy.teamTitle}</div>
                 </div>
                 <div className="card-body">
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--ink3)",
+                      marginBottom: 14,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {workspaceModeCopy.teamDescription}
+                  </div>
                   {(settings?.teamMembers ?? []).map((member) => (
                     <div
                       key={member.id}
@@ -1352,7 +1514,7 @@ export default function LandlordSettingsPage() {
 
                   <form onSubmit={inviteMember} style={{ marginTop: 16 }}>
                     <div className="form-group">
-                      <label className="form-label">Team Member Name</label>
+                      <label className="form-label">{workspaceModeCopy.inviteNameLabel}</label>
                       <input
                         className="form-input"
                         value={teamInviteForm.name}

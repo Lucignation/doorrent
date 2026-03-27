@@ -23,6 +23,7 @@ export interface TenantPortalIdentity {
   unitType?: string | null;
   landlordCompany: string;
   landlordName: string;
+  workspaceSlug?: string | null;
   branding?: WorkspaceBranding;
   billingFrequency?: string;
   billingFrequencyLabel?: string;
@@ -53,6 +54,8 @@ export interface LandlordPortalIdentity {
   id: string;
   role: "landlord";
   companyName: string;
+  workspaceMode?: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY";
+  workspaceSlug?: string | null;
   firstName: string;
   lastName: string;
   email: string;

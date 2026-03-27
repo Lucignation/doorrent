@@ -12,6 +12,8 @@ DoorRent is a multi-surface property operations platform with:
 - In this project, `admin` means `super admin` unless a file explicitly says otherwise.
 - Public-facing copy should prefer `super admin` over plain `admin`.
 - Policy pages should describe customer-facing roles directly and should not expose internal platform-owner details unless intentionally required.
+- The platform should support both `SOLO_LANDLORD` and `PROPERTY_MANAGER_COMPANY` workspace modes without forcing company-only complexity on self-managed landlords.
+- The current workspace-mode direction is documented in `docs/workspace-modes.md`.
 
 ## Legal And Policy Surfaces
 
