@@ -61,7 +61,7 @@ export interface LandlordPortalIdentity {
   email: string;
   phone?: string | null;
   fullName: string;
-  plan?: "basic" | "full_service";
+  plan?: "basic" | "full_service" | "enterprise";
   planKey?: string | null;
   subscriptionModel?: string | null;
   subscriptionInterval?: string | null;

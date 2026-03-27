@@ -39,6 +39,46 @@ interface ApiRequestOptions {
   };
 }
 
+function mergeRequestHeaders(headers?: HeadersInit, body?: unknown, token?: string) {
+  const requestHeaders: Record<string, string> = {};
+
+  if (body) {
+    requestHeaders["Content-Type"] = "application/json";
+  }
+
+  if (token) {
+    requestHeaders.Authorization = `Bearer ${token}`;
+  }
+
+  if (headers instanceof Headers) {
+    headers.forEach((value, key) => {
+      requestHeaders[key] = value;
+    });
+  } else if (Array.isArray(headers)) {
+    headers.forEach(([key, value]) => {
+      requestHeaders[key] = value;
+    });
+  } else if (headers) {
+    Object.entries(headers).forEach(([key, value]) => {
+      if (typeof value === "string") {
+        requestHeaders[key] = value;
+      }
+    });
+  }
+
+  if (
+    typeof window !== "undefined" &&
+    window.location.host &&
+    !Object.keys(requestHeaders).some(
+      (key) => key.toLowerCase() === "x-workspace-host",
+    )
+  ) {
+    requestHeaders["x-workspace-host"] = window.location.host;
+  }
+
+  return requestHeaders;
+}
+
 export class ApiError extends Error {
   status: number;
 
@@ -53,11 +93,7 @@ export async function apiRequest<T>(
   path: string,
   { method = "GET", token, body, headers, offline }: ApiRequestOptions = {},
 ) {
-  const requestHeaders = {
-    ...(body ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...headers,
-  };
+  const requestHeaders = mergeRequestHeaders(headers, body, token);
   const requestBody = body ? JSON.stringify(body) : undefined;
   const cacheEnabled = offline?.cache ?? method === "GET";
   const cacheKey = buildOfflineCacheKey(path, token);

@@ -21,6 +21,7 @@ import {
 import { usePrototypeUI } from "../context/PrototypeUIContext";
 
 type RoleKey = "landlord" | "admin" | "tenant";
+type LandlordPlanChoice = "STARTER" | "PRO" | "ENTERPRISE";
 
 type TenantRequestResult = {
   email: string;
@@ -236,9 +237,8 @@ export function PortalExperience({
   const [landlordLastName, setLandlordLastName] = useState("");
   const [landlordCompanyName, setLandlordCompanyName] = useState("");
   const [landlordPhone, setLandlordPhone] = useState("");
-  const [landlordSubscriptionModel, setLandlordSubscriptionModel] = useState<
-    "SUBSCRIPTION" | "COMMISSION"
-  >("SUBSCRIPTION");
+  const [landlordPlanSelection, setLandlordPlanSelection] =
+    useState<LandlordPlanChoice>("STARTER");
   const [landlordSubscriptionInterval, setLandlordSubscriptionInterval] = useState<
     "MONTHLY" | "YEARLY"
   >("MONTHLY");
@@ -259,6 +259,10 @@ export function PortalExperience({
   const [forgotPasswordFeedback, setForgotPasswordFeedback] = useState("");
   const [forgotPasswordPreview, setForgotPasswordPreview] =
     useState<PasswordResetRequestResult | null>(null);
+  const landlordSubscriptionModel =
+    landlordPlanSelection === "PRO" ? "COMMISSION" : "SUBSCRIPTION";
+  const landlordEffectiveSubscriptionInterval =
+    landlordPlanSelection === "STARTER" ? landlordSubscriptionInterval : "MONTHLY";
   const [resetToken, setResetToken] = useState("");
   const [resetPassword, setResetPassword] = useState("");
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
@@ -525,10 +529,11 @@ export function PortalExperience({
               email: authEmail,
               phone: landlordPhone,
               password: authPassword,
+              plan: landlordPlanSelection,
               subscriptionModel: landlordSubscriptionModel,
               subscriptionInterval:
                 landlordSubscriptionModel === "SUBSCRIPTION"
-                  ? landlordSubscriptionInterval
+                  ? landlordEffectiveSubscriptionInterval
                   : undefined,
               promoCode: landlordPromoCode || undefined,
             },
@@ -797,8 +802,8 @@ export function PortalExperience({
             <div className="tenant-auth-preview">
               <div className="tenant-auth-preview-title">Step 3: Pay with Paystack</div>
               <div className="tenant-auth-preview-copy">
-                Complete your Basic checkout before DoorRent activates this landlord
-                account.
+                Complete your subscription checkout before DoorRent activates this
+                landlord account.
               </div>
               <div className="tenant-auth-preview-line">
                 <strong>Checkout:</strong>{" "}
@@ -1108,26 +1113,38 @@ export function PortalExperience({
                 <div className="plan-toggle">
                   <button
                     type="button"
-                    className={`plan-toggle-opt ${landlordSubscriptionModel === "SUBSCRIPTION" ? "active" : ""}`}
-                    onClick={() => setLandlordSubscriptionModel("SUBSCRIPTION")}
+                    className={`plan-toggle-opt ${landlordPlanSelection === "STARTER" ? "active" : ""}`}
+                    onClick={() => setLandlordPlanSelection("STARTER")}
                   >
                     Basic
                   </button>
                   <button
                     type="button"
-                    className={`plan-toggle-opt ${landlordSubscriptionModel === "COMMISSION" ? "active" : ""}`}
-                    onClick={() => setLandlordSubscriptionModel("COMMISSION")}
+                    className={`plan-toggle-opt ${landlordPlanSelection === "PRO" ? "active" : ""}`}
+                    onClick={() => setLandlordPlanSelection("PRO")}
                   >
                     Full Service
                   </button>
+                  <button
+                    type="button"
+                    className={`plan-toggle-opt ${landlordPlanSelection === "ENTERPRISE" ? "active" : ""}`}
+                    onClick={() => setLandlordPlanSelection("ENTERPRISE")}
+                  >
+                    Enterprise
+                  </button>
                 </div>
                 <div className="plan-detail">
-                  {landlordSubscriptionModel === "SUBSCRIPTION" ? (
+                  {landlordPlanSelection === "STARTER" ? (
                     <>
                       <span className="plan-detail-price">
                         {landlordSubscriptionInterval === "YEARLY" ? "₦95,000 / year" : "₦8,500 / month"}
                       </span>
                       <span className="plan-detail-features">Properties &amp; units · Google Meet scheduling · Tenant portal</span>
+                    </>
+                  ) : landlordPlanSelection === "ENTERPRISE" ? (
+                    <>
+                      <span className="plan-detail-price">₦200,000 / month</span>
+                      <span className="plan-detail-features">Property manager companies · Branded subdomains · Direct company Paystack collections · Agreements · Receipts · Reports · Team workflows</span>
                     </>
                   ) : (
                     <>
@@ -1138,7 +1155,7 @@ export function PortalExperience({
                 </div>
               </div>
 
-              {landlordSubscriptionModel === "SUBSCRIPTION" ? (
+              {landlordPlanSelection === "STARTER" ? (
                 <div className="form-group">
                   <label className="form-label">Billing cycle</label>
                   <div className="billing-toggle">

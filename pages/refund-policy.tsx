@@ -1,12 +1,34 @@
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import LegalDocument from "../components/legal/LegalDocument";
-import { LEGAL_EMAILS, POLICY_SUMMARY } from "../lib/legal";
+import { POLICY_SUMMARY, resolveLegalWorkspaceContext } from "../lib/legal";
+import { getWorkspaceContextFromRequest } from "../lib/workspace-ssr";
 
-export default function RefundPolicyPage() {
+export const getServerSideProps: GetServerSideProps<{
+  workspace: Awaited<ReturnType<typeof getWorkspaceContextFromRequest>>["workspace"] | null;
+}> = async (context) => {
+  const workspaceContext = await getWorkspaceContextFromRequest(context);
+
+  return {
+    props: {
+      workspace: workspaceContext?.workspace ?? null,
+    },
+  };
+};
+
+export default function RefundPolicyPage({
+  workspace,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const legal = resolveLegalWorkspaceContext(workspace);
+
   return (
     <LegalDocument
       title="Refund Policy"
       summary={POLICY_SUMMARY.refund}
       urlPath="/refund-policy"
+      workspace={workspace}
+      contactEmail={legal.billingEmail}
+      contactPhone={legal.supportPhone}
+      legalAddress={legal.legalAddress}
     >
       <section>
         <h2>1. Scope</h2>
@@ -62,7 +84,7 @@ export default function RefundPolicyPage() {
         <h2>6. How to Request a Refund</h2>
         <p>
           Send the account email, charge date, amount, payment reference, and reason for the
-          request to <a href={`mailto:${LEGAL_EMAILS.billing}`}>{LEGAL_EMAILS.billing}</a>.
+          request to <a href={`mailto:${legal.billingEmail}`}>{legal.billingEmail}</a>.
         </p>
         <p>
           We recommend submitting requests within 7 days of the charge date so we can investigate

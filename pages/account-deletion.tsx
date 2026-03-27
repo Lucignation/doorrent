@@ -1,13 +1,35 @@
 import Link from "next/link";
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import LegalDocument from "../components/legal/LegalDocument";
-import { LEGAL_EMAILS, POLICY_SUMMARY } from "../lib/legal";
+import { POLICY_SUMMARY, resolveLegalWorkspaceContext } from "../lib/legal";
+import { getWorkspaceContextFromRequest } from "../lib/workspace-ssr";
 
-export default function AccountDeletionPage() {
+export const getServerSideProps: GetServerSideProps<{
+  workspace: Awaited<ReturnType<typeof getWorkspaceContextFromRequest>>["workspace"] | null;
+}> = async (context) => {
+  const workspaceContext = await getWorkspaceContextFromRequest(context);
+
+  return {
+    props: {
+      workspace: workspaceContext?.workspace ?? null,
+    },
+  };
+};
+
+export default function AccountDeletionPage({
+  workspace,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const legal = resolveLegalWorkspaceContext(workspace);
+
   return (
     <LegalDocument
       title="Account Deletion Policy"
       summary={POLICY_SUMMARY.accountDeletion}
       urlPath="/account-deletion"
+      workspace={workspace}
+      contactEmail={legal.supportEmail}
+      contactPhone={legal.supportPhone}
+      legalAddress={legal.legalAddress}
     >
       <section>
         <h2>1. Self-Service Deletion Paths</h2>
@@ -35,7 +57,7 @@ export default function AccountDeletionPage() {
         <h2>2. Web Resource for Deletion Requests</h2>
         <p>
           If you cannot access the app, you may initiate deletion by emailing{" "}
-          <a href={`mailto:${LEGAL_EMAILS.privacy}`}>{LEGAL_EMAILS.privacy}</a> from the email
+          <a href={`mailto:${legal.privacyEmail}`}>{legal.privacyEmail}</a> from the email
           address associated with your DoorRent account. Include your role and the reason you
           cannot sign in.
         </p>
@@ -93,8 +115,8 @@ export default function AccountDeletionPage() {
         <h2>7. Contact</h2>
         <p>
           For deletion-related support, contact{" "}
-          <a href={`mailto:${LEGAL_EMAILS.privacy}`}>{LEGAL_EMAILS.privacy}</a> or{" "}
-          <a href={`mailto:${LEGAL_EMAILS.support}`}>{LEGAL_EMAILS.support}</a>.
+          <a href={`mailto:${legal.privacyEmail}`}>{legal.privacyEmail}</a> or{" "}
+          <a href={`mailto:${legal.supportEmail}`}>{legal.supportEmail}</a>.
         </p>
       </section>
     </LegalDocument>

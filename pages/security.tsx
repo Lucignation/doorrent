@@ -1,12 +1,34 @@
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import LegalDocument from "../components/legal/LegalDocument";
-import { LEGAL_EMAILS, POLICY_SUMMARY } from "../lib/legal";
+import { POLICY_SUMMARY, resolveLegalWorkspaceContext } from "../lib/legal";
+import { getWorkspaceContextFromRequest } from "../lib/workspace-ssr";
 
-export default function SecurityPage() {
+export const getServerSideProps: GetServerSideProps<{
+  workspace: Awaited<ReturnType<typeof getWorkspaceContextFromRequest>>["workspace"] | null;
+}> = async (context) => {
+  const workspaceContext = await getWorkspaceContextFromRequest(context);
+
+  return {
+    props: {
+      workspace: workspaceContext?.workspace ?? null,
+    },
+  };
+};
+
+export default function SecurityPage({
+  workspace,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const legal = resolveLegalWorkspaceContext(workspace);
+
   return (
     <LegalDocument
       title="Security"
       summary={POLICY_SUMMARY.security}
       urlPath="/security"
+      workspace={workspace}
+      contactEmail={legal.securityEmail}
+      contactPhone={legal.supportPhone}
+      legalAddress={legal.legalAddress}
     >
       <section>
         <h2>1. Security Approach</h2>
@@ -57,7 +79,7 @@ export default function SecurityPage() {
         <h2>6. Responsible Disclosure</h2>
         <p>
           If you discover a potential vulnerability, please report it privately to{" "}
-          <a href={`mailto:${LEGAL_EMAILS.security}`}>{LEGAL_EMAILS.security}</a> with enough
+          <a href={`mailto:${legal.securityEmail}`}>{legal.securityEmail}</a> with enough
           detail for us to reproduce and assess the issue. Please do not exploit the issue, access
           data you do not own, or disrupt the service.
         </p>

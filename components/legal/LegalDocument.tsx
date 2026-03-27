@@ -7,12 +7,18 @@ import {
   LEGAL_LINKS,
   LEGAL_PRODUCT_NAME,
 } from "../../lib/legal";
+import { buildBrandShellStyle, resolveBrandDisplayName } from "../../lib/branding";
+import type { PublicWorkspaceContext } from "../../lib/workspace-context";
 
 interface LegalDocumentProps {
   title: string;
   summary: string;
   urlPath: string;
   effectiveDate?: string;
+  workspace?: PublicWorkspaceContext["workspace"] | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  legalAddress?: string | null;
   children: ReactNode;
 }
 
@@ -21,16 +27,39 @@ export default function LegalDocument({
   summary,
   urlPath,
   effectiveDate = LEGAL_EFFECTIVE_DATE,
+  workspace = null,
+  contactEmail = null,
+  contactPhone = null,
+  legalAddress = null,
   children,
 }: LegalDocumentProps) {
+  const brandName = resolveBrandDisplayName(workspace?.branding, LEGAL_PRODUCT_NAME);
+  const operatorName = workspace?.companyName ?? LEGAL_COMPANY_NAME;
+  const brandStyle = buildBrandShellStyle(workspace?.branding);
+
   return (
     <>
-      <PageMeta title={`${LEGAL_PRODUCT_NAME} - ${title}`} urlPath={urlPath} />
+      <PageMeta title={`${brandName} - ${title}`} urlPath={urlPath} />
 
-      <div className="legal-page">
+      <div className="legal-page" style={brandStyle}>
         <header className="legal-header">
           <Link href="/" className="legal-logo">
-            {LEGAL_PRODUCT_NAME}
+            {workspace?.branding?.logoUrl ? (
+              <img
+                src={workspace.branding.logoUrl}
+                alt={`${brandName} logo`}
+                style={{
+                  width: 28,
+                  height: 28,
+                  objectFit: "contain",
+                  borderRadius: 8,
+                  verticalAlign: "middle",
+                  marginRight: 10,
+                  background: "#fff",
+                }}
+              />
+            ) : null}
+            {brandName}
           </Link>
           <nav className="legal-nav" aria-label="Legal navigation">
             {LEGAL_LINKS.map((link) => (
@@ -46,9 +75,15 @@ export default function LegalDocument({
             <p className="legal-eyebrow">Legal</p>
             <h1>{title}</h1>
             <p className="legal-meta">
-              Effective date: {effectiveDate} · {LEGAL_COMPANY_NAME}
+              Effective date: {effectiveDate} · {operatorName}
             </p>
             <p className="legal-summary">{summary}</p>
+            {workspace ? (
+              <p className="legal-summary" style={{ marginTop: 12, fontSize: 14 }}>
+                This public policy page applies to the {operatorName} workspace powered by
+                DoorRent.
+              </p>
+            ) : null}
           </section>
 
           <section className="legal-body">{children}</section>
@@ -66,9 +101,12 @@ export default function LegalDocument({
             <Link href="/portal" className="btn-back">
               Open Portal
             </Link>
-            <p>
-              © {new Date().getFullYear()} {LEGAL_COMPANY_NAME}. All rights reserved.
-            </p>
+            <div style={{ textAlign: "right" }}>
+              <p>© {new Date().getFullYear()} {operatorName}. All rights reserved.</p>
+              {contactEmail ? <p>{contactEmail}</p> : null}
+              {contactPhone ? <p>{contactPhone}</p> : null}
+              {legalAddress ? <p>{legalAddress}</p> : null}
+            </div>
           </div>
         </footer>
       </div>
@@ -95,9 +133,11 @@ export default function LegalDocument({
         }
 
         .legal-logo {
+          display: inline-flex;
+          align-items: center;
           font-size: 18px;
           font-weight: 800;
-          color: #1a3a2a;
+          color: var(--accent, #1a3a2a);
           text-decoration: none;
           letter-spacing: -0.02em;
         }
@@ -117,7 +157,7 @@ export default function LegalDocument({
         .legal-nav :global(a:hover),
         .legal-footer-links :global(a:hover),
         .legal-body :global(a:hover) {
-          color: #1a6b4a;
+          color: var(--accent, #1a6b4a);
         }
 
         .legal-main {
@@ -127,7 +167,11 @@ export default function LegalDocument({
         }
 
         .legal-hero {
-          background: linear-gradient(135deg, #173829, #214c36);
+          background: linear-gradient(
+            135deg,
+            var(--accent, #173829),
+            color-mix(in srgb, var(--accent2, #214c36) 45%, #173829 55%)
+          );
           color: #fff;
           border-radius: 28px;
           padding: 34px 32px;
@@ -202,7 +246,7 @@ export default function LegalDocument({
         }
 
         .legal-body :global(a) {
-          color: #1a6b4a;
+          color: var(--accent, #1a6b4a);
         }
 
         .legal-footer {

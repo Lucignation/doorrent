@@ -22,6 +22,9 @@ interface LandlordSettingsResponse {
     brandDisplayName?: string | null;
     brandLogoUrl?: string | null;
     brandLoginBackgroundUrl?: string | null;
+    publicSupportEmail?: string | null;
+    publicSupportPhone?: string | null;
+    publicLegalAddress?: string | null;
     brandPrimaryColor?: string | null;
     brandAccentColor?: string | null;
     branding?: WorkspaceBranding;
@@ -53,6 +56,21 @@ interface LandlordSettingsResponse {
     isConfigured?: boolean;
     isVerified: boolean;
     platformFeePercent: number;
+  };
+  enterpriseCollections: {
+    eligible: boolean;
+    enabled: boolean;
+    requiresEnterprise: boolean;
+    requiredPriceAmount: number;
+    provider: "paystack";
+    publicKeyHint?: string | null;
+    keyHint?: string | null;
+    connectedAt?: string | null;
+    webhookUrl?: string | null;
+    publicSupportEmail?: string | null;
+    publicSupportPhone?: string | null;
+    publicLegalAddress?: string | null;
+    reason?: string | null;
   };
   notifications: Array<{
     id: string;
@@ -98,6 +116,10 @@ interface ResolvePayoutAccountResponse {
   bankName: string;
   accountNumber: string;
   accountName: string;
+}
+
+interface EnterpriseCollectionSettingsResponse {
+  enterpriseCollections: LandlordSettingsResponse["enterpriseCollections"];
 }
 
 interface TeamInviteForm {
@@ -183,6 +205,7 @@ export default function LandlordSettingsPage() {
   const [error, setError] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPayout, setSavingPayout] = useState(false);
+  const [savingEnterpriseCollections, setSavingEnterpriseCollections] = useState(false);
   const [invitingMember, setInvitingMember] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -201,6 +224,10 @@ export default function LandlordSettingsPage() {
   const [payoutOtpCode, setPayoutOtpCode] = useState("");
   const [payoutOtpExpiresAt, setPayoutOtpExpiresAt] = useState("");
   const [payoutOtpPreview, setPayoutOtpPreview] = useState("");
+  const [enterpriseCollectionsEnabled, setEnterpriseCollectionsEnabled] =
+    useState(false);
+  const [enterprisePaystackPublicKey, setEnterprisePaystackPublicKey] = useState("");
+  const [enterprisePaystackSecretKey, setEnterprisePaystackSecretKey] = useState("");
   const [teamInviteForm, setTeamInviteForm] = useState<TeamInviteForm>(
     initialTeamInviteForm,
   );
@@ -301,6 +328,12 @@ export default function LandlordSettingsPage() {
       setBankSearch(settings.payout.bankName);
     }
   }, [settings?.payout.bankName]);
+
+  useEffect(() => {
+    setEnterpriseCollectionsEnabled(Boolean(settings?.enterpriseCollections.enabled));
+    setEnterprisePaystackPublicKey("");
+    setEnterprisePaystackSecretKey("");
+  }, [settings?.enterpriseCollections]);
 
   useEffect(() => {
     if (!settings || settings.payout.bankId || availableBanks.length === 0) {
@@ -579,6 +612,9 @@ export default function LandlordSettingsPage() {
             brandLogoUrl: settings.profile.brandLogoUrl || undefined,
             brandLoginBackgroundUrl:
               settings.profile.brandLoginBackgroundUrl || undefined,
+            publicSupportEmail: settings.profile.publicSupportEmail || undefined,
+            publicSupportPhone: settings.profile.publicSupportPhone || undefined,
+            publicLegalAddress: settings.profile.publicLegalAddress || undefined,
             brandPrimaryColor: settings.profile.brandPrimaryColor || undefined,
             brandAccentColor: settings.profile.brandAccentColor || undefined,
             firstName: settings.profile.firstName,
@@ -605,6 +641,12 @@ export default function LandlordSettingsPage() {
                 profile: {
                   ...current.profile,
                   ...nextProfile,
+                },
+                enterpriseCollections: {
+                  ...current.enterpriseCollections,
+                  publicSupportEmail: nextProfile.publicSupportEmail ?? null,
+                  publicSupportPhone: nextProfile.publicSupportPhone ?? null,
+                  publicLegalAddress: nextProfile.publicLegalAddress ?? null,
                 },
               }
             : current,
@@ -696,6 +738,53 @@ export default function LandlordSettingsPage() {
       );
     } finally {
       setSavingPayout(false);
+    }
+  }
+
+  async function submitEnterpriseCollections(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!landlordSession?.token || !settings) {
+      return;
+    }
+
+    setSavingEnterpriseCollections(true);
+
+    try {
+      const { data, message } = await apiRequest<EnterpriseCollectionSettingsResponse>(
+        "/landlord/settings/company-collections",
+        {
+          method: "PATCH",
+          token: landlordSession.token,
+          body: {
+            enabled: enterpriseCollectionsEnabled,
+            publicKey: enterprisePaystackPublicKey || undefined,
+            secretKey: enterprisePaystackSecretKey || undefined,
+          },
+        },
+      );
+
+      setSettings((current) =>
+        current
+          ? {
+              ...current,
+              enterpriseCollections: data.enterpriseCollections,
+            }
+          : current,
+      );
+      setEnterprisePaystackPublicKey("");
+      setEnterprisePaystackSecretKey("");
+      refreshData();
+      showToast(message || "Enterprise company collections updated", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not update the company collection settings.",
+        "error",
+      );
+    } finally {
+      setSavingEnterpriseCollections(false);
     }
   }
 
@@ -959,6 +1048,49 @@ export default function LandlordSettingsPage() {
                   <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
                     This image will show on the left side of your branded landlord and tenant login
                     page.
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Public Support Email</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.publicSupportEmail ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("publicSupportEmail", event.target.value)
+                      }
+                      placeholder="support@yourcompany.com"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Public Support Phone</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.publicSupportPhone ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("publicSupportPhone", event.target.value)
+                      }
+                      placeholder="+234..."
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Public Business Address</label>
+                  <textarea
+                    className="form-input"
+                    value={settings?.profile.publicLegalAddress ?? ""}
+                    onChange={(event) =>
+                      updateProfileField("publicLegalAddress", event.target.value)
+                    }
+                    placeholder="This will appear on your branded privacy, terms, and refund pages."
+                    rows={3}
+                    style={{ resize: "vertical" }}
+                  />
+                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                    Use the company support details that payment providers and customers should see
+                    on your branded public policy pages.
                   </div>
                 </div>
 
@@ -1431,11 +1563,231 @@ export default function LandlordSettingsPage() {
                 <div className="card-body">
                   <div className="td-muted">
                     Basic landlords can update their company profile and notification preferences
-                    here. Payout setup and other account-update controls unlock on Full Service.
+                    here. Payout setup and premium account controls unlock on Full Service or
+                    Enterprise.
                   </div>
                 </div>
               </div>
             )}
+
+            <form className="card" style={{ marginTop: 16 }} onSubmit={submitEnterpriseCollections}>
+              <div className="card-header">
+                <div>
+                  <div className="card-title">Enterprise Company Collections</div>
+                  <div className="card-subtitle">
+                    Enterprise property management companies can collect tenant rent into their
+                    own Paystack account while DoorRent bills the workspace separately at
+                    ₦200,000/month.
+                  </div>
+                </div>
+              </div>
+              <div className="card-body">
+                {settings?.enterpriseCollections.eligible ? (
+                  <>
+                    <div
+                      style={{
+                        padding: 14,
+                        borderRadius: "var(--radius-sm)",
+                        border: `1px solid ${
+                          enterpriseCollectionsEnabled
+                            ? "rgba(26,107,74,0.18)"
+                            : "rgba(176,125,42,0.2)"
+                        }`,
+                        background: enterpriseCollectionsEnabled
+                          ? "var(--green-light)"
+                          : "var(--amber-light)",
+                        marginBottom: 16,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: enterpriseCollectionsEnabled ? "var(--green)" : "var(--amber)",
+                        }}
+                      >
+                        {enterpriseCollectionsEnabled
+                          ? "Company-owned Paystack collections are enabled"
+                          : "Company-owned Paystack collections are disabled"}
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink2)", lineHeight: 1.6 }}>
+                        When this is enabled, DoorRent initializes rent payments with your
+                        company’s Paystack account. DoorRent does not hold the rent before
+                        settlement.
+                      </div>
+                    </div>
+
+                    <label
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        marginBottom: 16,
+                        fontSize: 13,
+                        fontWeight: 500,
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={enterpriseCollectionsEnabled}
+                        onChange={(event) =>
+                          setEnterpriseCollectionsEnabled(event.target.checked)
+                        }
+                      />
+                      Enable direct collections into this company’s Paystack account
+                    </label>
+
+                    <div className="form-group">
+                      <label className="form-label">Paystack Public Key</label>
+                      <input
+                        className="form-input"
+                        type="password"
+                        value={enterprisePaystackPublicKey}
+                        onChange={(event) =>
+                          setEnterprisePaystackPublicKey(event.target.value)
+                        }
+                        placeholder={
+                          settings?.enterpriseCollections.publicKeyHint
+                            ? `Stored fingerprint: ${settings.enterpriseCollections.publicKeyHint}`
+                            : "pk_live_..."
+                        }
+                      />
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        DoorRent only stores a masked fingerprint for the public key because
+                        server-side checkout links do not need the raw value later.
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Paystack Secret Key</label>
+                      <input
+                        className="form-input"
+                        type="password"
+                        value={enterprisePaystackSecretKey}
+                        onChange={(event) => setEnterprisePaystackSecretKey(event.target.value)}
+                        placeholder={
+                          settings?.enterpriseCollections.keyHint
+                            ? `Currently connected: ${settings.enterpriseCollections.keyHint}`
+                            : "sk_live_..."
+                        }
+                      />
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        Enter the company’s own Paystack secret key. DoorRent stores an encrypted
+                        copy plus a non-reversible fingerprint, and this endpoint only accepts the
+                        update over HTTPS in production.
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Workspace Webhook URL</label>
+                      <input
+                        className="form-input"
+                        value={settings?.enterpriseCollections.webhookUrl ?? ""}
+                        readOnly
+                      />
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        Add this webhook URL inside the company’s Paystack dashboard so DoorRent
+                        can mark payments as paid automatically.
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        marginBottom: 16,
+                        padding: 14,
+                        borderRadius: "var(--radius-sm)",
+                        border: "1px solid var(--border)",
+                        background: "var(--surface2)",
+                        fontSize: 12,
+                        color: "var(--ink2)",
+                        lineHeight: 1.7,
+                      }}
+                    >
+                      <div>
+                        <strong>Stored public key:</strong>{" "}
+                        {settings?.enterpriseCollections.publicKeyHint ?? "Not stored yet"}
+                      </div>
+                      <div>
+                        <strong>Connected key:</strong>{" "}
+                        {settings?.enterpriseCollections.keyHint ?? "Not connected yet"}
+                      </div>
+                      <div>
+                        <strong>Connected at:</strong>{" "}
+                        {settings?.enterpriseCollections.connectedAt
+                          ? new Date(
+                              settings.enterpriseCollections.connectedAt,
+                            ).toLocaleString("en-NG")
+                          : "Not connected yet"}
+                      </div>
+                      <div>
+                        <strong>Public support email:</strong>{" "}
+                        {settings?.enterpriseCollections.publicSupportEmail || "Not set"}
+                      </div>
+                      <div>
+                        <strong>Public phone:</strong>{" "}
+                        {settings?.enterpriseCollections.publicSupportPhone || "Not set"}
+                      </div>
+                      <div>
+                        <strong>Public legal address:</strong>{" "}
+                        {settings?.enterpriseCollections.publicLegalAddress || "Not set"}
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        marginBottom: 16,
+                        padding: 14,
+                        borderRadius: "var(--radius-sm)",
+                        background: "rgba(26, 115, 232, 0.08)",
+                        border: "1px solid rgba(26, 115, 232, 0.18)",
+                        fontSize: 12,
+                        color: "var(--blue)",
+                        lineHeight: 1.7,
+                      }}
+                    >
+                      If owner payout splits are configured per property, DoorRent will create the
+                      owner payout subaccount inside the company’s Paystack account and leave the
+                      management fee inside the company account automatically.
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="btn btn-primary btn-sm"
+                      disabled={
+                        savingEnterpriseCollections ||
+                        (enterpriseCollectionsEnabled &&
+                          !enterprisePaystackSecretKey.trim() &&
+                          !settings?.enterpriseCollections.keyHint)
+                      }
+                    >
+                      {savingEnterpriseCollections
+                        ? "Saving..."
+                        : "Save Enterprise Collection Settings"}
+                    </button>
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      padding: 14,
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid rgba(176,125,42,0.2)",
+                      background: "var(--amber-light)",
+                      fontSize: 12,
+                      color: "var(--ink2)",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, color: "var(--amber)", marginBottom: 6 }}>
+                      Enterprise only
+                    </div>
+                    <div>
+                      {settings?.enterpriseCollections.reason ??
+                        "This feature is only available on the Enterprise ₦200,000/month subscription for property management companies."}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </form>
           </div>
 
           <div>

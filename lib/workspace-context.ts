@@ -16,6 +16,9 @@ export type PublicWorkspaceContext = {
     companyName: string;
     workspaceMode: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY";
     workspaceSlug: string | null;
+    publicSupportEmail?: string | null;
+    publicSupportPhone?: string | null;
+    publicLegalAddress?: string | null;
     branding: WorkspaceBranding;
   };
 };
@@ -28,6 +31,9 @@ export async function fetchWorkspaceContextByHost(host?: string | null) {
   try {
     const response = await fetch(
       `${WORKSPACE_API_BASE_URL}/auth/workspace?host=${encodeURIComponent(host)}`,
+      {
+        cache: "no-store",
+      },
     );
 
     if (!response.ok) {

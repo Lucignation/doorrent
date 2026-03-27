@@ -1,16 +1,34 @@
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import LegalDocument from "../components/legal/LegalDocument";
-import {
-  LEGAL_EMAILS,
-  LEGAL_PRODUCT_NAME,
-  POLICY_SUMMARY,
-} from "../lib/legal";
+import { LEGAL_PRODUCT_NAME, POLICY_SUMMARY, resolveLegalWorkspaceContext } from "../lib/legal";
+import { getWorkspaceContextFromRequest } from "../lib/workspace-ssr";
 
-export default function PrivacyPage() {
+export const getServerSideProps: GetServerSideProps<{
+  workspace: Awaited<ReturnType<typeof getWorkspaceContextFromRequest>>["workspace"] | null;
+}> = async (context) => {
+  const workspaceContext = await getWorkspaceContextFromRequest(context);
+
+  return {
+    props: {
+      workspace: workspaceContext?.workspace ?? null,
+    },
+  };
+};
+
+export default function PrivacyPage({
+  workspace,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const legal = resolveLegalWorkspaceContext(workspace);
+
   return (
     <LegalDocument
       title="Privacy Policy"
       summary={POLICY_SUMMARY.privacy}
       urlPath="/privacy"
+      workspace={workspace}
+      contactEmail={legal.privacyEmail}
+      contactPhone={legal.supportPhone}
+      legalAddress={legal.legalAddress}
     >
       <section>
         <h2>1. Information We Collect</h2>
@@ -94,7 +112,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           Privacy requests can be sent to{" "}
-          <a href={`mailto:${LEGAL_EMAILS.privacy}`}>{LEGAL_EMAILS.privacy}</a>.
+          <a href={`mailto:${legal.privacyEmail}`}>{legal.privacyEmail}</a>.
         </p>
       </section>
 
@@ -121,7 +139,7 @@ export default function PrivacyPage() {
         <h2>10. Contact</h2>
         <p>
           Privacy questions and requests should be sent to{" "}
-          <a href={`mailto:${LEGAL_EMAILS.privacy}`}>{LEGAL_EMAILS.privacy}</a>.
+          <a href={`mailto:${legal.privacyEmail}`}>{legal.privacyEmail}</a>.
         </p>
       </section>
     </LegalDocument>

@@ -1,3 +1,5 @@
+import type { PublicWorkspaceContext } from "./workspace-context";
+
 export const LEGAL_COMPANY_NAME = "ReSuply Technologies Limited";
 export const LEGAL_PRODUCT_NAME = "DoorRent";
 export const LEGAL_EFFECTIVE_DATE = "26 March 2026";
@@ -31,3 +33,22 @@ export const POLICY_SUMMARY = {
   security:
     "How DoorRent protects accounts, infrastructure, communications, and incident reporting workflows.",
 } as const;
+
+export function resolveLegalWorkspaceContext(
+  workspace: PublicWorkspaceContext["workspace"] | null | undefined,
+) {
+  const supportEmail = workspace?.publicSupportEmail?.trim() || LEGAL_EMAILS.support;
+
+  return {
+    workspace,
+    operatorName: workspace?.companyName?.trim() || LEGAL_COMPANY_NAME,
+    productName: workspace?.branding?.displayName?.trim() || LEGAL_PRODUCT_NAME,
+    supportEmail,
+    privacyEmail: supportEmail,
+    billingEmail: supportEmail,
+    legalEmail: supportEmail,
+    securityEmail: supportEmail,
+    supportPhone: workspace?.publicSupportPhone?.trim() || null,
+    legalAddress: workspace?.publicLegalAddress?.trim() || null,
+  };
+}

@@ -949,6 +949,7 @@ export default function LandingPage() {
         .marketing-home {
           background: var(--bg);
           color: var(--ink);
+          overflow-x: clip;
         }
 
         .marketing-container {
@@ -1186,6 +1187,7 @@ export default function LandingPage() {
           max-width: 620px;
           position: relative;
           z-index: 2;
+          min-width: 0;
         }
 
         .marketing-badge {
@@ -1220,6 +1222,7 @@ export default function LandingPage() {
           color: #fff;
           max-width: 820px;
           margin-bottom: 28px;
+          text-wrap: balance;
         }
 
         .marketing-hero-title em {
@@ -1254,6 +1257,10 @@ export default function LandingPage() {
           margin-top: 56px;
           flex-wrap: wrap;
           max-width: 620px;
+        }
+
+        .marketing-proof > div:not(.marketing-proof-divider) {
+          min-width: 0;
         }
 
         .marketing-proof strong {
@@ -1333,6 +1340,7 @@ export default function LandingPage() {
         .marketing-dashboard-body {
           display: flex;
           height: 320px;
+          min-width: 0;
         }
 
         .marketing-dashboard-sidebar {
@@ -1393,11 +1401,12 @@ export default function LandingPage() {
           flex: 1;
           background: var(--bg);
           padding: 14px;
+          min-width: 0;
         }
 
         .marketing-dashboard-stats {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 8px;
           margin-bottom: 12px;
         }
@@ -1408,6 +1417,7 @@ export default function LandingPage() {
           border: 1px solid var(--border);
           border-radius: 8px;
           padding: 10px;
+          min-width: 0;
         }
 
         .marketing-mini-stat label {
@@ -2371,11 +2381,89 @@ export default function LandingPage() {
           }
 
           .marketing-proof {
-            gap: 16px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px 14px;
+            width: 100%;
+            max-width: none;
           }
 
           .marketing-proof-divider {
             display: none;
+          }
+
+          .marketing-hero-title {
+            font-size: clamp(38px, 13vw, 56px);
+            max-width: 10ch;
+            margin-bottom: 22px;
+          }
+
+          .marketing-hero-copy {
+            max-width: none;
+            font-size: 16px;
+          }
+
+          .marketing-hero-actions {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+          }
+
+          .marketing-hero-actions .marketing-btn-lg {
+            width: 100%;
+            justify-content: center;
+          }
+
+          .marketing-proof strong {
+            font-size: 22px;
+          }
+
+          .marketing-proof span {
+            display: block;
+            margin-top: 6px;
+          }
+
+          .marketing-hero-visual {
+            max-width: none;
+            padding: 8px 0 24px;
+            margin-top: 32px;
+          }
+
+          .marketing-dashboard-body {
+            flex-direction: column;
+            height: auto;
+          }
+
+          .marketing-dashboard-sidebar {
+            width: 100%;
+            border-right: 0;
+            border-bottom: 1px solid var(--border);
+            padding: 12px;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 6px;
+          }
+
+          .marketing-dashboard-logo {
+            grid-column: 1 / -1;
+            margin-bottom: 0;
+          }
+
+          .marketing-dashboard-section {
+            padding: 6px 4px 0;
+          }
+
+          .marketing-dashboard-item {
+            min-width: 0;
+          }
+
+          .marketing-dashboard-content {
+            padding: 12px;
+          }
+
+          .marketing-mini-stat strong {
+            font-size: 14px;
+            word-break: break-word;
           }
 
           .marketing-feature-grid,
@@ -2426,6 +2514,29 @@ export default function LandingPage() {
           .marketing-role-tabs {
             width: 100%;
             flex-wrap: wrap;
+          }
+        }
+
+        @media (max-width: 520px) {
+          .marketing-brand-name,
+          .marketing-footer-logo span {
+            font-size: 18px;
+          }
+
+          .marketing-nav-cta .btn {
+            padding: 9px 12px;
+          }
+
+          .marketing-hero-body {
+            padding-top: 88px;
+          }
+
+          .marketing-hero-title {
+            font-size: clamp(34px, 12vw, 48px);
+          }
+
+          .marketing-dashboard-stats {
+            grid-template-columns: 1fr;
           }
         }
       `}</style>

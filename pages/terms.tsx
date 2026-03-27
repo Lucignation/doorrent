@@ -1,24 +1,45 @@
+import type { GetServerSideProps, InferGetServerSidePropsType } from "next";
 import LegalDocument from "../components/legal/LegalDocument";
 import {
-  LEGAL_COMPANY_NAME,
-  LEGAL_EMAILS,
   LEGAL_PRODUCT_NAME,
   POLICY_SUMMARY,
+  resolveLegalWorkspaceContext,
 } from "../lib/legal";
+import { getWorkspaceContextFromRequest } from "../lib/workspace-ssr";
 
-export default function TermsPage() {
+export const getServerSideProps: GetServerSideProps<{
+  workspace: Awaited<ReturnType<typeof getWorkspaceContextFromRequest>>["workspace"] | null;
+}> = async (context) => {
+  const workspaceContext = await getWorkspaceContextFromRequest(context);
+
+  return {
+    props: {
+      workspace: workspaceContext?.workspace ?? null,
+    },
+  };
+};
+
+export default function TermsPage({
+  workspace,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
+  const legal = resolveLegalWorkspaceContext(workspace);
+
   return (
     <LegalDocument
       title="Terms of Use"
       summary={POLICY_SUMMARY.terms}
       urlPath="/terms"
+      workspace={workspace}
+      contactEmail={legal.legalEmail}
+      contactPhone={legal.supportPhone}
+      legalAddress={legal.legalAddress}
     >
       <section>
         <h2>1. Scope</h2>
         <p>
           These Terms of Use govern access to and use of {LEGAL_PRODUCT_NAME}'s marketing
           website, landlord portal, tenant portal, caretaker workspace, APIs, and mobile
-          applications operated by <strong>{LEGAL_COMPANY_NAME}</strong>.
+          applications operated by <strong>{legal.operatorName}</strong>.
         </p>
         <p>
           By creating an account, signing in, or otherwise using the service, you agree to
@@ -51,7 +72,7 @@ export default function TermsPage() {
         </p>
         <p>
           You must notify us promptly at{" "}
-          <a href={`mailto:${LEGAL_EMAILS.support}`}>{LEGAL_EMAILS.support}</a> if you suspect
+          <a href={`mailto:${legal.supportEmail}`}>{legal.supportEmail}</a> if you suspect
           unauthorised access or misuse.
         </p>
       </section>
@@ -127,7 +148,7 @@ export default function TermsPage() {
         <h2>9. Intellectual Property</h2>
         <p>
           DoorRent, its software, branding, documentation, layouts, and service materials are
-          owned by {LEGAL_COMPANY_NAME} or its licensors. Except for the limited right to use
+          owned by {legal.operatorName} or its licensors. Except for the limited right to use
           the service as provided, no ownership rights are transferred to you.
         </p>
       </section>
@@ -160,7 +181,7 @@ export default function TermsPage() {
         <h2>12. Contact</h2>
         <p>
           Questions about these terms can be sent to{" "}
-          <a href={`mailto:${LEGAL_EMAILS.legal}`}>{LEGAL_EMAILS.legal}</a>.
+          <a href={`mailto:${legal.legalEmail}`}>{legal.legalEmail}</a>.
         </p>
       </section>
     </LegalDocument>
