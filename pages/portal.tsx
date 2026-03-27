@@ -1724,6 +1724,8 @@ export const getWorkspaceAuthServerSideProps: GetServerSideProps<{
   };
 };
 
+export const getServerSideProps = getWorkspaceAuthServerSideProps;
+
 export default function PortalPage({
   workspaceBranding,
   isWorkspaceHost,
