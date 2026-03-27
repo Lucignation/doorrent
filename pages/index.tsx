@@ -1,7 +1,10 @@
+import type { GetServerSideProps, GetServerSidePropsContext } from "next";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
+import { apiRequest } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
+import { fetchWorkspaceContextByHost } from "../lib/workspace-context";
 
 type RoleKey = "landlord" | "tenant";
 
@@ -248,6 +251,24 @@ const fullServiceFeatures = [
   "Team member management",
 ];
 
+const enterprisePlanFeatures = [
+  "Property management company workspace mode",
+  "Branded subdomain, logo, colors, and login experience",
+  "Company-owned Paystack collections",
+  "Public policy pages for company compliance review",
+  "Portfolio team workflows and guided onboarding",
+  "Custom setup with DoorRent implementation support",
+];
+
+type EnterpriseRequestResponse = {
+  submitted: boolean;
+  delivery: "sent" | "failed" | "preview";
+};
+
+type LandingPageProps = {
+  isRootDomain?: boolean;
+};
+
 const testimonials = [
   {
     quote:
@@ -272,12 +293,51 @@ const testimonials = [
   },
 ];
 
-export default function LandingPage() {
+export const getServerSideProps: GetServerSideProps<LandingPageProps> = async (
+  context: GetServerSidePropsContext,
+) => {
+  const hostHeader =
+    (Array.isArray(context.req.headers["x-forwarded-host"])
+      ? context.req.headers["x-forwarded-host"][0]
+      : context.req.headers["x-forwarded-host"]) ??
+    context.req.headers.host ??
+    null;
+  const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
+
+  if (workspaceContext?.workspace?.workspaceSlug) {
+    return {
+      redirect: {
+        destination: "/portal",
+        permanent: false,
+      },
+    };
+  }
+
+  return {
+    props: {
+      isRootDomain: true,
+    },
+  };
+};
+
+export default function LandingPage(_props: LandingPageProps) {
   const [activeRole, setActiveRole] = useState<RoleKey>("landlord");
   const [basicBillingCycle, setBasicBillingCycle] = useState<"monthly" | "yearly">(
     "monthly",
   );
   const [isScrolled, setIsScrolled] = useState(false);
+  const [enterpriseFormOpen, setEnterpriseFormOpen] = useState(false);
+  const [enterpriseSubmitting, setEnterpriseSubmitting] = useState(false);
+  const [enterpriseFeedback, setEnterpriseFeedback] = useState("");
+  const [enterpriseForm, setEnterpriseForm] = useState({
+    companyName: "",
+    contactName: "",
+    workEmail: "",
+    phone: "",
+    portfolioSize: "",
+    city: "",
+    notes: "",
+  });
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 40);
@@ -312,6 +372,45 @@ export default function LandingPage() {
   const basicBillingNote =
     basicBillingCycle === "monthly" ? "per month billed monthly" : "per year billed yearly";
 
+  async function submitEnterpriseRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setEnterpriseSubmitting(true);
+    setEnterpriseFeedback("");
+
+    try {
+      const { message } = await apiRequest<EnterpriseRequestResponse>(
+        "/marketplace/enterprise-onboarding-request",
+        {
+          method: "POST",
+          body: enterpriseForm,
+        },
+      );
+
+      setEnterpriseFeedback(
+        message ||
+          "Your Enterprise request has been sent. DoorRent will reach out to you shortly.",
+      );
+      setEnterpriseForm({
+        companyName: "",
+        contactName: "",
+        workEmail: "",
+        phone: "",
+        portfolioSize: "",
+        city: "",
+        notes: "",
+      });
+      setEnterpriseFormOpen(false);
+    } catch (error) {
+      setEnterpriseFeedback(
+        error instanceof Error
+          ? error.message
+          : "We could not submit your Enterprise request right now.",
+      );
+    } finally {
+      setEnterpriseSubmitting(false);
+    }
+  }
+
   return (
     <>
       <PageMeta
@@ -332,7 +431,7 @@ export default function LandingPage() {
                 <Link href="/marketplace">Marketplace</Link>
                 <a href="#features">Features</a>
                 <a href="#roles">For Landlords</a>
-                <a href="#pricing">Why it's free</a>
+                <a href="#pricing">Pricing</a>
                 <a href="#testimonials">Testimonials</a>
               </div>
 
@@ -718,15 +817,16 @@ export default function LandingPage() {
             <div className="marketing-section-head centered reveal">
               <p>Choose your model</p>
               <h2>
-                Basic or Full Service.
+                Basic, Full Service, or Enterprise.
                 <br />
-                <em>Built around how rent is collected.</em>
+                <em>Built around how your business operates.</em>
               </h2>
               <span>
                 Basic lets landlords choose monthly or yearly billing for property and unit
                 management. Full Service adds the operational tools Basic does not include,
                 and charges a 3% base commission at collection time, scaled by the rent
-                years paid upfront.
+                years paid upfront. Enterprise is for property management companies and is
+                onboarded with DoorRent directly at ₦200,000/month.
               </span>
             </div>
 
@@ -818,6 +918,159 @@ export default function LandingPage() {
                   Choose Full Service
                 </Link>
               </article>
+
+              <article className="marketing-pricing-card">
+                <div className="marketing-pricing-card-top">
+                  <p className="plan-name">Enterprise</p>
+                </div>
+                <div className="plan-price">₦200,000</div>
+                <div className="plan-sub">per month · guided setup</div>
+                <p className="plan-description">
+                  For property management companies that want branded workspaces,
+                  company-owned Paystack collections, and a more tailored rollout for
+                  their team and portfolio operations.
+                </p>
+                <div className="marketing-pricing-highlight">
+                  Enterprise is not fully self-serve. After you reach out, DoorRent helps
+                  your team configure branding, payment collection ownership, subdomain
+                  access, public policy pages, and the go-live checklist.
+                </div>
+                <div className="plan-divider" />
+                <div className="marketing-pricing-rows">
+                  {enterprisePlanFeatures.map((feature) => (
+                    <div key={feature} className="marketing-pricing-row is-included">
+                      <span className="row-check">✓</span>
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+                <a
+                  href="#enterprise-request"
+                  className="btn btn-secondary btn-full"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setEnterpriseFormOpen(true);
+                    setEnterpriseFeedback("");
+                  }}
+                >
+                  Request Enterprise Setup
+                </a>
+                {enterpriseFormOpen ? (
+                  <form
+                    id="enterprise-request"
+                    className="marketing-enterprise-form"
+                    onSubmit={submitEnterpriseRequest}
+                  >
+                    <input
+                      className="marketing-enterprise-input"
+                      placeholder="Company name"
+                      value={enterpriseForm.companyName}
+                      onChange={(event) =>
+                        setEnterpriseForm((current) => ({
+                          ...current,
+                          companyName: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <input
+                      className="marketing-enterprise-input"
+                      placeholder="Contact name"
+                      value={enterpriseForm.contactName}
+                      onChange={(event) =>
+                        setEnterpriseForm((current) => ({
+                          ...current,
+                          contactName: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <input
+                      className="marketing-enterprise-input"
+                      type="email"
+                      placeholder="Work email"
+                      value={enterpriseForm.workEmail}
+                      onChange={(event) =>
+                        setEnterpriseForm((current) => ({
+                          ...current,
+                          workEmail: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <input
+                      className="marketing-enterprise-input"
+                      placeholder="Phone number"
+                      value={enterpriseForm.phone}
+                      onChange={(event) =>
+                        setEnterpriseForm((current) => ({
+                          ...current,
+                          phone: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <input
+                      className="marketing-enterprise-input"
+                      placeholder="Portfolio size"
+                      value={enterpriseForm.portfolioSize}
+                      onChange={(event) =>
+                        setEnterpriseForm((current) => ({
+                          ...current,
+                          portfolioSize: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <input
+                      className="marketing-enterprise-input"
+                      placeholder="City"
+                      value={enterpriseForm.city}
+                      onChange={(event) =>
+                        setEnterpriseForm((current) => ({
+                          ...current,
+                          city: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                    <textarea
+                      className="marketing-enterprise-input marketing-enterprise-textarea"
+                      placeholder="What do you want DoorRent to help you set up?"
+                      value={enterpriseForm.notes}
+                      onChange={(event) =>
+                        setEnterpriseForm((current) => ({
+                          ...current,
+                          notes: event.target.value,
+                        }))
+                      }
+                    />
+                    <div className="marketing-enterprise-actions">
+                      <button
+                        type="submit"
+                        className="btn btn-secondary"
+                        disabled={enterpriseSubmitting}
+                      >
+                        {enterpriseSubmitting
+                          ? "Submitting..."
+                          : "Send Enterprise Request"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => setEnterpriseFormOpen(false)}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                ) : null}
+                {enterpriseFeedback ? (
+                  <div className="marketing-enterprise-feedback">
+                    {enterpriseFeedback}
+                  </div>
+                ) : null}
+              </article>
             </div>
           </div>
         </section>
@@ -900,7 +1153,7 @@ export default function LandingPage() {
                 <ul>
                   <li><Link href="/marketplace">Marketplace</Link></li>
                   <li><a href="#features">Features</a></li>
-                  <li><a href="#pricing">Why it's free</a></li>
+                  <li><a href="#pricing">Pricing</a></li>
                   <li><a href="#roles">For Landlords</a></li>
                   <li><a href="#roles">For Tenants</a></li>
                 </ul>
@@ -1646,9 +1899,9 @@ export default function LandingPage() {
 
         .marketing-pricing-grid {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 20px;
-          max-width: 1040px;
+          max-width: 1180px;
           margin: 0 auto;
           align-items: stretch;
         }
@@ -2065,6 +2318,46 @@ export default function LandingPage() {
         .marketing-pricing-card.is-featured .row-check {
           background: rgba(255, 255, 255, 0.15);
           color: #fff;
+        }
+
+        .marketing-enterprise-form {
+          display: grid;
+          gap: 10px;
+          margin-top: 16px;
+          padding-top: 16px;
+          border-top: 1px solid var(--border);
+        }
+
+        .marketing-enterprise-input {
+          width: 100%;
+          border: 1px solid var(--border);
+          border-radius: 12px;
+          padding: 12px 14px;
+          background: var(--surface2);
+          color: var(--ink);
+          font: inherit;
+        }
+
+        .marketing-enterprise-input::placeholder {
+          color: var(--ink3);
+        }
+
+        .marketing-enterprise-textarea {
+          min-height: 96px;
+          resize: vertical;
+        }
+
+        .marketing-enterprise-actions {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .marketing-enterprise-feedback {
+          margin-top: 14px;
+          font-size: 13px;
+          line-height: 1.6;
+          color: var(--ink2);
         }
 
         .marketing-billing-toggle {
