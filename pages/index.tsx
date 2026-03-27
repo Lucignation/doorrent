@@ -869,13 +869,7 @@ export default function LandingPage(_props: LandingPageProps) {
                     {BASIC_YEARLY_SAVINGS_AMOUNT.toLocaleString("en-NG")} (
                     {BASIC_YEARLY_SAVINGS_PERCENT}%)
                   </div>
-                ) : (
-                  <div className="marketing-pricing-highlight">
-                    Monthly billing is ₦{BASIC_MONTHLY_PRICE.toLocaleString("en-NG")}/month,
-                    and landlords can switch to yearly billing at ₦
-                    {BASIC_YEARLY_DISCOUNT_PRICE.toLocaleString("en-NG")}/year.
-                  </div>
-                )}
+                ) : null}
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
                   {basicPlanFeatures.map((feature) => (
@@ -900,11 +894,6 @@ export default function LandingPage(_props: LandingPageProps) {
                   does not include, from agreements and collections to reports and account
                   controls.
                 </p>
-                <div className="marketing-pricing-highlight is-featured">
-                  No monthly subscription. DoorRent applies a 3% base commission per rent
-                  year covered, so multi-year upfront rent increases the total commission in
-                  that collection.
-                </div>
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
                   {fullServiceFeatures.map((feature) => (
@@ -930,11 +919,6 @@ export default function LandingPage(_props: LandingPageProps) {
                   company-owned Paystack collections, and a more tailored rollout for
                   their team and portfolio operations.
                 </p>
-                <div className="marketing-pricing-highlight">
-                  Enterprise is not fully self-serve. After you reach out, DoorRent helps
-                  your team configure branding, payment collection ownership, subdomain
-                  access, public policy pages, and the go-live checklist.
-                </div>
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
                   {enterprisePlanFeatures.map((feature) => (
