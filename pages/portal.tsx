@@ -183,7 +183,10 @@ function persistLandlordOnboarding(value: LandlordOnboardingState | null) {
 type PortalExperienceProps = {
   forcedRole: RoleKey;
   workspaceBranding?: WorkspaceBranding | null;
+  isWorkspaceHost?: boolean;
 };
+
+const PUBLIC_PORTAL_URL = "https://usedoorrent.com/portal";
 
 function buildQueryString(query: Record<string, string | string[] | undefined>) {
   const params = new URLSearchParams();
@@ -208,6 +211,7 @@ function getWorkspaceLoginPath(role: RoleKey) {
 export function PortalExperience({
   forcedRole,
   workspaceBranding = null,
+  isWorkspaceHost = false,
 }: PortalExperienceProps) {
   const router = useRouter();
   const { showToast } = usePrototypeUI();
@@ -347,10 +351,10 @@ export function PortalExperience({
   useEffect(() => {
     if (!router.isReady || forcedRole !== "landlord") return;
     const mode = typeof router.query.mode === "string" ? router.query.mode : null;
-    if (mode === "register") {
+    if (mode === "register" && !isWorkspaceHost) {
       setLandlordMode("register");
     }
-  }, [router.isReady, router.query.mode, forcedRole]);
+  }, [router.isReady, router.query.mode, forcedRole, isWorkspaceHost]);
 
   useEffect(() => {
     if (workspaceAuthView === "auth") {
@@ -1319,23 +1323,37 @@ export function PortalExperience({
         <div className="auth-link">
           {role === "landlord" ? (
             <>
-              {landlordMode === "register" ? "Already a member? " : "Don't have an account? "}
-              <button
-                type="button"
-                onClick={() =>
-                  setLandlordMode((current) => (current === "login" ? "register" : "login"))
-                }
-                style={{
-                  color: "var(--accent)",
-                  fontWeight: 600,
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  fontSize: "inherit",
-                }}
-              >
-                {landlordMode === "register" ? "Sign in" : "Create account"}
-              </button>
+              {isWorkspaceHost ? (
+                <>
+                  Need your own workspace?{" "}
+                  <a
+                    href={PUBLIC_PORTAL_URL}
+                    style={{ color: "var(--accent)", fontWeight: 600 }}
+                  >
+                    Create it on usedoorrent.com
+                  </a>
+                </>
+              ) : (
+                <>
+                  {landlordMode === "register" ? "Already a member? " : "Don't have an account? "}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLandlordMode((current) => (current === "login" ? "register" : "login"))
+                    }
+                    style={{
+                      color: "var(--accent)",
+                      fontWeight: 600,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      fontSize: "inherit",
+                    }}
+                  >
+                    {landlordMode === "register" ? "Sign in" : "Create account"}
+                  </button>
+                </>
+              )}
             </>
           ) : role === "admin" ? (
             <>Super admin access is provisioned by DoorRent.</>
@@ -1688,6 +1706,7 @@ export function PortalExperience({
 
 export const getWorkspaceAuthServerSideProps: GetServerSideProps<{
   workspaceBranding: WorkspaceBranding | null;
+  isWorkspaceHost: boolean;
 }> = async (context: GetServerSidePropsContext) => {
   const hostHeader =
     (Array.isArray(context.req.headers["x-forwarded-host"])
@@ -1700,17 +1719,20 @@ export const getWorkspaceAuthServerSideProps: GetServerSideProps<{
   return {
     props: {
       workspaceBranding: workspaceContext?.workspace?.branding ?? null,
+      isWorkspaceHost: Boolean(workspaceContext?.workspace?.workspaceSlug),
     },
   };
 };
 
 export default function PortalPage({
   workspaceBranding,
+  isWorkspaceHost,
 }: InferGetServerSidePropsType<typeof getWorkspaceAuthServerSideProps>) {
   return (
     <PortalExperience
       forcedRole="landlord"
       workspaceBranding={workspaceBranding}
+      isWorkspaceHost={isWorkspaceHost}
     />
   );
 }
