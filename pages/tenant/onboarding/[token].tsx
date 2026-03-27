@@ -60,6 +60,13 @@ interface UploadedDocument {
   content: string;
 }
 
+interface SubmitInvitationResponse {
+  agreement?: {
+    id: string;
+    guarantorAccessToken: string;
+  } | null;
+}
+
 interface OnboardingForm {
   firstName: string;
   lastName: string;
@@ -147,7 +154,7 @@ export default function TenantOnboardingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [submittedAgreementId, setSubmittedAgreementId] = useState<string | null>(null);
+  const [submittedAgreementToken, setSubmittedAgreementToken] = useState<string | null>(null);
   const [guarantorLinkCopied, setGuarantorLinkCopied] = useState(false);
   const lockedNameParts = useMemo(
     () => splitInviteeName(invitationData?.invitation.inviteeName),
@@ -279,7 +286,7 @@ export default function TenantOnboardingPage() {
     setIsSubmitting(true);
 
     try {
-      const { data } = await apiRequest<{ agreementId?: string }>(`/tenant-onboarding/${token}/submit`, {
+      const { data } = await apiRequest<SubmitInvitationResponse>(`/tenant-onboarding/${token}/submit`, {
         method: "POST",
         body: {
           firstName: form.firstName,
@@ -313,7 +320,7 @@ export default function TenantOnboardingPage() {
         "Onboarding submitted. Share the guarantor link below, then use your email to sign into the portal.",
         "success",
       );
-      setSubmittedAgreementId(data?.agreementId ?? "pending");
+      setSubmittedAgreementToken(data?.agreement?.guarantorAccessToken ?? "pending");
     } catch (requestError) {
       showToast(
         requestError instanceof Error
@@ -627,7 +634,7 @@ export default function TenantOnboardingPage() {
                 <div className="card-title">Your Signature</div>
               </div>
               <div className="card-body">
-                {submittedAgreementId ? (
+                {submittedAgreementToken ? (
                   <>
                     <div
                       style={{
@@ -644,7 +651,7 @@ export default function TenantOnboardingPage() {
                       Onboarding submitted successfully.
                     </div>
 
-                    {submittedAgreementId !== "pending" ? (
+                    {submittedAgreementToken !== "pending" ? (
                       <div
                         style={{
                           padding: 14,
@@ -666,14 +673,14 @@ export default function TenantOnboardingPage() {
                             readOnly
                             className="form-input"
                             style={{ fontSize: 12, flex: 1 }}
-                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${submittedAgreementId}`}
+                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${submittedAgreementToken}`}
                           />
                           <button
                             type="button"
                             className="btn btn-secondary btn-sm"
                             onClick={() => {
                               void navigator.clipboard.writeText(
-                                `${window.location.origin}/agreement/guarantor/${submittedAgreementId}`,
+                                `${window.location.origin}/agreement/guarantor/${submittedAgreementToken}`,
                               );
                               setGuarantorLinkCopied(true);
                               setTimeout(() => setGuarantorLinkCopied(false), 2000);

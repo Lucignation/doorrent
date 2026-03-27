@@ -22,6 +22,7 @@ interface TenantAgreementResponse {
   };
   agreement: {
     id: string;
+    guarantorAccessToken: string;
     title: string;
     status: string;
     statusLabel: string;
@@ -82,6 +83,7 @@ interface TenantAgreementResponse {
 interface AgreementMutationResponse {
   agreement: {
     id: string;
+    guarantorAccessToken: string;
     status: string;
     statusLabel: string;
     lastActivity: string | null;
@@ -376,13 +378,13 @@ export default function TenantAgreementPage() {
                             readOnly
                             className="form-input"
                             style={{ fontSize: 12, flex: 1 }}
-                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${agreement.id}`}
+                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${agreement.guarantorAccessToken}`}
                           />
                           <button
                             type="button"
                             className="btn btn-secondary btn-sm"
                             onClick={() => {
-                              void navigator.clipboard.writeText(`${window.location.origin}/agreement/guarantor/${agreement.id}`);
+                              void navigator.clipboard.writeText(`${window.location.origin}/agreement/guarantor/${agreement.guarantorAccessToken}`);
                               setGuarantorLinkCopied(true);
                               setTimeout(() => setGuarantorLinkCopied(false), 2000);
                             }}
