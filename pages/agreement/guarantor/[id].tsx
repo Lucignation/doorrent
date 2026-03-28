@@ -1,10 +1,23 @@
+import type {
+  GetServerSideProps,
+  GetServerSidePropsContext,
+  InferGetServerSidePropsType,
+} from "next";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import PageMeta from "../../../components/layout/PageMeta";
 import SignaturePad from "../../../components/ui/SignaturePad";
 import { apiRequest } from "../../../lib/api";
 import { buildAgreementHtml, printAgreementDocument } from "../../../lib/agreement-print";
+import {
+  buildBrandShellStyle,
+  resolveBrandDisplayName,
+  resolveBrandLoginBackgroundUrl,
+  resolveBrandLogoUrl,
+  type WorkspaceBranding,
+} from "../../../lib/branding";
 import { LOGO_PATH } from "../../../lib/site";
+import { fetchWorkspaceContextByHost } from "../../../lib/workspace-context";
 
 interface GuarantorAgreementResponse {
   agreement: {
@@ -61,7 +74,27 @@ interface GuarantorAgreementResponse {
   };
 }
 
-export default function GuarantorSigningPage() {
+export const getServerSideProps: GetServerSideProps<{
+  workspaceBranding: WorkspaceBranding | null;
+}> = async (context: GetServerSidePropsContext) => {
+  const hostHeader =
+    (Array.isArray(context.req.headers["x-forwarded-host"])
+      ? context.req.headers["x-forwarded-host"][0]
+      : context.req.headers["x-forwarded-host"]) ??
+    context.req.headers.host ??
+    null;
+  const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
+
+  return {
+    props: {
+      workspaceBranding: workspaceContext?.workspace?.branding ?? null,
+    },
+  };
+};
+
+export default function GuarantorSigningPage({
+  workspaceBranding,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const id = typeof router.query.id === "string" ? router.query.id : "";
   const [data, setData] = useState<GuarantorAgreementResponse | null>(null);
@@ -73,6 +106,15 @@ export default function GuarantorSigningPage() {
   const [signing, setSigning] = useState(false);
   const [signed, setSigned] = useState(false);
   const [savedSignature, setSavedSignature] = useState("");
+  const brandDisplayName = resolveBrandDisplayName(workspaceBranding, "DoorRent");
+  const brandBackgroundUrl = resolveBrandLoginBackgroundUrl(workspaceBranding);
+  const brandHeroStyle = brandBackgroundUrl
+    ? {
+        backgroundImage: `linear-gradient(135deg, rgba(15, 18, 16, 0.84), rgba(22, 55, 38, 0.76)), url(${brandBackgroundUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
 
   useEffect(() => {
     if (!id) return;
@@ -166,11 +208,32 @@ export default function GuarantorSigningPage() {
 
   return (
     <>
-      <PageMeta title="DoorRent — Guarantor Agreement Signing" />
-      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
-        <div style={{ background: "var(--ink)", padding: "14px 24px", display: "flex", alignItems: "center", gap: 10 }}>
-          <img src={LOGO_PATH} alt="DoorRent" style={{ width: 32, height: 32, objectFit: "contain" }} />
-          <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "#fff", letterSpacing: "-0.02em" }}>DoorRent</span>
+      <PageMeta title={`${brandDisplayName} — Guarantor Agreement Signing`} />
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "var(--bg)",
+          ...buildBrandShellStyle(workspaceBranding),
+        }}
+      >
+        <div
+          style={{
+            background: "var(--ink)",
+            padding: "14px 24px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            ...brandHeroStyle,
+          }}
+        >
+          <img
+            src={resolveBrandLogoUrl(workspaceBranding, LOGO_PATH)}
+            alt={`${brandDisplayName} logo`}
+            style={{ width: 32, height: 32, objectFit: "contain" }}
+          />
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "#fff", letterSpacing: "-0.02em" }}>
+            {brandDisplayName}
+          </span>
           <span style={{ marginLeft: "auto", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>Guarantor Agreement Signing</span>
         </div>
 

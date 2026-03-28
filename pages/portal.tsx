@@ -7,9 +7,15 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import { type FormEvent, useEffect, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
-import { apiRequest } from "../lib/api";
+import { API_BASE_URL, apiRequest } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
-import { buildBrandShellStyle, resolveBrandDisplayName, type WorkspaceBranding } from "../lib/branding";
+import {
+  buildBrandShellStyle,
+  resolveBrandDisplayName,
+  resolveBrandLoginBackgroundUrl,
+  resolveBrandLogoUrl,
+  type WorkspaceBranding,
+} from "../lib/branding";
 import { fetchWorkspaceContextByHost } from "../lib/workspace-context";
 import {
   TENANT_LAST_EMAIL_STORAGE_KEY,
@@ -21,7 +27,7 @@ import {
 import { usePrototypeUI } from "../context/PrototypeUIContext";
 
 type RoleKey = "landlord" | "admin" | "tenant";
-type LandlordPlanChoice = "STARTER" | "PRO" | "ENTERPRISE";
+type LandlordPlanChoice = "STARTER" | "PRO";
 
 type TenantRequestResult = {
   email: string;
@@ -113,9 +119,9 @@ type PasswordResetRequestResult = {
 
 const roles: Record<RoleKey, { label: string; href: string; button: string }> = {
   landlord: {
-    label: "Landlord",
+    label: "Workspace",
     href: "/landlord",
-    button: "Sign in as Landlord",
+    button: "Open Workspace Portal",
   },
   admin: {
     label: "Super Admin",
@@ -184,6 +190,15 @@ type PortalExperienceProps = {
   forcedRole: RoleKey;
   workspaceBranding?: WorkspaceBranding | null;
   isWorkspaceHost?: boolean;
+  marketingOverview?: {
+    authStats?: Array<{ label: string; value: string }>;
+    authActivity?: Array<{
+      title: string;
+      subtitle: string;
+      time: string;
+      tone: "success" | "gold" | "blue" | "warning";
+    }>;
+  } | null;
 };
 
 const PUBLIC_PORTAL_URL = "https://usedoorrent.com/portal";
@@ -204,6 +219,19 @@ function buildQueryString(query: Record<string, string | string[] | undefined>) 
   return params.toString();
 }
 
+function isWorkspaceSubdomainHost(host?: string | null) {
+  const normalizedHost = host?.trim().toLowerCase().replace(/^www\./, "").replace(/:\d+$/, "");
+
+  if (!normalizedHost) {
+    return false;
+  }
+
+  const rootHost = new URL(PUBLIC_PORTAL_URL).hostname.replace(/^www\./, "").toLowerCase();
+  const suffix = `.${rootHost}`;
+
+  return normalizedHost.endsWith(suffix) && normalizedHost !== rootHost;
+}
+
 function getWorkspaceLoginPath(role: RoleKey) {
   return role === "admin" ? "/admin/login" : "/portal";
 }
@@ -212,6 +240,7 @@ export function PortalExperience({
   forcedRole,
   workspaceBranding = null,
   isWorkspaceHost = false,
+  marketingOverview = null,
 }: PortalExperienceProps) {
   const router = useRouter();
   const { showToast } = usePrototypeUI();
@@ -229,8 +258,9 @@ export function PortalExperience({
   const [role, setRole] = useState<RoleKey>(forcedRole);
   const [landlordMode, setLandlordMode] = useState<"login" | "register">("login");
   const [workspaceAuthView, setWorkspaceAuthView] = useState<
-    "auth" | "forgot" | "reset"
+    "auth" | "forgot" | "reset" | "activate_team_member"
   >("auth");
+  const [tenantAppWorkspaceLink, setTenantAppWorkspaceLink] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
   const [authFeedback, setAuthFeedback] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -243,13 +273,36 @@ export function PortalExperience({
   const [landlordPhone, setLandlordPhone] = useState("");
   const [landlordPlanSelection, setLandlordPlanSelection] =
     useState<LandlordPlanChoice>("STARTER");
-  const [landlordSubscriptionInterval, setLandlordSubscriptionInterval] = useState<
-    "MONTHLY" | "YEARLY"
-  >("MONTHLY");
   const [landlordPromoCode, setLandlordPromoCode] = useState("");
   const [tenantEmail, setTenantEmail] = useState("");
   const [tenantCode, setTenantCode] = useState("");
-  const [tenantRememberMe, setTenantRememberMe] = useState(true);
+  const [tenantRememberMe, setTenantRememberMe] = useState(false);
+  const [workspaceRememberMe, setWorkspaceRememberMe] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !isWorkspaceHost) {
+      setTenantAppWorkspaceLink(null);
+      return;
+    }
+
+    const hostname = window.location.hostname.replace(/^www\./, "").toLowerCase();
+    const rootHost = new URL(PUBLIC_PORTAL_URL).hostname.replace(/^www\./, "").toLowerCase();
+    const suffix = `.${rootHost}`;
+
+    if (!hostname.endsWith(suffix)) {
+      setTenantAppWorkspaceLink(null);
+      return;
+    }
+
+    const slug = hostname.slice(0, -suffix.length);
+
+    if (!slug || slug.includes(".")) {
+      setTenantAppWorkspaceLink(null);
+      return;
+    }
+
+    setTenantAppWorkspaceLink(`doorrent-tenant://workspace/${slug}`);
+  }, [isWorkspaceHost]);
   const [tenantStep, setTenantStep] = useState<"request" | "verify">("request");
   const [tenantBusyState, setTenantBusyState] = useState<
     "idle" | "requesting" | "verifying"
@@ -265,13 +318,17 @@ export function PortalExperience({
     useState<PasswordResetRequestResult | null>(null);
   const landlordSubscriptionModel =
     landlordPlanSelection === "PRO" ? "COMMISSION" : "SUBSCRIPTION";
-  const landlordEffectiveSubscriptionInterval =
-    landlordPlanSelection === "STARTER" ? landlordSubscriptionInterval : "MONTHLY";
+  const landlordEffectiveSubscriptionInterval = "MONTHLY";
   const [resetToken, setResetToken] = useState("");
   const [resetPassword, setResetPassword] = useState("");
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [resetBusy, setResetBusy] = useState(false);
   const [resetFeedback, setResetFeedback] = useState("");
+  const [teamInviteToken, setTeamInviteToken] = useState("");
+  const [teamMemberPassword, setTeamMemberPassword] = useState("");
+  const [teamMemberPasswordConfirm, setTeamMemberPasswordConfirm] = useState("");
+  const [teamMemberActivationBusy, setTeamMemberActivationBusy] = useState(false);
+  const [teamMemberActivationFeedback, setTeamMemberActivationFeedback] = useState("");
   const [landlordOnboarding, setLandlordOnboarding] =
     useState<LandlordOnboardingState | null>(null);
   const [landlordOnboardingOtp, setLandlordOnboardingOtp] = useState("");
@@ -289,6 +346,8 @@ export function PortalExperience({
     const loginToken = typeof router.query.token === "string" ? router.query.token : null;
     const passwordResetToken =
       typeof router.query.resetToken === "string" ? router.query.resetToken : "";
+    const staffInviteToken =
+      typeof router.query.teamInviteToken === "string" ? router.query.teamInviteToken : "";
     const forwardQuery = buildQueryString(router.query);
 
     if (forcedRole === "landlord" && requestedRole && requestedRole !== "landlord") {
@@ -325,12 +384,18 @@ export function PortalExperience({
       void handleTenantVerification({ token: loginToken });
     }
     if (forcedRole !== "tenant") {
+      setTeamInviteToken(staffInviteToken);
       setResetToken(passwordResetToken);
-      if (passwordResetToken) {
+      if (staffInviteToken) {
+        setWorkspaceAuthView("activate_team_member");
+        setTeamMemberActivationFeedback("");
+      } else if (passwordResetToken) {
         setWorkspaceAuthView("reset");
         setResetFeedback("");
       } else {
-        setWorkspaceAuthView((current) => (current === "reset" ? "auth" : current));
+        setWorkspaceAuthView((current) =>
+          current === "reset" || current === "activate_team_member" ? "auth" : current,
+        );
       }
     }
   }, [
@@ -338,6 +403,7 @@ export function PortalExperience({
     router.isReady,
     router.query,
     router.query.resetToken,
+    router.query.teamInviteToken,
     router.query.role,
     router.query.token,
   ]);
@@ -499,7 +565,7 @@ export function PortalExperience({
         token: data.session.token,
         expiresAt: data.session.expiresAt,
         tenant: data.tenant,
-      });
+      }, { persist: tenantRememberMe });
       showToast("Tenant login successful", "success");
       await router.replace(data.dashboardPath);
     } catch (error) {
@@ -549,7 +615,7 @@ export function PortalExperience({
               token: data.session.token,
               expiresAt: data.session.expiresAt,
               landlord: data.landlord,
-            });
+            }, { persist: false });
             showToast("Landlord account created", "success");
             await router.replace(data.dashboardPath);
             return;
@@ -571,10 +637,10 @@ export function PortalExperience({
           setLandlordOnboardingOtp("");
           setLandlordOnboardingFeedback(
             data.onboarding.requiresPayment
-              ? "Finish email verification, enter the OTP, and complete the Paystack checkout to activate this landlord account."
-              : "Finish email verification and enter the OTP to activate this landlord account.",
+              ? "Finish email verification, enter the OTP, and complete the Paystack checkout to activate this workspace account."
+              : "Finish email verification and enter the OTP to activate this workspace account.",
           );
-          showToast("Landlord onboarding started", "success");
+          showToast("Workspace onboarding started", "success");
           return;
         }
 
@@ -590,9 +656,9 @@ export function PortalExperience({
           token: data.session.token,
           expiresAt: data.session.expiresAt,
           landlord: data.landlord,
-        });
+        }, { persist: workspaceRememberMe });
         clearLandlordOnboardingState();
-        showToast("Landlord login successful", "success");
+        showToast("Workspace login successful", "success");
         await router.replace(data.dashboardPath);
         return;
       }
@@ -609,7 +675,7 @@ export function PortalExperience({
         token: data.session.token,
         expiresAt: data.session.expiresAt,
         superAdmin: data.superAdmin,
-      });
+      }, { persist: workspaceRememberMe });
       showToast("Super admin login successful", "success");
       await router.replace(data.dashboardPath);
     } catch (error) {
@@ -681,8 +747,8 @@ export function PortalExperience({
         token: data.session.token,
         expiresAt: data.session.expiresAt,
         landlord: data.landlord,
-      });
-      showToast("Landlord account activated", "success");
+      }, { persist: false });
+      showToast("Workspace account activated", "success");
       await router.replace(data.dashboardPath);
     } catch (error) {
       setLandlordOnboardingFeedback(
@@ -730,6 +796,39 @@ export function PortalExperience({
     }
   }
 
+  async function handleTeamMemberActivation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setTeamMemberActivationBusy(true);
+    setTeamMemberActivationFeedback("");
+
+    try {
+      const { data } = await apiRequest<LandlordAuthResult>("/auth/team-members/activate", {
+        method: "POST",
+        body: {
+          token: teamInviteToken,
+          password: teamMemberPassword,
+          confirmPassword: teamMemberPasswordConfirm,
+        },
+      });
+
+      saveLandlordSession({
+        token: data.session.token,
+        expiresAt: data.session.expiresAt,
+        landlord: data.landlord,
+      }, { persist: false });
+      showToast("Workspace staff access activated", "success");
+      await router.replace(data.dashboardPath);
+    } catch (error) {
+      setTeamMemberActivationFeedback(
+        error instanceof Error
+          ? error.message
+          : "We could not activate this workspace staff account.",
+      );
+    } finally {
+      setTeamMemberActivationBusy(false);
+    }
+  }
+
   function renderWorkspaceAccess() {
     const currentSession =
       role === "landlord" ? landlordSession : role === "admin" ? adminSession : null;
@@ -748,10 +847,10 @@ export function PortalExperience({
       return (
         <>
           <div className="tenant-auth-panel">
-            <div className="tenant-auth-panel-title">Finish landlord onboarding</div>
+            <div className="tenant-auth-panel-title">Finish workspace onboarding</div>
             <div className="tenant-auth-panel-copy">
               Complete the verification steps for{" "}
-              {landlordOnboarding.email || "your landlord account"} before DoorRent signs
+              {landlordOnboarding.email || "your workspace account"} before DoorRent signs
               you in.
             </div>
           </div>
@@ -778,7 +877,7 @@ export function PortalExperience({
           <div className="tenant-auth-preview">
             <div className="tenant-auth-preview-title">Step 2: Enter phone OTP</div>
             <div className="tenant-auth-preview-copy">
-              Enter the 6-digit verification code prepared for this landlord registration.
+              Enter the 6-digit verification code prepared for this workspace registration.
             </div>
             {landlordOnboarding.phoneOtpPreview ? (
               <div className="tenant-auth-preview-line">
@@ -807,7 +906,7 @@ export function PortalExperience({
               <div className="tenant-auth-preview-title">Step 3: Pay with Paystack</div>
               <div className="tenant-auth-preview-copy">
                 Complete your subscription checkout before DoorRent activates this
-                landlord account.
+                workspace account.
               </div>
               <div className="tenant-auth-preview-line">
                 <strong>Checkout:</strong>{" "}
@@ -872,6 +971,78 @@ export function PortalExperience({
             </button>
           </div>
         </div>
+      );
+    }
+
+    if (role === "landlord" && workspaceAuthView === "activate_team_member") {
+      return (
+        <form onSubmit={handleTeamMemberActivation}>
+          <div className="tenant-auth-panel">
+            <div className="tenant-auth-panel-title">Activate workspace staff access</div>
+            <div className="tenant-auth-panel-copy">
+              Set a password to activate this support-staff account for the current workspace.
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Create password</label>
+            <div className="password-input-wrap">
+              <input
+                className="form-input"
+                type={showPassword ? "text" : "password"}
+                value={teamMemberPassword}
+                onChange={(event) => setTeamMemberPassword(event.target.value)}
+                placeholder="Create a secure password"
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Confirm password</label>
+            <input
+              className="form-input"
+              type={showPassword ? "text" : "password"}
+              value={teamMemberPasswordConfirm}
+              onChange={(event) => setTeamMemberPasswordConfirm(event.target.value)}
+              placeholder="Confirm your password"
+              required
+            />
+          </div>
+
+          <div className="tenant-auth-actions">
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={teamMemberActivationBusy || !teamInviteToken}
+            >
+              {teamMemberActivationBusy ? "Activating..." : "Activate access"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setWorkspaceAuthView("auth");
+                void router.replace("/portal");
+              }}
+            >
+              Back to sign in
+            </button>
+          </div>
+
+          {teamMemberActivationFeedback ? (
+            <div className="tenant-auth-feedback">{teamMemberActivationFeedback}</div>
+          ) : null}
+        </form>
       );
     }
 
@@ -1127,61 +1298,37 @@ export function PortalExperience({
                     className={`plan-toggle-opt ${landlordPlanSelection === "PRO" ? "active" : ""}`}
                     onClick={() => setLandlordPlanSelection("PRO")}
                   >
-                    Full Service
-                  </button>
-                  <button
-                    type="button"
-                    className={`plan-toggle-opt ${landlordPlanSelection === "ENTERPRISE" ? "active" : ""}`}
-                    onClick={() => setLandlordPlanSelection("ENTERPRISE")}
-                  >
-                    Enterprise
+                    Pro
                   </button>
                 </div>
                 <div className="plan-detail">
                   {landlordPlanSelection === "STARTER" ? (
                     <>
-                      <span className="plan-detail-price">
-                        {landlordSubscriptionInterval === "YEARLY" ? "₦95,000 / year" : "₦8,500 / month"}
-                      </span>
-                      <span className="plan-detail-features">Properties &amp; units · Google Meet scheduling · Tenant portal</span>
-                    </>
-                  ) : landlordPlanSelection === "ENTERPRISE" ? (
-                    <>
-                      <span className="plan-detail-price">₦200,000 / month</span>
-                      <span className="plan-detail-features">Property manager companies · Branded subdomains · Direct company Paystack collections · Agreements · Receipts · Reports · Team workflows</span>
+                      <span className="plan-detail-price">₦8,500 / month</span>
+                      <span className="plan-detail-features">Up to 5 units · Paystack payments · Receipts · In-app notifications · Payment-success SMS</span>
                     </>
                   ) : (
                     <>
-                      <span className="plan-detail-price">3% per payment collected</span>
-                      <span className="plan-detail-features">Everything in Basic · Payments &amp; receipts · Agreements · Reports · Caretakers · Reminders</span>
+                      <span className="plan-detail-price">3% of rent collected</span>
+                      <span className="plan-detail-features">Everything in Basic · Branding · Notices · Meetings · SMS · Caretakers · Emergency</span>
                     </>
                   )}
                 </div>
-              </div>
-
-              {landlordPlanSelection === "STARTER" ? (
-                <div className="form-group">
-                  <label className="form-label">Billing cycle</label>
-                  <div className="billing-toggle">
-                    <button
-                      type="button"
-                      className={`billing-opt ${landlordSubscriptionInterval === "MONTHLY" ? "active" : ""}`}
-                      onClick={() => setLandlordSubscriptionInterval("MONTHLY")}
-                    >
-                      Monthly
-                      <span>₦8,500 / month</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`billing-opt ${landlordSubscriptionInterval === "YEARLY" ? "active" : ""}`}
-                      onClick={() => setLandlordSubscriptionInterval("YEARLY")}
-                    >
-                      Yearly
-                      <span>₦95,000 / year · save 7%</span>
-                    </button>
-                  </div>
+                <div
+                  style={{
+                    marginTop: 10,
+                    fontSize: 12,
+                    color: "var(--ink3)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Need Enterprise for a property management company?{" "}
+                  <Link href="/#pricing" style={{ color: "var(--accent)", fontWeight: 600 }}>
+                    Request guided setup from DoorRent
+                  </Link>
+                  .
                 </div>
-              ) : null}
+              </div>
 
               <div className="form-group">
                 <label className="form-label">Promo code <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(optional)</span></label>
@@ -1234,7 +1381,12 @@ export function PortalExperience({
           >
             {!(role === "landlord" && landlordMode === "register") ? (
               <div className="checkbox-wrap">
-                <input type="checkbox" id="remember" defaultChecked />
+                <input
+                  type="checkbox"
+                  id="remember"
+                  checked={workspaceRememberMe}
+                  onChange={(event) => setWorkspaceRememberMe(event.target.checked)}
+                />
                 <label htmlFor="remember">Remember me</label>
               </div>
             ) : <div />}
@@ -1313,7 +1465,7 @@ export function PortalExperience({
                 ? "Creating account..."
                 : "Signing you in..."
               : role === "landlord" && landlordMode === "register"
-                ? "Create landlord account"
+                    ? "Create workspace account"
                 : roles[role].button}
           </button>
         </form>
@@ -1524,6 +1676,18 @@ export function PortalExperience({
           </div>
         ) : null}
 
+        {tenantAppWorkspaceLink ? (
+          <div style={{ marginTop: 18 }}>
+            <a
+              href={tenantAppWorkspaceLink}
+              className="btn btn-secondary btn-full"
+              style={{ padding: 12 }}
+            >
+              Open in DoorRent app
+            </a>
+          </div>
+        ) : null}
+
         <div className="auth-link">
           Need access? Ask your landlord to invite you, then use the same email
           here after onboarding.
@@ -1538,13 +1702,73 @@ export function PortalExperience({
       : role === "admin"
         ? null
         : workspaceBranding ?? null;
-  const authHeroStyle = tenantBranding?.loginBackgroundUrl
+  const authBackgroundUrl = resolveBrandLoginBackgroundUrl(tenantBranding);
+  const authHeroStyle = authBackgroundUrl
     ? {
-        backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.52), rgba(17, 19, 18, 0.6)), url(${tenantBranding.loginBackgroundUrl})`,
+        backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.52), rgba(17, 19, 18, 0.6)), url(${authBackgroundUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }
     : undefined;
+  const authActivity = marketingOverview?.authActivity ?? [
+    {
+      title: "Rent received",
+      subtitle: "Chidinma Eze · ₦320,000",
+      time: "2m ago",
+      tone: "success" as const,
+    },
+    {
+      title: "Agreement signed",
+      subtitle: "Kelechi Dike · Unit B2, Lekki",
+      time: "18m ago",
+      tone: "gold" as const,
+    },
+    {
+      title: "New tenant onboarded",
+      subtitle: "Amara Okonkwo · Victoria Island",
+      time: "1h ago",
+      tone: "blue" as const,
+    },
+    {
+      title: "Overdue reminder sent",
+      subtitle: "Tunde Adeola · ₦180,000 due",
+      time: "3h ago",
+      tone: "warning" as const,
+    },
+  ];
+  const authStats = marketingOverview?.authStats ?? [
+    { label: "Properties managed", value: "12K+" },
+    { label: "Rent collected", value: "₦4.2B" },
+    { label: "Active landlords", value: "5.2K" },
+  ];
+
+  function activityIconStyle(tone: "success" | "gold" | "blue" | "warning") {
+    if (tone === "success") {
+      return {
+        background: "rgba(46,160,67,0.18)",
+        stroke: "#4ade80",
+      };
+    }
+
+    if (tone === "gold") {
+      return {
+        background: "rgba(200,169,110,0.18)",
+        stroke: "#c8a96e",
+      };
+    }
+
+    if (tone === "blue") {
+      return {
+        background: "rgba(96,165,250,0.15)",
+        stroke: "#60a5fa",
+      };
+    }
+
+    return {
+      background: "rgba(251,146,60,0.15)",
+      stroke: "#fb923c",
+    };
+  }
 
   return (
     <>
@@ -1569,7 +1793,7 @@ export function PortalExperience({
         <div className="auth-left" style={authHeroStyle}>
           <div className="auth-logo">
             <img
-              src={tenantBranding?.logoUrl || LOGO_PATH}
+              src={resolveBrandLogoUrl(tenantBranding, LOGO_PATH)}
               alt={`${resolveBrandDisplayName(tenantBranding, "DoorRent")} logo`}
               className="auth-logo-image"
             />
@@ -1594,61 +1818,39 @@ export function PortalExperience({
           </div>
 
           <div className="auth-activity">
-            <div className="auth-activity-item">
-              <div className="auth-activity-icon" style={{ background: "rgba(46,160,67,0.18)" }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 4.5L6.5 11.5L3 8" stroke="#4ade80" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </div>
-              <div className="auth-activity-body">
-                <span className="auth-activity-title">Rent received</span>
-                <span className="auth-activity-sub">Chidinma Eze · ₦320,000</span>
-              </div>
-              <span className="auth-activity-time">2m ago</span>
-            </div>
-            <div className="auth-activity-item">
-              <div className="auth-activity-icon" style={{ background: "rgba(200,169,110,0.18)" }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke="#c8a96e" strokeWidth="1.6"/><path d="M2 6h12" stroke="#c8a96e" strokeWidth="1.4"/></svg>
-              </div>
-              <div className="auth-activity-body">
-                <span className="auth-activity-title">Agreement signed</span>
-                <span className="auth-activity-sub">Kelechi Dike · Unit B2, Lekki</span>
-              </div>
-              <span className="auth-activity-time">18m ago</span>
-            </div>
-            <div className="auth-activity-item">
-              <div className="auth-activity-icon" style={{ background: "rgba(96,165,250,0.15)" }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke="#60a5fa" strokeWidth="1.6"/><path d="M2.5 13.5c0-2.485 2.462-4.5 5.5-4.5s5.5 2.015 5.5 4.5" stroke="#60a5fa" strokeWidth="1.6" strokeLinecap="round"/></svg>
-              </div>
-              <div className="auth-activity-body">
-                <span className="auth-activity-title">New tenant onboarded</span>
-                <span className="auth-activity-sub">Amara Okonkwo · Victoria Island</span>
-              </div>
-              <span className="auth-activity-time">1h ago</span>
-            </div>
-            <div className="auth-activity-item">
-              <div className="auth-activity-icon" style={{ background: "rgba(251,146,60,0.15)" }}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v4M8 10v.5M8 13a5 5 0 100-10A5 5 0 008 13z" stroke="#fb923c" strokeWidth="1.6" strokeLinecap="round"/></svg>
-              </div>
-              <div className="auth-activity-body">
-                <span className="auth-activity-title">Overdue reminder sent</span>
-                <span className="auth-activity-sub">Tunde Adeola · ₦180,000 due</span>
-              </div>
-              <span className="auth-activity-time">3h ago</span>
-            </div>
+            {authActivity.map((item) => {
+              const iconStyle = activityIconStyle(item.tone);
+
+              return (
+                <div key={`${item.title}-${item.time}`} className="auth-activity-item">
+                  <div className="auth-activity-icon" style={{ background: iconStyle.background }}>
+                    {item.tone === "success" ? (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 4.5L6.5 11.5L3 8" stroke={iconStyle.stroke} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    ) : item.tone === "gold" ? (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="10" rx="1.5" stroke={iconStyle.stroke} strokeWidth="1.6"/><path d="M2 6h12" stroke={iconStyle.stroke} strokeWidth="1.4"/></svg>
+                    ) : item.tone === "blue" ? (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="3" stroke={iconStyle.stroke} strokeWidth="1.6"/><path d="M2.5 13.5c0-2.485 2.462-4.5 5.5-4.5s5.5 2.015 5.5 4.5" stroke={iconStyle.stroke} strokeWidth="1.6" strokeLinecap="round"/></svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v4M8 10v.5M8 13a5 5 0 100-10A5 5 0 008 13z" stroke={iconStyle.stroke} strokeWidth="1.6" strokeLinecap="round"/></svg>
+                    )}
+                  </div>
+                  <div className="auth-activity-body">
+                    <span className="auth-activity-title">{item.title}</span>
+                    <span className="auth-activity-sub">{item.subtitle}</span>
+                  </div>
+                  <span className="auth-activity-time">{item.time}</span>
+                </div>
+              );
+            })}
           </div>
 
           <div className="auth-stats">
-            <div className="auth-stat">
-              <strong>12K+</strong>
-              <span>Properties managed</span>
-            </div>
-            <div className="auth-stat">
-              <strong>₦4.2B</strong>
-              <span>Rent collected</span>
-            </div>
-            <div className="auth-stat">
-              <strong>5.2K</strong>
-              <span>Active landlords</span>
-            </div>
+            {authStats.map((item) => (
+              <div key={item.label} className="auth-stat">
+                <strong>{item.value}</strong>
+                <span>{item.label}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -1677,8 +1879,8 @@ export function PortalExperience({
                 : role === "admin"
                   ? "Internal DoorRent operations access."
                   : landlordMode === "register"
-                    ? "Set up your DoorRent landlord workspace."
-                    : "Sign in to your DoorRent landlord workspace"}
+                    ? "Set up your DoorRent workspace."
+                    : "Sign in to your DoorRent workspace"}
             </p>
 
             {role === "tenant" ? (
@@ -1707,6 +1909,7 @@ export function PortalExperience({
 export const getWorkspaceAuthServerSideProps: GetServerSideProps<{
   workspaceBranding: WorkspaceBranding | null;
   isWorkspaceHost: boolean;
+  marketingOverview: PortalExperienceProps["marketingOverview"];
 }> = async (context: GetServerSidePropsContext) => {
   const hostHeader =
     (Array.isArray(context.req.headers["x-forwarded-host"])
@@ -1716,10 +1919,31 @@ export const getWorkspaceAuthServerSideProps: GetServerSideProps<{
     null;
   const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
 
+  if (isWorkspaceSubdomainHost(hostHeader) && !workspaceContext?.workspace?.workspaceSlug) {
+    return {
+      redirect: {
+        destination: PUBLIC_PORTAL_URL,
+        permanent: false,
+      },
+    };
+  }
+  let marketingOverview: PortalExperienceProps["marketingOverview"] = null;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/marketplace/public-overview`);
+    const payload = (await response.json()) as {
+      data?: PortalExperienceProps["marketingOverview"];
+    };
+    marketingOverview = payload?.data ?? null;
+  } catch {
+    marketingOverview = null;
+  }
+
   return {
     props: {
       workspaceBranding: workspaceContext?.workspace?.branding ?? null,
       isWorkspaceHost: Boolean(workspaceContext?.workspace?.workspaceSlug),
+      marketingOverview,
     },
   };
 };
@@ -1729,12 +1953,14 @@ export const getServerSideProps = getWorkspaceAuthServerSideProps;
 export default function PortalPage({
   workspaceBranding,
   isWorkspaceHost,
+  marketingOverview,
 }: InferGetServerSidePropsType<typeof getWorkspaceAuthServerSideProps>) {
   return (
     <PortalExperience
       forcedRole="landlord"
       workspaceBranding={workspaceBranding}
       isWorkspaceHost={isWorkspaceHost}
+      marketingOverview={marketingOverview}
     />
   );
 }

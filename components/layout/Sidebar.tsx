@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { LOGO_PATH } from "../../lib/site";
 import type { WorkspaceBranding } from "../../lib/branding";
-import { resolveBrandDisplayName } from "../../lib/branding";
+import { resolveBrandDisplayName, resolveBrandLogoUrl } from "../../lib/branding";
 import type { AppUser, NavSection } from "../../types/app";
 import { NavIcon } from "../ui/Icons";
 
@@ -81,7 +81,7 @@ export default function Sidebar({
       <div className="sidebar-header">
         <Link href={homeHref} className="sidebar-logo" onClick={onNavigate}>
           <img
-            src={branding?.logoUrl || LOGO_PATH}
+            src={resolveBrandLogoUrl(branding, LOGO_PATH)}
             alt={`${resolveBrandDisplayName(branding, "DoorRent")} logo`}
             className="logo-image"
           />

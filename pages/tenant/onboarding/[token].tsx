@@ -1,10 +1,24 @@
 import Link from "next/link";
+import type {
+  GetServerSideProps,
+  GetServerSidePropsContext,
+  InferGetServerSidePropsType,
+} from "next";
 import { useRouter } from "next/router";
 import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import PageMeta from "../../../components/layout/PageMeta";
 import SignaturePad from "../../../components/ui/SignaturePad";
 import { usePrototypeUI } from "../../../context/PrototypeUIContext";
 import { apiRequest } from "../../../lib/api";
+import {
+  buildBrandShellStyle,
+  resolveBrandDisplayName,
+  resolveBrandLoginBackgroundUrl,
+  resolveBrandLogoUrl,
+  type WorkspaceBranding,
+} from "../../../lib/branding";
+import { LOGO_PATH } from "../../../lib/site";
+import { fetchWorkspaceContextByHost } from "../../../lib/workspace-context";
 
 interface OnboardingInvitationResponse {
   invitation: {
@@ -125,7 +139,27 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
-export default function TenantOnboardingPage() {
+export const getServerSideProps: GetServerSideProps<{
+  workspaceBranding: WorkspaceBranding | null;
+}> = async (context: GetServerSidePropsContext) => {
+  const hostHeader =
+    (Array.isArray(context.req.headers["x-forwarded-host"])
+      ? context.req.headers["x-forwarded-host"][0]
+      : context.req.headers["x-forwarded-host"]) ??
+    context.req.headers.host ??
+    null;
+  const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
+
+  return {
+    props: {
+      workspaceBranding: workspaceContext?.workspace?.branding ?? null,
+    },
+  };
+};
+
+export default function TenantOnboardingPage({
+  workspaceBranding,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const { showToast } = usePrototypeUI();
   const token = typeof router.query.token === "string" ? router.query.token : "";
@@ -168,6 +202,15 @@ export default function TenantOnboardingPage() {
     }),
     [invitationData?.invitation.email, lockedNameParts.firstName, lockedNameParts.lastName],
   );
+  const brandDisplayName = resolveBrandDisplayName(workspaceBranding, "DoorRent");
+  const brandBackgroundUrl = resolveBrandLoginBackgroundUrl(workspaceBranding);
+  const brandHeroStyle = brandBackgroundUrl
+    ? {
+        backgroundImage: `linear-gradient(135deg, rgba(12, 19, 16, 0.82), rgba(12, 19, 16, 0.66)), url(${brandBackgroundUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }
+    : undefined;
 
   useEffect(() => {
     if (!token) {
@@ -336,11 +379,69 @@ export default function TenantOnboardingPage() {
   return (
     <>
       <PageMeta
-        title="DoorRent — Tenant Onboarding"
-        description="Complete your DoorRent onboarding with ID upload, guarantor information, and signatures."
+        title={`${brandDisplayName} — Tenant Onboarding`}
+        description={`Complete your ${brandDisplayName} onboarding with ID upload, guarantor information, and signatures.`}
       />
 
-      <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "var(--bg)",
+          ...buildBrandShellStyle(workspaceBranding),
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1120,
+            margin: "0 auto",
+            padding: "24px 20px 0",
+          }}
+        >
+          <div
+            style={{
+              borderRadius: 28,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background:
+                "linear-gradient(135deg, rgba(16,22,18,0.96), rgba(22,55,38,0.88))",
+              color: "#fff",
+              padding: "26px 28px",
+              boxShadow: "0 24px 80px rgba(11, 17, 14, 0.18)",
+              ...brandHeroStyle,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <img
+                src={resolveBrandLogoUrl(workspaceBranding, LOGO_PATH)}
+                alt={`${brandDisplayName} logo`}
+                style={{ width: 40, height: 40, objectFit: "contain", borderRadius: 12 }}
+              />
+              <div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    opacity: 0.72,
+                  }}
+                >
+                  Workspace onboarding
+                </div>
+                <div
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontSize: 26,
+                    letterSpacing: "-0.03em",
+                  }}
+                >
+                  {brandDisplayName}
+                </div>
+              </div>
+            </div>
+            <div style={{ maxWidth: 720, fontSize: 15, lineHeight: 1.7, color: "rgba(255,255,255,0.86)" }}>
+              Complete your tenant onboarding, upload your ID, review the tenancy details, and generate the guarantor signing link in one place.
+            </div>
+          </div>
+        </div>
         <div
           className="grid-2"
           style={{
@@ -354,7 +455,7 @@ export default function TenantOnboardingPage() {
             <div className="card" style={{ marginBottom: 20 }}>
               <div className="card-header">
                 <div>
-                  <div className="card-title">DoorRent Tenant Onboarding</div>
+                  <div className="card-title">{brandDisplayName} Tenant Onboarding</div>
                   <div className="card-subtitle">
                     {isLoading
                       ? "Loading your unit details..."

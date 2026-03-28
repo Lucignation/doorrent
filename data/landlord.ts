@@ -30,7 +30,7 @@ import {
 
 export const landlordUser: AppUser = {
   name: "Babatunde Adeyemi",
-  role: "Landlord",
+  role: "Workspace owner",
   initials: "BA",
 };
 
@@ -88,6 +88,18 @@ export function buildLandlordNav(capabilities?: Partial<LandlordCapabilities> | 
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
+        if (item.href === "/landlord/properties") {
+          return resolved.canManageProperties;
+        }
+
+        if (item.href === "/landlord/units") {
+          return resolved.canManageUnits;
+        }
+
+        if (item.href === "/landlord/tenants") {
+          return resolved.canManageTenants;
+        }
+
         if (item.href === "/landlord/agreements") {
           return resolved.canManageAgreements;
         }
@@ -100,12 +112,16 @@ export function buildLandlordNav(capabilities?: Partial<LandlordCapabilities> | 
           return resolved.canViewReceipts;
         }
 
-        if (item.href === "/landlord/rent-defaults") {
-          return resolved.canManagePayments;
-        }
-
         if (item.href === "/landlord/reminders") {
           return resolved.canManageReminders;
+        }
+
+        if (item.href === "/landlord/meetings") {
+          return resolved.canManageMeetings;
+        }
+
+        if (item.href === "/landlord/notifications") {
+          return resolved.canViewNotifications;
         }
 
         if (item.href === "/landlord/reports") {
@@ -114,6 +130,26 @@ export function buildLandlordNav(capabilities?: Partial<LandlordCapabilities> | 
 
         if (item.href === "/landlord/caretakers") {
           return resolved.canManageCaretakers;
+        }
+
+        if (item.href === "/landlord/notices") {
+          return resolved.canManageNotices;
+        }
+
+        if (item.href === "/landlord/rent-defaults") {
+          return resolved.canManageRiskWorkflows;
+        }
+
+        if (item.href === "/landlord/settings") {
+          return (
+            resolved.canManageAccountUpdates ||
+            resolved.canManageTeamMembers ||
+            resolved.canManageBranding ||
+            resolved.canManageCaretakers ||
+            resolved.canManageEmergency ||
+            resolved.canDeleteAccount ||
+            resolved.canUseBiometricUnlock
+          );
         }
 
         return true;
@@ -826,7 +862,7 @@ export const landlordProfile: LandlordProfile = {
   lastName: "Adeyemi",
   phone: "+234 806 000 0001",
   email: "babatunde@lekki.io",
-  plan: "Pro Plan",
+  plan: "Pro",
   planDescription: "Up to 30 properties · 200 units · 3 team members",
   price: "₦25,000/mo",
   nextBilling: "April 1, 2026",

@@ -1,3 +1,4 @@
+import { isAllowedFrontendHost, normalizeBrowserHost } from "./frontend-security";
 import type { WorkspaceBranding } from "./branding";
 
 function normalizeApiBaseUrl(value: string) {
@@ -24,15 +25,20 @@ export type PublicWorkspaceContext = {
 };
 
 export async function fetchWorkspaceContextByHost(host?: string | null) {
-  if (!host) {
+  const normalizedHost = normalizeBrowserHost(host);
+
+  if (!normalizedHost || !isAllowedFrontendHost(normalizedHost)) {
     return null;
   }
 
   try {
     const response = await fetch(
-      `${WORKSPACE_API_BASE_URL}/auth/workspace?host=${encodeURIComponent(host)}`,
+      `${WORKSPACE_API_BASE_URL}/auth/workspace?host=${encodeURIComponent(normalizedHost)}`,
       {
         cache: "no-store",
+        credentials: "omit",
+        redirect: "error",
+        referrerPolicy: "strict-origin-when-cross-origin",
       },
     );
 

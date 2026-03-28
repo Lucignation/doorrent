@@ -5,7 +5,13 @@ import PageMeta from "../../components/layout/PageMeta";
 import { useCaretakerPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
-import { buildBrandShellStyle, resolveBrandDisplayName, type WorkspaceBranding } from "../../lib/branding";
+import {
+  buildBrandShellStyle,
+  resolveBrandDisplayName,
+  resolveBrandLoginBackgroundUrl,
+  resolveBrandLogoUrl,
+  type WorkspaceBranding,
+} from "../../lib/branding";
 import { LOGO_PATH } from "../../lib/site";
 import { fetchWorkspaceContextByHost } from "../../lib/workspace-context";
 
@@ -39,6 +45,21 @@ interface CaretakerVerifyResult {
   };
 }
 
+const PUBLIC_PORTAL_URL = "https://usedoorrent.com/portal";
+
+function isWorkspaceSubdomainHost(host?: string | null) {
+  const normalizedHost = host?.trim().toLowerCase().replace(/^www\./, "").replace(/:\d+$/, "");
+
+  if (!normalizedHost) {
+    return false;
+  }
+
+  const rootHost = new URL(PUBLIC_PORTAL_URL).hostname.replace(/^www\./, "").toLowerCase();
+  const suffix = `.${rootHost}`;
+
+  return normalizedHost.endsWith(suffix) && normalizedHost !== rootHost;
+}
+
 export const getServerSideProps: GetServerSideProps<{
   workspaceBranding: WorkspaceBranding | null;
 }> = async (context: GetServerSidePropsContext) => {
@@ -49,6 +70,15 @@ export const getServerSideProps: GetServerSideProps<{
     context.req.headers.host ??
     null;
   const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
+
+  if (isWorkspaceSubdomainHost(hostHeader) && !workspaceContext?.workspace?.workspaceSlug) {
+    return {
+      redirect: {
+        destination: PUBLIC_PORTAL_URL,
+        permanent: false,
+      },
+    };
+  }
 
   return {
     props: {
@@ -65,16 +95,17 @@ export default function CaretakerLoginPage({
   const { caretakerSession, saveCaretakerSession } = useCaretakerPortalSession();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [step, setStep] = useState<"request" | "verify">("request");
   const [busyState, setBusyState] = useState<"idle" | "requesting" | "verifying">(
     "idle",
   );
   const [feedback, setFeedback] = useState("");
   const [preview, setPreview] = useState<CaretakerRequestResult | null>(null);
-  const authHeroStyle = workspaceBranding?.loginBackgroundUrl
+  const authBackgroundUrl = resolveBrandLoginBackgroundUrl(workspaceBranding);
+  const authHeroStyle = authBackgroundUrl
     ? {
-        backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.52), rgba(17, 19, 18, 0.6)), url(${workspaceBranding.loginBackgroundUrl})`,
+        backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.52), rgba(17, 19, 18, 0.6)), url(${authBackgroundUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }
@@ -158,7 +189,7 @@ export default function CaretakerLoginPage({
         token: data.session.token,
         expiresAt: data.session.expiresAt,
         caretaker: data.caretaker,
-      });
+      }, { persist: rememberMe });
       showToast("Caretaker login successful", "success");
       await router.replace(data.dashboardPath);
     } catch (error) {
@@ -189,7 +220,7 @@ export default function CaretakerLoginPage({
         <div className="auth-left" style={authHeroStyle}>
           <div className="auth-logo">
             <img
-              src={workspaceBranding?.logoUrl || LOGO_PATH}
+              src={resolveBrandLogoUrl(workspaceBranding, LOGO_PATH)}
               alt={`${resolveBrandDisplayName(workspaceBranding, "DoorRent")} logo`}
               className="auth-logo-image"
             />

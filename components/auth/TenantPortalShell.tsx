@@ -3,7 +3,7 @@ import { useRouter } from "next/router";
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
-import { tenantNav } from "../../data/tenant";
+import { buildTenantNav, canAccessTenantPath } from "../../data/tenant";
 import AppShell from "../layout/AppShell";
 
 interface TenantPortalShellProps {
@@ -35,6 +35,16 @@ export default function TenantPortalShell({
     }
   }, [isHydrated, router, tenantSession]);
 
+  useEffect(() => {
+    if (
+      isHydrated &&
+      tenantSession &&
+      !canAccessTenantPath(tenantSession.tenant.capabilities, router.pathname)
+    ) {
+      void router.replace("/tenant");
+    }
+  }, [isHydrated, router, router.pathname, tenantSession]);
+
   if (!isHydrated) {
     return (
       <div className="tenant-access-state">
@@ -60,6 +70,10 @@ export default function TenantPortalShell({
     );
   }
 
+  if (!canAccessTenantPath(tenantSession.tenant.capabilities, router.pathname)) {
+    return null;
+  }
+
   const user = {
     name: tenantSession.tenant.fullName,
     role: `Tenant${tenantSession.tenant.unitNumber ? ` · Unit ${tenantSession.tenant.unitNumber}` : ""}`,
@@ -71,7 +85,7 @@ export default function TenantPortalShell({
       user={user}
       topbarTitle={topbarTitle}
       breadcrumb={breadcrumb}
-      navSections={tenantNav}
+      navSections={buildTenantNav(tenantSession.tenant.capabilities)}
       branding={tenantSession.tenant.branding}
     >
       {children}

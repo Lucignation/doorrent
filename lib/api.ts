@@ -6,6 +6,7 @@ import {
   queueOfflineMutation,
   setOfflineCachedResponse,
 } from "./offline-store";
+import { getSafeWorkspaceHostFromWindow } from "./frontend-security";
 
 export interface ApiSuccessEnvelope<T> {
   success?: boolean;
@@ -66,14 +67,13 @@ function mergeRequestHeaders(headers?: HeadersInit, body?: unknown, token?: stri
     });
   }
 
+  const safeWorkspaceHost = getSafeWorkspaceHostFromWindow();
+
   if (
-    typeof window !== "undefined" &&
-    window.location.host &&
-    !Object.keys(requestHeaders).some(
-      (key) => key.toLowerCase() === "x-workspace-host",
-    )
+    safeWorkspaceHost &&
+    !Object.keys(requestHeaders).some((key) => key.toLowerCase() === "x-workspace-host")
   ) {
-    requestHeaders["x-workspace-host"] = window.location.host;
+    requestHeaders["x-workspace-host"] = safeWorkspaceHost;
   }
 
   return requestHeaders;
@@ -103,6 +103,11 @@ export async function apiRequest<T>(
       method,
       headers: requestHeaders,
       body: requestBody,
+      cache: token || method !== "GET" ? "no-store" : "default",
+      credentials: "omit",
+      mode: "cors",
+      redirect: "error",
+      referrerPolicy: "strict-origin-when-cross-origin",
     });
 
     const payload = (await response.json().catch(() => null)) as ApiSuccessEnvelope<T> | null;

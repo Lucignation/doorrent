@@ -7,6 +7,7 @@ import { apiRequest } from "../../lib/api";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import type { BadgeTone } from "../../types/app";
+import { buildMeetAddonPreviewUrl } from "../../lib/meet-addon";
 
 interface LandlordMeetingRecord {
   id: string;
@@ -454,6 +455,14 @@ export default function LandlordMeetingsPage() {
                       >
                         {inviteLoadingId === meeting.id ? "Opening..." : "Google Invite"}
                       </button>
+                      <a
+                        href={buildMeetAddonPreviewUrl("landlord", meeting.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-secondary btn-sm"
+                      >
+                        Meet Add-on
+                      </a>
                       {meeting.meetingLink ? (
                         <a
                           href={meeting.meetingLink}

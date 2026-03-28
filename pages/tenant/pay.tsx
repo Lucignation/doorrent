@@ -8,6 +8,7 @@ import type { TenantPortalIdentity } from "../../context/TenantSessionContext";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
+import { sanitizeExternalRedirectUrl } from "../../lib/frontend-security";
 import {
   billingLabel,
   calculateCommissionPreview,
@@ -273,19 +274,28 @@ export default function TenantPayPage() {
         },
       );
 
+      const safeAuthorizationUrl = sanitizeExternalRedirectUrl(
+        data.authorizationUrl,
+        "payment",
+      );
+
+      if (!safeAuthorizationUrl) {
+        throw new Error("We could not verify the Paystack checkout destination.");
+      }
+
       if (action === "share") {
-        const shareMessage = `Help me complete my DoorRent rent payment for ${propertyName}, ${unitLabel}. Pay securely via Paystack: ${data.authorizationUrl}`;
+        const shareMessage = `Help me complete my DoorRent rent payment for ${propertyName}, ${unitLabel}. Pay securely via Paystack: ${safeAuthorizationUrl}`;
 
         if (typeof navigator !== "undefined" && navigator.share) {
           await navigator.share({
             title: "DoorRent rent payment link",
             text: shareMessage,
-            url: data.authorizationUrl,
+            url: safeAuthorizationUrl,
           });
         } else if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(data.authorizationUrl);
+          await navigator.clipboard.writeText(safeAuthorizationUrl);
         } else {
-          setVerificationMessage(`Share this Paystack payment link with your helper: ${data.authorizationUrl}`);
+          setVerificationMessage(`Share this Paystack payment link with your helper: ${safeAuthorizationUrl}`);
         }
 
         showToast("Paystack payment link is ready to share.", "success");
@@ -293,7 +303,7 @@ export default function TenantPayPage() {
       }
 
       showToast("Redirecting to Paystack checkout...", "info");
-      window.location.href = data.authorizationUrl;
+      window.location.assign(safeAuthorizationUrl);
     } catch (error) {
       setVerificationMessage(
         error instanceof Error

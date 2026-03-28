@@ -25,6 +25,10 @@ export interface TenantPortalIdentity {
   landlordName: string;
   workspaceSlug?: string | null;
   branding?: WorkspaceBranding;
+  plan?: "basic" | "pro" | "enterprise";
+  planKey?: string | null;
+  subscriptionModel?: string | null;
+  capabilities?: LandlordCapabilities;
   billingFrequency?: string;
   billingFrequencyLabel?: string;
   billingCyclePrice?: number;
@@ -52,7 +56,8 @@ export interface TenantPortalSession {
 
 export interface LandlordPortalIdentity {
   id: string;
-  role: "landlord";
+  role: "landlord" | "team_member";
+  teamRole?: string | null;
   companyName: string;
   workspaceMode?: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY";
   workspaceSlug?: string | null;
@@ -61,7 +66,7 @@ export interface LandlordPortalIdentity {
   email: string;
   phone?: string | null;
   fullName: string;
-  plan?: "basic" | "full_service" | "enterprise";
+  plan?: "basic" | "pro" | "enterprise";
   planKey?: string | null;
   subscriptionModel?: string | null;
   subscriptionInterval?: string | null;
@@ -116,10 +121,16 @@ interface TenantSessionValue {
   landlordSession: LandlordPortalSession | null;
   adminSession: AdminPortalSession | null;
   caretakerSession: CaretakerPortalSession | null;
-  saveTenantSession: (session: TenantPortalSession) => void;
-  saveLandlordSession: (session: LandlordPortalSession) => void;
-  saveAdminSession: (session: AdminPortalSession) => void;
-  saveCaretakerSession: (session: CaretakerPortalSession) => void;
+  saveTenantSession: (session: TenantPortalSession, options?: { persist?: boolean }) => void;
+  saveLandlordSession: (
+    session: LandlordPortalSession,
+    options?: { persist?: boolean },
+  ) => void;
+  saveAdminSession: (session: AdminPortalSession, options?: { persist?: boolean }) => void;
+  saveCaretakerSession: (
+    session: CaretakerPortalSession,
+    options?: { persist?: boolean },
+  ) => void;
   clearTenantSession: () => void;
   clearLandlordSession: () => void;
   clearAdminSession: () => void;
@@ -134,6 +145,11 @@ const CARETAKER_SESSION_STORAGE_KEY = "doorrent.caretaker.session";
 export const TENANT_LAST_EMAIL_STORAGE_KEY = "doorrent.tenant.last-email";
 
 const TenantSessionContext = createContext<TenantSessionValue | null>(null);
+type StorageMode = "persistent" | "session";
+type LoadedSessionResult<T> = {
+  session: T;
+  persist: boolean;
+};
 
 function isExpired(expiresAt: string) {
   return Number.isNaN(new Date(expiresAt).getTime()) || new Date(expiresAt) <= new Date();
@@ -143,33 +159,89 @@ function loadStoredTenantSession() {
   return loadStoredSession<TenantPortalSession>(TENANT_SESSION_STORAGE_KEY, "tenant");
 }
 
-function loadStoredSession<T extends { token: string; expiresAt: string }>(
-  key: string,
-  identityKey: "tenant" | "landlord" | "superAdmin" | "caretaker",
-) {
+function getStorage(mode: StorageMode) {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const raw = window.localStorage.getItem(key);
+  return mode === "persistent" ? window.localStorage : window.sessionStorage;
+}
 
-  if (!raw) {
-    return null;
+function removeStoredKeyEverywhere(key: string) {
+  if (typeof window === "undefined") {
+    return;
   }
 
   try {
-    const parsed = JSON.parse(raw) as T & Record<string, unknown>;
-
-    if (!parsed?.token || !parsed?.[identityKey] || isExpired(parsed.expiresAt)) {
-      window.localStorage.removeItem(key);
-      return null;
-    }
-
-    return parsed;
-  } catch {
     window.localStorage.removeItem(key);
+  } catch {}
+
+  try {
+    window.sessionStorage.removeItem(key);
+  } catch {}
+}
+
+function persistSession<T>(key: string, session: T, persist: boolean) {
+  const primaryStorage = getStorage(persist ? "persistent" : "session");
+  const secondaryStorage = getStorage(persist ? "session" : "persistent");
+
+  try {
+    primaryStorage?.setItem(key, JSON.stringify(session));
+  } catch {}
+
+  try {
+    secondaryStorage?.removeItem(key);
+  } catch {}
+}
+
+function loadStoredSession<T extends { token: string; expiresAt: string }>(
+  key: string,
+  identityKey: "tenant" | "landlord" | "superAdmin" | "caretaker",
+): LoadedSessionResult<T> | null {
+  if (typeof window === "undefined") {
     return null;
   }
+
+  const sources: Array<{ persist: boolean; storage: Storage | null }> = [
+    { persist: false, storage: window.sessionStorage },
+    { persist: true, storage: window.localStorage },
+  ];
+
+  for (const source of sources) {
+    if (!source.storage) {
+      continue;
+    }
+
+    let raw: string | null = null;
+
+    try {
+      raw = source.storage.getItem(key);
+    } catch {
+      raw = null;
+    }
+
+    if (!raw) {
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as T & Record<string, unknown>;
+
+      if (!parsed?.token || !parsed?.[identityKey] || isExpired(parsed.expiresAt)) {
+        source.storage.removeItem(key);
+        continue;
+      }
+
+      return {
+        session: parsed,
+        persist: source.persist,
+      };
+    } catch {
+      source.storage.removeItem(key);
+    }
+  }
+
+  return null;
 }
 
 export function TenantSessionProvider({ children }: { children: ReactNode }) {
@@ -180,103 +252,112 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
   const [adminSession, setAdminSession] = useState<AdminPortalSession | null>(null);
   const [caretakerSession, setCaretakerSession] =
     useState<CaretakerPortalSession | null>(null);
+  const [tenantSessionPersistent, setTenantSessionPersistent] = useState(true);
+  const [landlordSessionPersistent, setLandlordSessionPersistent] = useState(true);
+  const [adminSessionPersistent, setAdminSessionPersistent] = useState(true);
+  const [caretakerSessionPersistent, setCaretakerSessionPersistent] = useState(true);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    setTenantSession(loadStoredTenantSession());
-    setLandlordSession(
-      loadStoredSession<LandlordPortalSession>(
-        LANDLORD_SESSION_STORAGE_KEY,
-        "landlord",
-      ),
+    const storedTenant = loadStoredTenantSession();
+    const storedLandlord = loadStoredSession<LandlordPortalSession>(
+      LANDLORD_SESSION_STORAGE_KEY,
+      "landlord",
     );
-    setAdminSession(
-      loadStoredSession<AdminPortalSession>(ADMIN_SESSION_STORAGE_KEY, "superAdmin"),
+    const storedAdmin = loadStoredSession<AdminPortalSession>(
+      ADMIN_SESSION_STORAGE_KEY,
+      "superAdmin",
     );
-    setCaretakerSession(
-      loadStoredSession<CaretakerPortalSession>(
-        CARETAKER_SESSION_STORAGE_KEY,
-        "caretaker",
-      ),
+    const storedCaretaker = loadStoredSession<CaretakerPortalSession>(
+      CARETAKER_SESSION_STORAGE_KEY,
+      "caretaker",
     );
+
+    setTenantSession(storedTenant?.session ?? null);
+    setTenantSessionPersistent(storedTenant?.persist ?? true);
+    setLandlordSession(storedLandlord?.session ?? null);
+    setLandlordSessionPersistent(storedLandlord?.persist ?? true);
+    setAdminSession(storedAdmin?.session ?? null);
+    setAdminSessionPersistent(storedAdmin?.persist ?? true);
+    setCaretakerSession(storedCaretaker?.session ?? null);
+    setCaretakerSessionPersistent(storedCaretaker?.persist ?? true);
     setIsHydrated(true);
   }, []);
 
-  const saveTenantSession = useCallback((session: TenantPortalSession) => {
-    setTenantSession(session);
+  const saveTenantSession = useCallback(
+    (session: TenantPortalSession, options?: { persist?: boolean }) => {
+      const persist = options?.persist ?? tenantSessionPersistent;
+      setTenantSession(session);
+      setTenantSessionPersistent(persist);
+      persistSession(TENANT_SESSION_STORAGE_KEY, session, persist);
 
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(TENANT_SESSION_STORAGE_KEY, JSON.stringify(session));
-      window.localStorage.setItem(TENANT_LAST_EMAIL_STORAGE_KEY, session.tenant.email);
-    }
-  }, []);
+      if (typeof window !== "undefined") {
+        try {
+          window.localStorage.setItem(TENANT_LAST_EMAIL_STORAGE_KEY, session.tenant.email);
+        } catch {}
+      }
+    },
+    [tenantSessionPersistent],
+  );
 
-  const saveLandlordSession = useCallback((session: LandlordPortalSession) => {
-    setLandlordSession(session);
+  const saveLandlordSession = useCallback(
+    (session: LandlordPortalSession, options?: { persist?: boolean }) => {
+      const persist = options?.persist ?? landlordSessionPersistent;
+      setLandlordSession(session);
+      setLandlordSessionPersistent(persist);
+      persistSession(LANDLORD_SESSION_STORAGE_KEY, session, persist);
+    },
+    [landlordSessionPersistent],
+  );
 
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        LANDLORD_SESSION_STORAGE_KEY,
-        JSON.stringify(session),
-      );
-    }
-  }, []);
+  const saveAdminSession = useCallback(
+    (session: AdminPortalSession, options?: { persist?: boolean }) => {
+      const persist = options?.persist ?? adminSessionPersistent;
+      setAdminSession(session);
+      setAdminSessionPersistent(persist);
+      persistSession(ADMIN_SESSION_STORAGE_KEY, session, persist);
+    },
+    [adminSessionPersistent],
+  );
 
-  const saveAdminSession = useCallback((session: AdminPortalSession) => {
-    setAdminSession(session);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(ADMIN_SESSION_STORAGE_KEY, JSON.stringify(session));
-    }
-  }, []);
-
-  const saveCaretakerSession = useCallback((session: CaretakerPortalSession) => {
-    setCaretakerSession(session);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(
-        CARETAKER_SESSION_STORAGE_KEY,
-        JSON.stringify(session),
-      );
-    }
-  }, []);
+  const saveCaretakerSession = useCallback(
+    (session: CaretakerPortalSession, options?: { persist?: boolean }) => {
+      const persist = options?.persist ?? caretakerSessionPersistent;
+      setCaretakerSession(session);
+      setCaretakerSessionPersistent(persist);
+      persistSession(CARETAKER_SESSION_STORAGE_KEY, session, persist);
+    },
+    [caretakerSessionPersistent],
+  );
 
   const clearTenantSession = useCallback(() => {
     setTenantSession(null);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(TENANT_SESSION_STORAGE_KEY);
-    }
+    setTenantSessionPersistent(true);
+    removeStoredKeyEverywhere(TENANT_SESSION_STORAGE_KEY);
 
     void clearOfflineMutationQueue();
   }, []);
 
   const clearLandlordSession = useCallback(() => {
     setLandlordSession(null);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(LANDLORD_SESSION_STORAGE_KEY);
-    }
+    setLandlordSessionPersistent(true);
+    removeStoredKeyEverywhere(LANDLORD_SESSION_STORAGE_KEY);
 
     void clearOfflineMutationQueue();
   }, []);
 
   const clearAdminSession = useCallback(() => {
     setAdminSession(null);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
-    }
+    setAdminSessionPersistent(true);
+    removeStoredKeyEverywhere(ADMIN_SESSION_STORAGE_KEY);
 
     void clearOfflineMutationQueue();
   }, []);
 
   const clearCaretakerSession = useCallback(() => {
     setCaretakerSession(null);
-
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem(CARETAKER_SESSION_STORAGE_KEY);
-    }
+    setCaretakerSessionPersistent(true);
+    removeStoredKeyEverywhere(CARETAKER_SESSION_STORAGE_KEY);
 
     void clearOfflineMutationQueue();
   }, []);

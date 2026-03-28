@@ -8,6 +8,7 @@ import AccountDeletionConsentModal from "../../components/ui/AccountDeletionCons
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
+import { resolveLandlordCapabilities } from "../../lib/landlord-access";
 
 interface TenantProfileResponse {
   profile: {
@@ -91,6 +92,11 @@ export default function TenantProfilePage() {
   const [saving, setSaving] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const tenantCapabilities = resolveLandlordCapabilities({
+    capabilities: tenantSession?.tenant.capabilities,
+    subscriptionModel: tenantSession?.tenant.subscriptionModel,
+    plan: tenantSession?.tenant.planKey ?? tenantSession?.tenant.plan,
+  });
 
   useEffect(() => {
     const tenantToken = tenantSession?.token;
@@ -628,54 +634,58 @@ export default function TenantProfilePage() {
               </Link>
             </div>
 
-            <div
-              style={{
-                border: "1px solid rgba(220, 64, 64, 0.18)",
-                background: "rgba(220, 64, 64, 0.05)",
-                borderRadius: 12,
-                padding: 16,
-              }}
-            >
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-                Danger Zone
-              </div>
+            {tenantCapabilities.canDeleteAccount ? (
               <div
                 style={{
-                  fontSize: 12,
-                  color: "var(--ink2)",
-                  lineHeight: 1.6,
-                  marginBottom: 14,
+                  border: "1px solid rgba(220, 64, 64, 0.18)",
+                  background: "rgba(220, 64, 64, 0.05)",
+                  borderRadius: 12,
+                  padding: 16,
                 }}
               >
-                Deleting your account removes your tenant portal access. Some billing, legal, or
-                audit records may be retained where required by law or platform security needs.
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                  Danger Zone
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--ink2)",
+                    lineHeight: 1.6,
+                    marginBottom: 14,
+                  }}
+                >
+                  Deleting your account removes your tenant portal access. Some billing, legal, or
+                  audit records may be retained where required by law or platform security needs.
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => setShowDeleteModal(true)}
+                  disabled={deletingAccount}
+                >
+                  {deletingAccount ? "Deleting..." : "Delete Account"}
+                </button>
               </div>
-              <button
-                type="button"
-                className="btn btn-danger btn-sm"
-                onClick={() => setShowDeleteModal(true)}
-                disabled={deletingAccount}
-              >
-                {deletingAccount ? "Deleting..." : "Delete Account"}
-              </button>
-            </div>
+            ) : null}
           </div>
         </div>
 
-        <AccountDeletionConsentModal
-          open={showDeleteModal}
-          title="Delete tenant account?"
-          description="This permanently removes your tenant portal access from DoorRent."
-          consequences={[
-            "Your tenant portal session and sign-in access will be revoked.",
-            "Tenant-specific portal records may be deleted or detached from active access.",
-            "Some billing, legal, audit, or security records may still be retained where required.",
-          ]}
-          consentLabel="I understand that deleting my tenant account is permanent."
-          busy={deletingAccount}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={deleteAccount}
-        />
+        {tenantCapabilities.canDeleteAccount ? (
+          <AccountDeletionConsentModal
+            open={showDeleteModal}
+            title="Delete tenant account?"
+            description="This permanently removes your tenant portal access from DoorRent."
+            consequences={[
+              "Your tenant portal session and sign-in access will be revoked.",
+              "Tenant-specific portal records may be deleted or detached from active access.",
+              "Some billing, legal, audit, or security records may still be retained where required.",
+            ]}
+            consentLabel="I understand that deleting my tenant account is permanent."
+            busy={deletingAccount}
+            onClose={() => setShowDeleteModal(false)}
+            onConfirm={deleteAccount}
+          />
+        ) : null}
       </TenantPortalShell>
     </>
   );

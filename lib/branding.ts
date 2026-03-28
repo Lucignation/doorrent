@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { sanitizeHexColor, sanitizeRemoteAssetUrl } from "./frontend-security";
 
 export interface WorkspaceBranding {
   displayName: string;
@@ -51,28 +52,45 @@ function rgba(color: string, alpha: number) {
 export function buildBrandShellStyle(
   branding?: WorkspaceBranding | null,
 ): BrandCssProperties | undefined {
-  if (!branding?.primaryColor && !branding?.accentColor) {
+  const primaryColor = sanitizeHexColor(branding?.primaryColor);
+  const accentColor = sanitizeHexColor(branding?.accentColor);
+
+  if (!primaryColor && !accentColor) {
     return undefined;
   }
 
   const style: BrandCssProperties = {};
 
-  if (branding.primaryColor) {
-    style["--accent"] = branding.primaryColor;
-    style["--accent-light"] = rgba(branding.primaryColor, 0.12);
+  if (primaryColor) {
+    style["--accent"] = primaryColor;
+    style["--accent-light"] = rgba(primaryColor, 0.12);
   }
 
-  if (branding.accentColor) {
-    style["--accent2"] = branding.accentColor;
-    style["--accent2-light"] = rgba(branding.accentColor, 0.12);
+  if (accentColor) {
+    style["--accent2"] = accentColor;
+    style["--accent2-light"] = rgba(accentColor, 0.12);
   }
 
   return style;
+}
+
+export function resolveBrandLogoUrl(
+  branding: WorkspaceBranding | null | undefined,
+  fallback: string,
+) {
+  return sanitizeRemoteAssetUrl(branding?.logoUrl) ?? fallback;
+}
+
+export function resolveBrandLoginBackgroundUrl(
+  branding: WorkspaceBranding | null | undefined,
+) {
+  return sanitizeRemoteAssetUrl(branding?.loginBackgroundUrl);
 }
 
 export function resolveBrandDisplayName(
   branding: WorkspaceBranding | null | undefined,
   fallback: string,
 ) {
-  return branding?.displayName?.trim() || fallback;
+  const normalized = branding?.displayName?.trim().replace(/\s+/g, " ");
+  return normalized ? normalized.slice(0, 80) : fallback;
 }

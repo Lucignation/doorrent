@@ -5,6 +5,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import { buildSafeTelephoneHref } from "../../lib/frontend-security";
 
 interface EmergencyContact {
   label: string;
@@ -84,8 +85,10 @@ export default function TenantEmergencyPage() {
   }, [tenantSession?.token]);
 
   function openCallLine(contact: EmergencyContact) {
-    if (typeof window !== "undefined") {
-      window.location.href = contact.callUrl ?? `tel:${contact.phone}`;
+    const safeTelephoneHref = buildSafeTelephoneHref(contact.callUrl ?? contact.phone);
+
+    if (typeof window !== "undefined" && safeTelephoneHref) {
+      window.location.assign(safeTelephoneHref);
     }
   }
 

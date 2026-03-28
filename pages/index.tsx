@@ -1,12 +1,26 @@
 import type { GetServerSideProps, GetServerSidePropsContext } from "next";
 import Link from "next/link";
-import { type FormEvent, useEffect, useState } from "react";
+import { Fragment, type FormEvent, useEffect, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
-import { apiRequest } from "../lib/api";
+import { API_BASE_URL, apiRequest } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
 import { fetchWorkspaceContextByHost } from "../lib/workspace-context";
 
 type RoleKey = "landlord" | "tenant";
+const PUBLIC_PORTAL_URL = "https://usedoorrent.com/portal";
+
+function isWorkspaceSubdomainHost(host?: string | null) {
+  const normalizedHost = host?.trim().toLowerCase().replace(/^www\./, "").replace(/:\d+$/, "");
+
+  if (!normalizedHost) {
+    return false;
+  }
+
+  const rootHost = new URL(PUBLIC_PORTAL_URL).hostname.replace(/^www\./, "").toLowerCase();
+  const suffix = `.${rootHost}`;
+
+  return normalizedHost.endsWith(suffix) && normalizedHost !== rootHost;
+}
 
 const trustedLogos = [
   "Lekki Realty",
@@ -219,46 +233,145 @@ const steps = [
 ];
 
 const BASIC_MONTHLY_PRICE = 8500;
-const BASIC_YEARLY_LIST_PRICE = 102000;
-const BASIC_YEARLY_DISCOUNT_PRICE = 95000;
-const BASIC_YEARLY_SAVINGS_AMOUNT =
-  BASIC_YEARLY_LIST_PRICE - BASIC_YEARLY_DISCOUNT_PRICE;
-const BASIC_YEARLY_SAVINGS_PERCENT = Math.round(
-  (BASIC_YEARLY_SAVINGS_AMOUNT / BASIC_YEARLY_LIST_PRICE) * 100,
-);
-
 const basicPlanFeatures = [
-  "Properties management (unlimited properties)",
-  "Units management (unlimited units)",
-  "Tenant directory & profiles",
-  "Occupancy tracking & status overview",
-  "Lease end date tracking & renewal alerts",
-  "Arranging Google Meet meetings with one tenant",
-  "Arranging Google Meet meetings with all tenants",
-  "Caretaker access (read-only property view)",
-  "Basic reporting & occupancy summary",
-  "Email notifications for key events",
+  "Dashboard, payout settings, and notification preferences",
+  "Up to 5 units with tenant invitations, tenant records, and lease dates",
+  "Billing frequencies and basic occupancy summary",
+  "Agreement creation, resend, tenant signature, and PDF export",
+  "Paystack rent payments, offline payment recording, and receipts",
+  "In-app notifications, payment-success SMS, and basic reminders",
+  "Tenant login, rent dashboard, payment flow, agreement signing, receipts, and profile",
+  "Biometric unlock, account deletion, and offline support across mobile and web",
 ];
 
-const fullServiceFeatures = [
-  "Agreements",
-  "Payments",
-  "Receipts",
-  "Reminders & automations",
-  "Caretaker access",
-  "Reports",
-  "Account updates",
-  "Team member management",
+const proPlanFeatures = [
+  "Everything in Basic",
+  "Unlimited units, meter numbers, and portfolio summary",
+  "Agreement templates, signed-copy viewing, and witness visibility",
+  "Workspace branding, workspace mode, slug/subdomain, and branded tenant experience",
+  "Payment detail view, push notifications, SMS payment alerts, and SMS notices",
+  "Notices, meetings, automations, rent-default cases, and grace-period workflow",
+  "Caretaker login, scoped caretaker assignments, property-scoped access, and reports",
+  "Community, emergency tools, and SMS escalation",
 ];
 
 const enterprisePlanFeatures = [
-  "Property management company workspace mode",
-  "Branded subdomain, logo, colors, and login experience",
-  "Company-owned Paystack collections",
-  "Public policy pages for company compliance review",
-  "Portfolio team workflows and guided onboarding",
-  "Custom setup with DoorRent implementation support",
+  "Everything in Pro",
+  "Company-owned Paystack collections direct to the client's own Paystack account",
+  "Multiple staff logins with role-based permissions",
+  "Branded subdomains, branded public pages, and branded login pages",
+  "Full white-label and advanced workspace branding",
+  "Enterprise collections, guided onboarding, and company legal pages on client subdomain",
+  "Dedicated account manager and priority support",
 ];
+
+const pricingMatrixRows = [
+  {
+    feature: "Core property management",
+    description: "Dashboard, properties, units, tenant records, lease dates, and occupancy visibility.",
+    basic: "Included",
+    pro: "Included",
+    enterprise: "Included",
+  },
+  {
+    feature: "Agreements",
+    description: "Agreement creation, resend, signatures, PDF export, templates, and signed-copy visibility.",
+    basic: "Creation, resend, tenant signature, PDF export",
+    pro: "Full agreement workflow",
+    enterprise: "Full agreement workflow",
+  },
+  {
+    feature: "Payments",
+    description: "Paystack collections, offline records, receipts, payment detail, and collection ownership.",
+    basic: "Paystack + offline + receipts",
+    pro: "Advanced payment ops",
+    enterprise: "Client-owned Paystack collections",
+  },
+  {
+    feature: "Notifications & reminders",
+    description: "In-app notifications, push, SMS, and automations.",
+    basic: "In-app + payment-success SMS + reminders",
+    pro: "Push, SMS, and automations",
+    enterprise: "Advanced at scale",
+  },
+  {
+    feature: "Security & account control",
+    description: "Biometric unlock, account deletion, and offline support across mobile and web.",
+    basic: "Included",
+    pro: "Included",
+    enterprise: "Included",
+  },
+  {
+    feature: "Unit scale",
+    description: "How many units can sit under one workspace.",
+    basic: "Up to 5 units",
+    pro: "Unlimited units",
+    enterprise: "Unlimited units",
+  },
+  {
+    feature: "Property intelligence",
+    description: "Portfolio summaries, reporting, billing frequencies, and meter numbers.",
+    basic: "Billing frequency + occupancy summary",
+    pro: "Included",
+    enterprise: "Included",
+  },
+  {
+    feature: "Communication",
+    description: "Notices, meetings, community, and tenant communication tools.",
+    basic: "Not included",
+    pro: "Included",
+    enterprise: "Included",
+  },
+  {
+    feature: "Risk & compliance",
+    description: "Grace period workflow, rent-default tracking, and follow-up tooling.",
+    basic: "Basic reminders only",
+    pro: "Included",
+    enterprise: "Included",
+  },
+  {
+    feature: "Tenant experience",
+    description: "Tenant login plus rent dashboard, payments, receipts, profile, and branded experience.",
+    basic: "Core tenant portal",
+    pro: "Expanded + branded",
+    enterprise: "Included",
+  },
+  {
+    feature: "Workspace branding",
+    description: "Workspace mode, colors, logo, login background, and branded tenant experience.",
+    basic: "Not included",
+    pro: "Included",
+    enterprise: "Advanced white-label",
+  },
+  {
+    feature: "Caretaker & emergency",
+    description: "Caretaker operations, scoped access, emergency tools, and escalation support.",
+    basic: "Not included",
+    pro: "Included",
+    enterprise: "Included",
+  },
+  {
+    feature: "Staff logins",
+    description: "Multiple staff accounts with role-based permissions.",
+    basic: "Not included",
+    pro: "Not included",
+    enterprise: "Included",
+  },
+  {
+    feature: "Subdomain & white-label",
+    description: "Branded subdomain, branded public pages, branded login, and white-label presentation.",
+    basic: "Not included",
+    pro: "Branded workspace + subdomain",
+    enterprise: "Included",
+  },
+  {
+    feature: "Onboarding & support",
+    description: "How each plan is activated and supported.",
+    basic: "Self-serve",
+    pro: "Self-serve",
+    enterprise: "Guided onboarding + account manager",
+  },
+] as const;
 
 type EnterpriseRequestResponse = {
   submitted: boolean;
@@ -267,6 +380,47 @@ type EnterpriseRequestResponse = {
 
 type LandingPageProps = {
   isRootDomain?: boolean;
+  marketingOverview?: {
+    proofStats?: Array<{ label: string; value: string }>;
+    heroDashboard?: {
+      propertiesValue: string;
+      propertiesSubtext: string;
+      collectedValue: string;
+      collectedSubtext: string;
+      occupancyValue: string;
+      occupancySubtext: string;
+      collectionSeries: number[];
+    };
+    heroFloatingCards?: {
+      payment: { title: string; subtitle: string };
+      overdue: { eyebrow: string; value: string; subtitle: string };
+    };
+    tickerItems?: string[];
+    landlordExperience?: {
+      badge?: string;
+      stats?: Array<{ label: string; value: string; sub: string; subClass?: string }>;
+      items?: Array<{
+        initials: string;
+        name: string;
+        meta: string;
+        amount?: string;
+        status: string;
+        statusClass: string;
+      }>;
+    };
+    tenantExperience?: {
+      badge?: string;
+      stats?: Array<{ label: string; value: string; sub: string; subClass?: string }>;
+      items?: Array<{
+        initials: string;
+        name: string;
+        meta: string;
+        amount?: string;
+        status: string;
+        statusClass: string;
+      }>;
+    };
+  } | null;
 };
 
 const testimonials = [
@@ -313,18 +467,37 @@ export const getServerSideProps: GetServerSideProps<LandingPageProps> = async (
     };
   }
 
+  if (isWorkspaceSubdomainHost(hostHeader)) {
+    return {
+      redirect: {
+        destination: PUBLIC_PORTAL_URL,
+        permanent: false,
+      },
+    };
+  }
+
+  let marketingOverview: LandingPageProps["marketingOverview"] = null;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/marketplace/public-overview`);
+    const payload = (await response.json()) as {
+      data?: LandingPageProps["marketingOverview"];
+    };
+    marketingOverview = payload?.data ?? null;
+  } catch {
+    marketingOverview = null;
+  }
+
   return {
     props: {
       isRootDomain: true,
+      marketingOverview,
     },
   };
 };
 
-export default function LandingPage(_props: LandingPageProps) {
+export default function LandingPage({ marketingOverview }: LandingPageProps) {
   const [activeRole, setActiveRole] = useState<RoleKey>("landlord");
-  const [basicBillingCycle, setBasicBillingCycle] = useState<"monthly" | "yearly">(
-    "monthly",
-  );
   const [isScrolled, setIsScrolled] = useState(false);
   const [enterpriseFormOpen, setEnterpriseFormOpen] = useState(false);
   const [enterpriseSubmitting, setEnterpriseSubmitting] = useState(false);
@@ -365,12 +538,73 @@ export default function LandingPage(_props: LandingPageProps) {
     };
   }, []);
 
-  const activePanel = rolePanels[activeRole];
-  const basicPrice =
-    basicBillingCycle === "monthly" ? BASIC_MONTHLY_PRICE : BASIC_YEARLY_DISCOUNT_PRICE;
-  const basicPriceLabel = `₦${basicPrice.toLocaleString("en-NG")}`;
-  const basicBillingNote =
-    basicBillingCycle === "monthly" ? "per month billed monthly" : "per year billed yearly";
+  useEffect(() => {
+    if (!enterpriseFormOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !enterpriseSubmitting) {
+        setEnterpriseFormOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [enterpriseFormOpen, enterpriseSubmitting]);
+
+  const activePanel = {
+    ...rolePanels[activeRole],
+    ...(activeRole === "landlord"
+      ? marketingOverview?.landlordExperience
+      : marketingOverview?.tenantExperience),
+  };
+  const proofStats = marketingOverview?.proofStats ?? [
+    { label: "Properties managed", value: "12,000+" },
+    { label: "Rent collected", value: "₦4.2B+" },
+    { label: "Active tenancies", value: "98.3%" },
+    { label: "Active landlords", value: "5,200+" },
+  ];
+  const heroDashboard = marketingOverview?.heroDashboard ?? {
+    propertiesValue: "4",
+    propertiesSubtext: "24 units",
+    collectedValue: "₦3.1M",
+    collectedSubtext: "↑ 12%",
+    occupancyValue: "87%",
+    occupancySubtext: "21 / 24",
+    collectionSeries: [30, 38, 35, 45, 52, 48, 58, 50, 70, 61, 73, 80],
+  };
+  const heroFloatingCards = marketingOverview?.heroFloatingCards ?? {
+    payment: {
+      title: "Payment received",
+      subtitle: "Chidinma Eze · ₦320,000",
+    },
+    overdue: {
+      eyebrow: "Overdue rent",
+      value: "₦780K",
+      subtitle: "3 tenants · send reminders →",
+    },
+  };
+  const tickerItems =
+    marketingOverview?.tickerItems ??
+    [
+      "₦320,000 rent received",
+      "Kelechi Dike signed tenancy agreement",
+      "Unit A3 renewed for 12 months",
+      "Overdue notice sent to Tunde Adeola",
+      "₦1.2M disbursed to landlord",
+      "New property added — Banana Island Towers",
+      "Receipt generated for Ikoyi Residences",
+    ];
+  const basicPriceLabel = `₦${BASIC_MONTHLY_PRICE.toLocaleString("en-NG")}`;
+  const basicBillingNote = "per month";
 
   async function submitEnterpriseRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -496,25 +730,15 @@ export default function LandingPage(_props: LandingPageProps) {
                 </div>
 
                 <div className="marketing-proof">
-                  <div>
-                    <strong>12,000+</strong>
-                    <span>Properties managed</span>
-                  </div>
-                  <div className="marketing-proof-divider" />
-                  <div>
-                    <strong>₦4.2B+</strong>
-                    <span>Rent collected</span>
-                  </div>
-                  <div className="marketing-proof-divider" />
-                  <div>
-                    <strong>98.3%</strong>
-                    <span>Platform uptime</span>
-                  </div>
-                  <div className="marketing-proof-divider" />
-                  <div>
-                    <strong>5,200+</strong>
-                    <span>Active landlords</span>
-                  </div>
+                  {proofStats.map((stat, index) => (
+                    <Fragment key={stat.label}>
+                      <div>
+                        <strong>{stat.value}</strong>
+                        <span>{stat.label}</span>
+                      </div>
+                      {index < proofStats.length - 1 ? <div className="marketing-proof-divider" /> : null}
+                    </Fragment>
+                  ))}
                 </div>
               </div>
 
@@ -568,18 +792,18 @@ export default function LandingPage(_props: LandingPageProps) {
                       <div className="marketing-dashboard-stats">
                         <div className="marketing-mini-stat">
                           <label>Properties</label>
-                          <strong>4</strong>
-                          <span>24 units</span>
+                          <strong>{heroDashboard.propertiesValue}</strong>
+                          <span>{heroDashboard.propertiesSubtext}</span>
                         </div>
                         <div className="marketing-mini-stat">
                           <label>Collected</label>
-                          <strong>₦3.1M</strong>
-                          <span>↑ 12%</span>
+                          <strong>{heroDashboard.collectedValue}</strong>
+                          <span>{heroDashboard.collectedSubtext}</span>
                         </div>
                         <div className="marketing-mini-stat">
                           <label>Occupancy</label>
-                          <strong>87%</strong>
-                          <span>21 / 24</span>
+                          <strong>{heroDashboard.occupancyValue}</strong>
+                          <span>{heroDashboard.occupancySubtext}</span>
                         </div>
                       </div>
 
@@ -588,10 +812,10 @@ export default function LandingPage(_props: LandingPageProps) {
                           Rent Collection · 12 months
                         </div>
                         <div className="marketing-chart-bars">
-                          {[30, 38, 35, 45, 52, 48, 58, 50, 70, 61, 73, 80].map(
+                          {heroDashboard.collectionSeries.map(
                             (height, index) => (
                               <div
-                                key={height}
+                                key={`${height}-${index}`}
                                 className={`marketing-chart-bar ${
                                   index === 11 ? "is-highlight" : ""
                                 }`}
@@ -608,15 +832,15 @@ export default function LandingPage(_props: LandingPageProps) {
                 <div className="marketing-floating-card left">
                   <div className="icon">✅</div>
                   <div>
-                    <strong>Payment received</strong>
-                    <span>Chidinma Eze · ₦320,000</span>
+                    <strong>{heroFloatingCards.payment.title}</strong>
+                    <span>{heroFloatingCards.payment.subtitle}</span>
                   </div>
                 </div>
 
                 <div className="marketing-floating-card right dark">
-                  <small>Overdue rent</small>
-                  <strong>₦780K</strong>
-                  <span>3 tenants · send reminders →</span>
+                  <small>{heroFloatingCards.overdue.eyebrow}</small>
+                  <strong>{heroFloatingCards.overdue.value}</strong>
+                  <span>{heroFloatingCards.overdue.subtitle}</span>
                 </div>
               </div>
             </div>
@@ -624,24 +848,8 @@ export default function LandingPage(_props: LandingPageProps) {
 
           <div className="marketing-ticker">
             <div className="marketing-ticker-track">
-              {[
-                "₦320,000 rent received",
-                "Kelechi Dike signed tenancy agreement",
-                "Unit A3 renewed for 12 months",
-                "Overdue notice sent to Tunde Adeola",
-                "₦1.2M disbursed to landlord",
-                "New property added — Banana Island Towers",
-                "Receipt generated for Ikoyi Residences",
-              ]
-                .concat([
-                  "₦320,000 rent received",
-                  "Kelechi Dike signed tenancy agreement",
-                  "Unit A3 renewed for 12 months",
-                  "Overdue notice sent to Tunde Adeola",
-                  "₦1.2M disbursed to landlord",
-                  "New property added — Banana Island Towers",
-                  "Receipt generated for Ikoyi Residences",
-                ])
+              {tickerItems
+                .concat(tickerItems)
                 .map((item, index) => (
                   <span key={`${item}-${index}`} className="marketing-ticker-item">
                     {item}
@@ -817,16 +1025,14 @@ export default function LandingPage(_props: LandingPageProps) {
             <div className="marketing-section-head centered reveal">
               <p>Choose your model</p>
               <h2>
-                Basic, Full Service, or Enterprise.
+                Basic, Pro, or Enterprise.
                 <br />
-                <em>Built around how your business operates.</em>
+                <em>Built around your maturity level.</em>
               </h2>
               <span>
-                Basic lets landlords choose monthly or yearly billing for property and unit
-                management. Full Service adds the operational tools Basic does not include,
-                and charges a 3% base commission at collection time, scaled by the rent
-                years paid upfront. Enterprise is for property management companies and is
-                onboarded with DoorRent directly at ₦200,000/month.
+                Start with Basic when you just need to manage property, move to Pro when
+                you want collections and automation, and use Enterprise when you run your
+                operations like a real estate business.
               </span>
             </div>
 
@@ -834,42 +1040,13 @@ export default function LandingPage(_props: LandingPageProps) {
               <article className="marketing-pricing-card">
                 <div className="marketing-pricing-card-top">
                   <p className="plan-name">Basic</p>
-                  <div className="marketing-billing-toggle" role="tablist" aria-label="Basic billing cycle">
-                    <button
-                      type="button"
-                      className={basicBillingCycle === "monthly" ? "is-active" : ""}
-                      onClick={() => setBasicBillingCycle("monthly")}
-                    >
-                      Monthly
-                    </button>
-                    <button
-                      type="button"
-                      className={basicBillingCycle === "yearly" ? "is-active" : ""}
-                      onClick={() => setBasicBillingCycle("yearly")}
-                    >
-                      Yearly <span>· Save {BASIC_YEARLY_SAVINGS_PERCENT}%</span>
-                    </button>
-                  </div>
                 </div>
                 <div className="plan-price">{basicPriceLabel}</div>
                 <div className="plan-sub">{basicBillingNote}</div>
                 <p className="plan-description">
-                  Subscription plan for landlords who want to manage properties and units,
-                  and arrange Google Meet sessions with a tenant or the full tenant base.
+                  Entry-level access for individual landlords with small portfolios who need the essentials
+                  and a clear upgrade path to Pro.
                 </p>
-                {basicBillingCycle === "yearly" ? (
-                  <div className="marketing-pricing-highlight">
-                    <strong>Standard yearly price:</strong> ₦
-                    {BASIC_YEARLY_LIST_PRICE.toLocaleString("en-NG")}/year
-                    <br />
-                    <strong>Discounted price:</strong> ₦
-                    {BASIC_YEARLY_DISCOUNT_PRICE.toLocaleString("en-NG")}/year
-                    <br />
-                    <strong>You save:</strong> ₦
-                    {BASIC_YEARLY_SAVINGS_AMOUNT.toLocaleString("en-NG")} (
-                    {BASIC_YEARLY_SAVINGS_PERCENT}%)
-                  </div>
-                ) : null}
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
                   {basicPlanFeatures.map((feature) => (
@@ -886,17 +1063,16 @@ export default function LandingPage(_props: LandingPageProps) {
 
               <article className="marketing-pricing-card is-featured">
                 <div className="marketing-pricing-badge">Popular choice</div>
-                <p className="plan-name">Full Service</p>
+                <p className="plan-name">Pro</p>
                 <div className="plan-price">3%</div>
-                <div className="plan-sub">base per rent year covered</div>
+                <div className="plan-sub">of rent collected</div>
                 <p className="plan-description">
-                  Popular choice for landlords who need the operational tools that Basic
-                  does not include, from agreements and collections to reports and account
-                  controls.
+                  The serious-landlord tier for automation, professionalism, branding, and operational control
+                  without moving into full enterprise rollout.
                 </p>
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
-                  {fullServiceFeatures.map((feature) => (
+                  {proPlanFeatures.map((feature) => (
                     <div key={feature} className="marketing-pricing-row is-included">
                       <span className="row-check">✓</span>
                       <span>{feature}</span>
@@ -904,7 +1080,7 @@ export default function LandingPage(_props: LandingPageProps) {
                   ))}
                 </div>
                 <Link href="/portal" className="btn btn-secondary btn-full">
-                  Choose Full Service
+                  Choose Pro
                 </Link>
               </article>
 
@@ -915,9 +1091,8 @@ export default function LandingPage(_props: LandingPageProps) {
                 <div className="plan-price">₦200,000</div>
                 <div className="plan-sub">per month · guided setup</div>
                 <p className="plan-description">
-                  For property management companies that want branded workspaces,
-                  company-owned Paystack collections, and a more tailored rollout for
-                  their team and portfolio operations.
+                  Built for large property companies and estate developers that want staff access,
+                  white-label presentation, and rent flowing directly into their own Paystack.
                 </p>
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
@@ -930,7 +1105,7 @@ export default function LandingPage(_props: LandingPageProps) {
                 </div>
                 <a
                   href="#enterprise-request"
-                  className="btn btn-secondary btn-full"
+                  className="btn btn-primary btn-full"
                   onClick={(event) => {
                     event.preventDefault();
                     setEnterpriseFormOpen(true);
@@ -939,122 +1114,44 @@ export default function LandingPage(_props: LandingPageProps) {
                 >
                   Request Enterprise Setup
                 </a>
-                {enterpriseFormOpen ? (
-                  <form
-                    id="enterprise-request"
-                    className="marketing-enterprise-form"
-                    onSubmit={submitEnterpriseRequest}
-                  >
-                    <input
-                      className="marketing-enterprise-input"
-                      placeholder="Company name"
-                      value={enterpriseForm.companyName}
-                      onChange={(event) =>
-                        setEnterpriseForm((current) => ({
-                          ...current,
-                          companyName: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      className="marketing-enterprise-input"
-                      placeholder="Contact name"
-                      value={enterpriseForm.contactName}
-                      onChange={(event) =>
-                        setEnterpriseForm((current) => ({
-                          ...current,
-                          contactName: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      className="marketing-enterprise-input"
-                      type="email"
-                      placeholder="Work email"
-                      value={enterpriseForm.workEmail}
-                      onChange={(event) =>
-                        setEnterpriseForm((current) => ({
-                          ...current,
-                          workEmail: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      className="marketing-enterprise-input"
-                      placeholder="Phone number"
-                      value={enterpriseForm.phone}
-                      onChange={(event) =>
-                        setEnterpriseForm((current) => ({
-                          ...current,
-                          phone: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      className="marketing-enterprise-input"
-                      placeholder="Portfolio size"
-                      value={enterpriseForm.portfolioSize}
-                      onChange={(event) =>
-                        setEnterpriseForm((current) => ({
-                          ...current,
-                          portfolioSize: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <input
-                      className="marketing-enterprise-input"
-                      placeholder="City"
-                      value={enterpriseForm.city}
-                      onChange={(event) =>
-                        setEnterpriseForm((current) => ({
-                          ...current,
-                          city: event.target.value,
-                        }))
-                      }
-                      required
-                    />
-                    <textarea
-                      className="marketing-enterprise-input marketing-enterprise-textarea"
-                      placeholder="What do you want DoorRent to help you set up?"
-                      value={enterpriseForm.notes}
-                      onChange={(event) =>
-                        setEnterpriseForm((current) => ({
-                          ...current,
-                          notes: event.target.value,
-                        }))
-                      }
-                    />
-                    <div className="marketing-enterprise-actions">
-                      <button
-                        type="submit"
-                        className="btn btn-secondary"
-                        disabled={enterpriseSubmitting}
-                      >
-                        {enterpriseSubmitting
-                          ? "Submitting..."
-                          : "Send Enterprise Request"}
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => setEnterpriseFormOpen(false)}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                ) : null}
                 {enterpriseFeedback ? (
                   <div className="marketing-enterprise-feedback">
                     {enterpriseFeedback}
                   </div>
                 ) : null}
               </article>
+            </div>
+
+            <div className="marketing-pricing-matrix reveal">
+              <div className="marketing-pricing-matrix-head">
+                <p>Plan comparison</p>
+                <h3>See exactly what sits in each plan.</h3>
+                <span>
+                  Use this matrix to decide which features stay basic, which unlock
+                  professional operations, and which are reserved for business-grade teams.
+                </span>
+              </div>
+
+              <div className="marketing-pricing-matrix-table">
+                <div className="marketing-pricing-matrix-row is-head">
+                  <div>Feature</div>
+                  <div>Basic</div>
+                  <div>Pro</div>
+                  <div>Enterprise</div>
+                </div>
+
+                {pricingMatrixRows.map((row) => (
+                  <div key={row.feature} className="marketing-pricing-matrix-row">
+                    <div>
+                      <strong>{row.feature}</strong>
+                      <span>{row.description}</span>
+                    </div>
+                    <div>{row.basic}</div>
+                    <div>{row.pro}</div>
+                    <div>{row.enterprise}</div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -1180,6 +1277,237 @@ export default function LandingPage(_props: LandingPageProps) {
             </div>
           </div>
         </footer>
+
+        {enterpriseFormOpen ? (
+          <div
+            className="marketing-enterprise-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="enterprise-request-title"
+          >
+            <div
+              className="marketing-enterprise-backdrop"
+              onClick={() => {
+                if (!enterpriseSubmitting) {
+                  setEnterpriseFormOpen(false);
+                }
+              }}
+            />
+
+            <div className="marketing-enterprise-shell">
+              <div className="marketing-enterprise-panel">
+                <div className="marketing-enterprise-hero">
+                  <div className="marketing-enterprise-badge">
+                    Enterprise rollout
+                  </div>
+                  <button
+                    type="button"
+                    className="marketing-enterprise-close"
+                    onClick={() => setEnterpriseFormOpen(false)}
+                    disabled={enterpriseSubmitting}
+                    aria-label="Close enterprise setup form"
+                  >
+                    ×
+                  </button>
+                  <h2 id="enterprise-request-title">
+                    Let’s set up a branded workspace for your property company.
+                  </h2>
+                  <p>
+                    Tell us about your portfolio, operating team, and rollout goals.
+                    DoorRent will use this to plan your branding, collections, access,
+                    and onboarding path.
+                  </p>
+
+                  <div className="marketing-enterprise-highlight-grid">
+                    <div className="marketing-enterprise-highlight">
+                      <strong>Branded workspace</strong>
+                      <span>Subdomain, logo, colors, and public company pages.</span>
+                    </div>
+                    <div className="marketing-enterprise-highlight">
+                      <strong>Collections setup</strong>
+                      <span>Company-owned Paystack flow and payout routing support.</span>
+                    </div>
+                    <div className="marketing-enterprise-highlight">
+                      <strong>Guided onboarding</strong>
+                      <span>Role setup, portfolio migration, and go-live planning.</span>
+                    </div>
+                  </div>
+
+                  <div className="marketing-enterprise-next">
+                    <div className="marketing-enterprise-next-title">
+                      What happens after this
+                    </div>
+                    <div className="marketing-enterprise-next-list">
+                      <div>
+                        <span>01</span>
+                        <p>We review your portfolio size, city, and operating model.</p>
+                      </div>
+                      <div>
+                        <span>02</span>
+                        <p>We confirm the Enterprise setup scope for your team.</p>
+                      </div>
+                      <div>
+                        <span>03</span>
+                        <p>We schedule your branded rollout and collections activation.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <form
+                  id="enterprise-request"
+                  className="marketing-enterprise-form-card"
+                  onSubmit={submitEnterpriseRequest}
+                >
+                  <div className="marketing-enterprise-form-head">
+                    <p>Enterprise setup request</p>
+                    <h3>Tell us about your company</h3>
+                  </div>
+
+                  <div className="marketing-enterprise-form-grid">
+                    <label className="marketing-enterprise-field">
+                      <span>Company name</span>
+                      <input
+                        className="marketing-enterprise-input"
+                        placeholder="Lekki Property Holdings Ltd"
+                        value={enterpriseForm.companyName}
+                        onChange={(event) =>
+                          setEnterpriseForm((current) => ({
+                            ...current,
+                            companyName: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label className="marketing-enterprise-field">
+                      <span>Contact name</span>
+                      <input
+                        className="marketing-enterprise-input"
+                        placeholder="Babatunde Adeyemi"
+                        value={enterpriseForm.contactName}
+                        onChange={(event) =>
+                          setEnterpriseForm((current) => ({
+                            ...current,
+                            contactName: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label className="marketing-enterprise-field">
+                      <span>Work email</span>
+                      <input
+                        className="marketing-enterprise-input"
+                        type="email"
+                        placeholder="ops@lekki.io"
+                        value={enterpriseForm.workEmail}
+                        onChange={(event) =>
+                          setEnterpriseForm((current) => ({
+                            ...current,
+                            workEmail: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label className="marketing-enterprise-field">
+                      <span>Phone number</span>
+                      <input
+                        className="marketing-enterprise-input"
+                        placeholder="+234 801 234 5678"
+                        value={enterpriseForm.phone}
+                        onChange={(event) =>
+                          setEnterpriseForm((current) => ({
+                            ...current,
+                            phone: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label className="marketing-enterprise-field">
+                      <span>Portfolio size</span>
+                      <input
+                        className="marketing-enterprise-input"
+                        placeholder="120 units across 8 properties"
+                        value={enterpriseForm.portfolioSize}
+                        onChange={(event) =>
+                          setEnterpriseForm((current) => ({
+                            ...current,
+                            portfolioSize: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+
+                    <label className="marketing-enterprise-field">
+                      <span>Primary city</span>
+                      <input
+                        className="marketing-enterprise-input"
+                        placeholder="Lagos"
+                        value={enterpriseForm.city}
+                        onChange={(event) =>
+                          setEnterpriseForm((current) => ({
+                            ...current,
+                            city: event.target.value,
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+                  </div>
+
+                  <label className="marketing-enterprise-field">
+                    <span>Setup goals</span>
+                    <textarea
+                      className="marketing-enterprise-input marketing-enterprise-textarea"
+                      placeholder="Tell us what you want DoorRent to help you configure for your team."
+                      value={enterpriseForm.notes}
+                      onChange={(event) =>
+                        setEnterpriseForm((current) => ({
+                          ...current,
+                          notes: event.target.value,
+                        }))
+                      }
+                    />
+                  </label>
+
+                  {enterpriseFeedback ? (
+                    <div className="marketing-enterprise-feedback is-modal">
+                      {enterpriseFeedback}
+                    </div>
+                  ) : null}
+
+                  <div className="marketing-enterprise-actions">
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      disabled={enterpriseSubmitting}
+                    >
+                      {enterpriseSubmitting
+                        ? "Submitting..."
+                        : "Send Enterprise Request"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setEnterpriseFormOpen(false)}
+                      disabled={enterpriseSubmitting}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <style jsx global>{`
@@ -2304,22 +2632,250 @@ export default function LandingPage(_props: LandingPageProps) {
           color: #fff;
         }
 
-        .marketing-enterprise-form {
+        .marketing-enterprise-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 200;
+          display: flex;
+          align-items: stretch;
+          justify-content: center;
+          padding: 24px;
+        }
+
+        .marketing-enterprise-backdrop {
+          position: absolute;
+          inset: 0;
+          background:
+            radial-gradient(circle at top left, rgba(200, 169, 110, 0.16), transparent 32%),
+            rgba(7, 11, 8, 0.72);
+          backdrop-filter: blur(10px);
+        }
+
+        .marketing-enterprise-shell {
+          position: relative;
+          z-index: 1;
+          width: min(1180px, 100%);
+          max-height: 100%;
+          margin: auto;
+          display: flex;
+        }
+
+        .marketing-enterprise-panel {
           display: grid;
-          gap: 10px;
-          margin-top: 16px;
-          padding-top: 16px;
-          border-top: 1px solid var(--border);
+          grid-template-columns: minmax(0, 1.05fr) minmax(380px, 0.95fr);
+          min-height: min(760px, calc(100vh - 48px));
+          max-height: calc(100vh - 48px);
+          width: 100%;
+          border-radius: 32px;
+          overflow: auto;
+          overscroll-behavior: contain;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          background:
+            linear-gradient(135deg, rgba(11, 18, 14, 0.98), rgba(22, 28, 23, 0.96));
+          box-shadow: 0 40px 140px rgba(0, 0, 0, 0.34);
+        }
+
+        .marketing-enterprise-hero {
+          position: relative;
+          padding: 42px 40px;
+          background:
+            radial-gradient(circle at top left, rgba(200, 169, 110, 0.22), transparent 28%),
+            radial-gradient(circle at bottom left, rgba(47, 107, 148, 0.18), transparent 24%),
+            linear-gradient(155deg, #0d1511 0%, #182019 100%);
+          color: #f7f4ea;
+        }
+
+        .marketing-enterprise-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 9px 14px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          color: #d9c394;
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          font-weight: 700;
+        }
+
+        .marketing-enterprise-close {
+          position: absolute;
+          top: 24px;
+          right: 24px;
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.06);
+          color: #fff;
+          font-size: 28px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .marketing-enterprise-close:hover {
+          background: rgba(255, 255, 255, 0.12);
+        }
+
+        .marketing-enterprise-hero h2 {
+          margin: 24px 0 16px;
+          font-size: clamp(34px, 4vw, 58px);
+          line-height: 0.98;
+          max-width: 12ch;
+        }
+
+        .marketing-enterprise-hero p {
+          max-width: 56ch;
+          font-size: 16px;
+          line-height: 1.8;
+          color: rgba(247, 244, 234, 0.78);
+        }
+
+        .marketing-enterprise-highlight-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+          margin-top: 34px;
+        }
+
+        .marketing-enterprise-highlight {
+          padding: 18px;
+          border-radius: 20px;
+          background: rgba(255, 255, 255, 0.06);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .marketing-enterprise-highlight strong {
+          display: block;
+          font-size: 15px;
+          margin-bottom: 8px;
+          color: #fff;
+        }
+
+        .marketing-enterprise-highlight span {
+          display: block;
+          font-size: 13px;
+          line-height: 1.7;
+          color: rgba(247, 244, 234, 0.72);
+        }
+
+        .marketing-enterprise-next {
+          margin-top: 32px;
+          padding: 24px;
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .marketing-enterprise-next-title {
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #d9c394;
+          margin-bottom: 16px;
+        }
+
+        .marketing-enterprise-next-list {
+          display: grid;
+          gap: 14px;
+        }
+
+        .marketing-enterprise-next-list div {
+          display: grid;
+          grid-template-columns: 48px minmax(0, 1fr);
+          gap: 14px;
+          align-items: start;
+        }
+
+        .marketing-enterprise-next-list span {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 48px;
+          height: 48px;
+          border-radius: 16px;
+          background: rgba(200, 169, 110, 0.14);
+          color: #d9c394;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .marketing-enterprise-next-list p {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.7;
+          color: rgba(247, 244, 234, 0.82);
+        }
+
+        .marketing-enterprise-form-card {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          padding: 40px 36px;
+          background: linear-gradient(180deg, #f7f4ea 0%, #f1eee2 100%);
+        }
+
+        .marketing-enterprise-form-head p {
+          margin: 0 0 8px;
+          color: var(--accent);
+          font-size: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          font-weight: 700;
+        }
+
+        .marketing-enterprise-form-head h3 {
+          margin: 0;
+          font-size: 32px;
+          line-height: 1.05;
+        }
+
+        .marketing-enterprise-form-head span {
+          display: block;
+          margin-top: 10px;
+          color: var(--ink3);
+          font-size: 14px;
+          line-height: 1.7;
+        }
+
+        .marketing-enterprise-form-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px;
+        }
+
+        .marketing-enterprise-field {
+          display: grid;
+          gap: 8px;
+        }
+
+        .marketing-enterprise-field > span {
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--ink2);
+          letter-spacing: 0.02em;
         }
 
         .marketing-enterprise-input {
           width: 100%;
-          border: 1px solid var(--border);
-          border-radius: 12px;
-          padding: 12px 14px;
-          background: var(--surface2);
+          border: 1px solid rgba(20, 22, 19, 0.12);
+          border-radius: 16px;
+          padding: 14px 16px;
+          background: rgba(255, 255, 255, 0.88);
           color: var(--ink);
           font: inherit;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+        }
+
+        .marketing-enterprise-input:focus {
+          outline: none;
+          border-color: rgba(26, 58, 42, 0.5);
+          box-shadow:
+            0 0 0 4px rgba(26, 58, 42, 0.08),
+            inset 0 1px 0 rgba(255, 255, 255, 0.24);
         }
 
         .marketing-enterprise-input::placeholder {
@@ -2327,7 +2883,7 @@ export default function LandingPage(_props: LandingPageProps) {
         }
 
         .marketing-enterprise-textarea {
-          min-height: 96px;
+          min-height: 132px;
           resize: vertical;
         }
 
@@ -2342,6 +2898,100 @@ export default function LandingPage(_props: LandingPageProps) {
           font-size: 13px;
           line-height: 1.6;
           color: var(--ink2);
+        }
+
+        .marketing-enterprise-feedback.is-modal {
+          margin-top: 0;
+          padding: 14px 16px;
+          border-radius: 16px;
+          background: rgba(26, 58, 42, 0.08);
+          border: 1px solid rgba(26, 58, 42, 0.12);
+          color: var(--ink2);
+        }
+
+        .marketing-pricing-matrix {
+          margin-top: 36px;
+          padding: 28px;
+          border-radius: 28px;
+          border: 1px solid var(--border);
+          background: rgba(255, 255, 255, 0.62);
+          box-shadow: 0 16px 50px rgba(20, 26, 20, 0.06);
+        }
+
+        .marketing-pricing-matrix-head p {
+          margin: 0 0 8px;
+          color: var(--accent);
+          font-size: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          font-weight: 700;
+        }
+
+        .marketing-pricing-matrix-head h3 {
+          margin: 0;
+          font-size: clamp(28px, 3vw, 36px);
+          line-height: 1.05;
+        }
+
+        .marketing-pricing-matrix-head span {
+          display: block;
+          margin-top: 10px;
+          color: var(--ink3);
+          line-height: 1.7;
+          max-width: 72ch;
+        }
+
+        .marketing-pricing-matrix-table {
+          margin-top: 22px;
+          display: grid;
+          border: 1px solid var(--border);
+          border-radius: 22px;
+          overflow: hidden;
+          background: var(--surface);
+        }
+
+        .marketing-pricing-matrix-row {
+          display: grid;
+          grid-template-columns: minmax(280px, 2.2fr) repeat(3, minmax(140px, 1fr));
+          gap: 0;
+          border-bottom: 1px solid var(--border);
+        }
+
+        .marketing-pricing-matrix-row:last-child {
+          border-bottom: 0;
+        }
+
+        .marketing-pricing-matrix-row > div {
+          padding: 18px 20px;
+          border-right: 1px solid var(--border);
+          min-width: 0;
+        }
+
+        .marketing-pricing-matrix-row > div:last-child {
+          border-right: 0;
+        }
+
+        .marketing-pricing-matrix-row.is-head {
+          background: #121612;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+
+        .marketing-pricing-matrix-row strong {
+          display: block;
+          font-size: 15px;
+          color: var(--ink);
+        }
+
+        .marketing-pricing-matrix-row span {
+          display: block;
+          margin-top: 6px;
+          font-size: 13px;
+          line-height: 1.7;
+          color: var(--ink3);
         }
 
         .marketing-billing-toggle {
@@ -2606,6 +3256,31 @@ export default function LandingPage(_props: LandingPageProps) {
           .marketing-pricing-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
+
+          .marketing-enterprise-overlay {
+            padding: 14px;
+          }
+
+          .marketing-enterprise-panel {
+            grid-template-columns: 1fr;
+            min-height: auto;
+            max-height: calc(100vh - 28px);
+            overflow: auto;
+          }
+
+          .marketing-enterprise-hero,
+          .marketing-enterprise-form-card {
+            padding: 28px 22px;
+          }
+
+          .marketing-enterprise-highlight-grid,
+          .marketing-enterprise-form-grid {
+            grid-template-columns: 1fr;
+          }
+
+          .marketing-enterprise-hero h2 {
+            max-width: none;
+          }
         }
 
         @media (max-width: 768px) {
@@ -2762,6 +3437,18 @@ export default function LandingPage(_props: LandingPageProps) {
             flex-wrap: wrap;
           }
 
+          .marketing-pricing-matrix {
+            padding: 20px;
+          }
+
+          .marketing-pricing-matrix-table {
+            overflow: auto;
+          }
+
+          .marketing-pricing-matrix-row {
+            min-width: 760px;
+          }
+
           .marketing-roles,
           .marketing-pricing,
           .marketing-section,
@@ -2792,6 +3479,26 @@ export default function LandingPage(_props: LandingPageProps) {
             width: 100%;
             flex-wrap: wrap;
           }
+
+          .marketing-enterprise-overlay {
+            padding: 0;
+          }
+
+          .marketing-enterprise-shell {
+            width: 100%;
+            height: 100%;
+          }
+
+          .marketing-enterprise-panel {
+            border-radius: 0;
+            min-height: 100vh;
+            max-height: 100vh;
+          }
+
+          .marketing-enterprise-close {
+            top: 18px;
+            right: 18px;
+          }
         }
 
         @media (max-width: 520px) {
@@ -2814,6 +3521,31 @@ export default function LandingPage(_props: LandingPageProps) {
 
           .marketing-dashboard-stats {
             grid-template-columns: 1fr;
+          }
+
+          .marketing-pricing-matrix {
+            padding: 18px 16px;
+          }
+
+          .marketing-enterprise-hero,
+          .marketing-enterprise-form-card {
+            padding: 24px 18px;
+          }
+
+          .marketing-enterprise-next {
+            padding: 18px;
+          }
+
+          .marketing-enterprise-next-list div {
+            grid-template-columns: 40px minmax(0, 1fr);
+            gap: 12px;
+          }
+
+          .marketing-enterprise-next-list span {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            font-size: 12px;
           }
         }
       `}</style>

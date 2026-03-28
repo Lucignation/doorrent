@@ -6,6 +6,9 @@ export default function Document() {
     <Html lang="en">
       <Head>
         <meta name="application-name" content={APP_NAME} />
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
+        <meta name="color-scheme" content="light" />
+        <meta name="format-detection" content="telephone=no, email=no, address=no" />
         <link rel="icon" href={FAVICON_PATH} sizes="any" />
         <link rel="shortcut icon" href={FAVICON_PATH} />
         <link rel="apple-touch-icon" href={LOGO_PATH} />

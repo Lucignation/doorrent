@@ -69,9 +69,6 @@ const initialPromoForm = {
 export default function AdminSubscriptionsPage() {
   const { adminSession } = useAdminPortalSession();
   const { dataRefreshVersion, showToast } = usePrototypeUI();
-  const [basicBillingCycle, setBasicBillingCycle] = useState<"monthly" | "yearly">(
-    "monthly",
-  );
   const [subscriptionData, setSubscriptionData] =
     useState<AdminSubscriptionsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -224,27 +221,13 @@ export default function AdminSubscriptionsPage() {
       ) ?? null,
     [subscriptionData?.catalog.options],
   );
-  const basicYearlyOption = useMemo(
-    () =>
-      subscriptionData?.catalog.options.find(
-        (option) => option.model === "subscription" && option.interval === "yearly",
-      ) ?? null,
-    [subscriptionData?.catalog.options],
-  );
   const fullServiceOption = useMemo(
     () =>
       subscriptionData?.catalog.options.find((option) => option.model === "commission") ??
       null,
     [subscriptionData?.catalog.options],
   );
-  const activeBasicOption =
-    basicBillingCycle === "monthly" ? basicMonthlyOption : basicYearlyOption;
-  const yearlySavingsAmount =
-    (basicYearlyOption?.listPriceAmount ?? 0) - (basicYearlyOption?.priceAmount ?? 0);
-  const yearlySavingsPercent =
-    basicYearlyOption?.listPriceAmount && basicYearlyOption.priceAmount
-      ? Math.round((yearlySavingsAmount / basicYearlyOption.listPriceAmount) * 100)
-      : 0;
+  const activeBasicOption = basicMonthlyOption;
 
   const description = subscriptionData
     ? `${subscriptionData.summary.subscriptionLandlords} subscription landlords · ${subscriptionData.summary.commissionLandlords} commission landlords`
@@ -286,11 +269,11 @@ export default function AdminSubscriptionsPage() {
             <div className="stat-sub">Basic</div>
           </div>
           <div className="stat-card accent-blue">
-            <div className="stat-label">Commission Landlords</div>
+            <div className="stat-label">Pro Workspaces</div>
             <div className="stat-value">
               {subscriptionData?.summary.commissionLandlords ?? "—"}
             </div>
-            <div className="stat-sub">Full Service</div>
+            <div className="stat-sub">Pro</div>
           </div>
           <div className="stat-card accent-gold">
             <div className="stat-label">Subscription MRR</div>
@@ -322,38 +305,9 @@ export default function AdminSubscriptionsPage() {
               <div>
                 <div className="card-title">Basic</div>
                 <div className="card-subtitle">
-                  Subscription plan for tenant management, rent reminders, and marketplace
-                  listing.
+                  Entry-level workspace for individual landlords with up to 5 units and core
+                  rent operations.
                 </div>
-              </div>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: 6,
-                  borderRadius: 999,
-                  background: "#131512",
-                }}
-              >
-                <button
-                  type="button"
-                  className={`btn btn-xs ${
-                    basicBillingCycle === "monthly" ? "btn-secondary" : "btn-ghost"
-                  }`}
-                  onClick={() => setBasicBillingCycle("monthly")}
-                >
-                  Monthly
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-xs ${
-                    basicBillingCycle === "yearly" ? "btn-secondary" : "btn-ghost"
-                  }`}
-                  onClick={() => setBasicBillingCycle("yearly")}
-                >
-                  Yearly · Save {yearlySavingsPercent || 0}%
-                </button>
               </div>
             </div>
             <div className="card-body">
@@ -368,26 +322,18 @@ export default function AdminSubscriptionsPage() {
                 {activeBasicOption?.priceLabel ?? "—"}
               </div>
               <div style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.7 }}>
-                {basicBillingCycle === "monthly"
-                  ? "Monthly billing at ₦8,500/month."
-                  : `Standard yearly price is ₦${(basicYearlyOption?.listPriceAmount ?? 102000).toLocaleString("en-NG")}/year, discounted to ₦${(basicYearlyOption?.priceAmount ?? 95000).toLocaleString("en-NG")}/year.`}
+                Fixed monthly subscription for individual landlords with small portfolios.
               </div>
-              {basicBillingCycle === "yearly" ? (
-                <div className="td-muted" style={{ marginTop: 12 }}>
-                  Savings: ₦{yearlySavingsAmount.toLocaleString("en-NG")} ({yearlySavingsPercent}
-                  %)
-                </div>
-              ) : null}
             </div>
           </div>
 
           <div className="card">
             <div className="card-header">
               <div>
-                <div className="card-title">{fullServiceOption?.name ?? "Full Service"}</div>
+                <div className="card-title">{fullServiceOption?.name ?? "Pro"}</div>
                 <div className="card-subtitle">
-                  Automated collections, agreements, caretaker access, reports, and late
-                  payment enforcement.
+                  Growth plan for serious landlords and small property companies with branding,
+                  notices, caretakers, emergency tooling, and automation.
                 </div>
               </div>
               <StatusBadge tone="gold">Popular choice</StatusBadge>
@@ -401,12 +347,10 @@ export default function AdminSubscriptionsPage() {
                   marginBottom: 8,
                 }}
               >
-                {fullServiceOption?.priceLabel ?? "3% base per rent year covered"}
+                {fullServiceOption?.priceLabel ?? "3% of rent collected"}
               </div>
               <div style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.7 }}>
-                No monthly subscription. DoorRent applies a 3% base commission per rent
-                year covered, so multi-year upfront rent increases the total commission in
-                that collection.
+                Commission-based pricing that scales with rent collected for serious operators.
               </div>
             </div>
           </div>

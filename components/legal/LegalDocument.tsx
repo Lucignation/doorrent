@@ -7,7 +7,12 @@ import {
   LEGAL_LINKS,
   LEGAL_PRODUCT_NAME,
 } from "../../lib/legal";
-import { buildBrandShellStyle, resolveBrandDisplayName } from "../../lib/branding";
+import {
+  buildBrandShellStyle,
+  resolveBrandDisplayName,
+  resolveBrandLogoUrl,
+} from "../../lib/branding";
+import { LOGO_PATH } from "../../lib/site";
 import type { PublicWorkspaceContext } from "../../lib/workspace-context";
 
 interface LegalDocumentProps {
@@ -44,9 +49,9 @@ export default function LegalDocument({
       <div className="legal-page" style={brandStyle}>
         <header className="legal-header">
           <Link href="/" className="legal-logo">
-            {workspace?.branding?.logoUrl ? (
+            {workspace?.branding ? (
               <img
-                src={workspace.branding.logoUrl}
+                src={resolveBrandLogoUrl(workspace.branding, LOGO_PATH)}
                 alt={`${brandName} logo`}
                 style={{
                   width: 28,

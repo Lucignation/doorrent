@@ -8,7 +8,8 @@ import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
-import { tenantQuickActions } from "../../data/tenant";
+import { buildTenantQuickActions } from "../../data/tenant";
+import { resolveLandlordCapabilities } from "../../lib/landlord-access";
 import { apiRequest } from "../../lib/api";
 import type { HighlightTone, TableColumn } from "../../types/app";
 
@@ -78,6 +79,15 @@ export default function TenantDashboardPage() {
   const [dashboardData, setDashboardData] = useState<TenantDashboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const tenantCapabilities = resolveLandlordCapabilities({
+    capabilities: tenantSession?.tenant.capabilities,
+    subscriptionModel: tenantSession?.tenant.subscriptionModel,
+    plan: tenantSession?.tenant.planKey ?? tenantSession?.tenant.plan,
+  });
+  const quickActions = useMemo(
+    () => buildTenantQuickActions(tenantSession?.tenant.capabilities),
+    [tenantSession?.tenant.capabilities],
+  );
 
   useEffect(() => {
     const tenantToken = tenantSession?.token;
@@ -204,7 +214,9 @@ export default function TenantDashboardPage() {
         title: "You have an outstanding rent balance",
         description: `${dashboardData.rent.currentDueFormatted} is currently due on this lease.`,
         actionLabel: "Pay rent now",
-        actionHref: "/tenant/pay",
+        actionHref: tenantCapabilities.canAcceptOnlinePayments
+          ? "/tenant/pay"
+          : "/tenant/rent",
       };
     }
 
@@ -215,7 +227,7 @@ export default function TenantDashboardPage() {
       actionLabel: "View receipts",
       actionHref: "/tenant/receipts",
     };
-  }, [dashboardData]);
+  }, [dashboardData, tenantCapabilities.canAcceptOnlinePayments]);
 
   const firstName =
     tenantSession?.tenant.firstName ??
@@ -251,65 +263,69 @@ export default function TenantDashboardPage() {
           />
         ) : null}
 
-        {/* ── Emergency strip ── */}
-        <Link
-          href="/tenant/emergency"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            background: "var(--red-light, #fff1f1)",
-            border: "1.5px solid var(--red)",
-            borderRadius: "var(--radius)",
-            padding: "14px 20px",
-            marginBottom: 24,
-            textDecoration: "none",
-            transition: "box-shadow 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 0 0 3px rgba(220,38,38,0.18)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none";
-          }}
-        >
-          <div
+        {tenantCapabilities.canManageEmergency ? (
+          <Link
+            href="/tenant/emergency"
             style={{
-              width: 44,
-              height: 44,
-              borderRadius: "50%",
-              background: "var(--red)",
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              fontSize: 22,
-              flexShrink: 0,
+              gap: 16,
+              background: "var(--red-light, #fff1f1)",
+              border: "1.5px solid var(--red)",
+              borderRadius: "var(--radius)",
+              padding: "14px 20px",
+              marginBottom: 24,
+              textDecoration: "none",
+              transition: "box-shadow 0.15s",
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.boxShadow =
+                "0 0 0 3px rgba(220,38,38,0.18)";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLAnchorElement).style.boxShadow = "none";
             }}
           >
-            🆘
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--red)", marginBottom: 2 }}>
-              Emergency
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: "50%",
+                background: "var(--red)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 22,
+                flexShrink: 0,
+              }}
+            >
+              🆘
             </div>
-            <div style={{ fontSize: 12, color: "var(--ink2)", lineHeight: 1.4 }}>
-              Report an urgent safety issue, building emergency, or call for immediate help.
+            <div style={{ flex: 1 }}>
+              <div
+                style={{ fontSize: 14, fontWeight: 700, color: "var(--red)", marginBottom: 2 }}
+              >
+                Emergency
+              </div>
+              <div style={{ fontSize: 12, color: "var(--ink2)", lineHeight: 1.4 }}>
+                Report an urgent safety issue, building emergency, or call for immediate help.
+              </div>
             </div>
-          </div>
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: 700,
-              color: "var(--red)",
-              whiteSpace: "nowrap",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-            }}
-          >
-            Get help →
-          </div>
-        </Link>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: "var(--red)",
+                whiteSpace: "nowrap",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
+              Get help →
+            </div>
+          </Link>
+        ) : null}
 
         <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
           <div className="stat-card accent-gold">
@@ -341,10 +357,12 @@ export default function TenantDashboardPage() {
               <div className="card-title">Quick Actions</div>
             </div>
             <div className="card-body">
-              {tenantQuickActions.map((action) => (
+              {quickActions.map((action) => (
                 (() => {
                   const isGraceAction =
-                    action.label === "Sign Agreement" && dashboardData?.gracePeriod;
+                    tenantCapabilities.canManageRiskWorkflows &&
+                    action.label === "Sign Agreement" &&
+                    dashboardData?.gracePeriod;
                   const actionHref = isGraceAction ? "/tenant/grace-period" : action.href;
                   const actionDescription =
                     action.label === "Pay Rent Now" && dashboardData

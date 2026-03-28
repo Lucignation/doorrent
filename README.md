@@ -18,3 +18,13 @@ DoorRent is a multi-surface property operations platform with:
 ## Legal And Policy Surfaces
 
 Public policy pages live in `pages/` and cover privacy, terms of use, refund handling, security, and account deletion. Keep public legal copy product-focused and avoid exposing internal operator details that are not meant for end users.
+
+## Google Meet Add-on
+
+DoorRent now includes a Google Meet add-on web companion under:
+
+- `/meet-addon` for the side panel
+- `/meet-addon/stage` for the main stage
+- `/api/meet-addon/manifest` for a deployment manifest payload
+
+To connect it inside Google Meet, set `NEXT_PUBLIC_GOOGLE_MEET_CLOUD_PROJECT_NUMBER` in the web environment and use the manifest URL when configuring the Meet add-on deployment in Google Cloud / Google Workspace Marketplace.

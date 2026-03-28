@@ -1,6 +1,7 @@
 import { useRouter } from "next/router";
 import { useEffect } from "react";
 import { buildLandlordNav } from "../../data/landlord";
+import { canAccessLandlordPath } from "../../lib/landlord-access";
 import {
   useLandlordPortalSession,
 } from "../../context/TenantSessionContext";
@@ -39,7 +40,7 @@ export default function LandlordPortalShell({
   if (!isHydrated) {
     return (
       <div className="empty-state" style={{ minHeight: "100vh" }}>
-        <h3>Loading your landlord workspace.</h3>
+        <h3>Loading your workspace.</h3>
         <p>Checking your DoorRent session.</p>
       </div>
     );
@@ -52,13 +53,24 @@ export default function LandlordPortalShell({
   const landlordCapabilities = resolveLandlordCapabilities({
     capabilities: landlordSession.landlord.capabilities,
     subscriptionModel: landlordSession.landlord.subscriptionModel,
+    plan: landlordSession.landlord.planKey ?? landlordSession.landlord.plan,
   });
+
+  if (!canAccessLandlordPath(router.pathname, landlordCapabilities)) {
+    void router.replace("/landlord");
+    return null;
+  }
 
   return (
     <AppShell
       user={{
         name: landlordSession.landlord.fullName,
-        role: "Landlord",
+        role:
+          landlordSession.landlord.role === "team_member"
+            ? (landlordSession.landlord.teamRole ?? "Workspace staff")
+            : landlordSession.landlord.workspaceMode === "PROPERTY_MANAGER_COMPANY"
+              ? "Workspace admin"
+              : "Workspace owner",
         initials: initialsFromName(landlordSession.landlord.fullName),
       }}
       topbarTitle={topbarTitle}

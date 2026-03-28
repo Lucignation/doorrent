@@ -7,6 +7,7 @@ import type { WorkspaceBranding } from "../../lib/branding";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import { sanitizeRemoteAssetUrl } from "../../lib/frontend-security";
 import AccountDeletionConsentModal from "../../components/ui/AccountDeletionConsentModal";
 import PageHeader from "../../components/ui/PageHeader";
 import type { LandlordCapabilities } from "../../lib/landlord-access";
@@ -43,7 +44,17 @@ interface LandlordSettingsResponse {
     planDescription: string;
     price: string;
     nextBilling: string;
+    nextBillingAt?: string | null;
+    status?: string;
     billingModel?: string;
+    canManageLifecycle?: boolean;
+    renewalStatus?: string;
+    autoRenewEnabled?: boolean;
+    cancelAtPeriodEnd?: boolean;
+    cancelEffectiveAt?: string | null;
+    renewalCheckoutUrl?: string | null;
+    renewalFailureMessage?: string | null;
+    authorizationHint?: string | null;
     commissionRatePercent?: number;
   };
   payout: {
@@ -83,9 +94,27 @@ interface LandlordSettingsResponse {
     id: string;
     name: string;
     email: string;
+    roleKey?: string | null;
     role: string;
+    roleDescription?: string | null;
     initials: string;
     status: string;
+    joinedAt?: string | null;
+    permissions: Array<{
+      key: string;
+      label: string;
+      description?: string;
+    }>;
+  }>;
+  teamRoleOptions: Array<{
+    key: string;
+    label: string;
+    description: string;
+    permissions: Array<{
+      key: string;
+      label: string;
+      description?: string;
+    }>;
   }>;
 }
 
@@ -125,13 +154,13 @@ interface EnterpriseCollectionSettingsResponse {
 interface TeamInviteForm {
   name: string;
   email: string;
-  role: string;
+  roleKey: string;
 }
 
 const initialTeamInviteForm: TeamInviteForm = {
   name: "",
   email: "",
-  role: "",
+  roleKey: "",
 };
 
 const WORKSPACE_MODE_OPTIONS: Array<{
@@ -152,6 +181,75 @@ const WORKSPACE_MODE_OPTIONS: Array<{
       "Use this if your company operates properties on behalf of landlords or owners.",
   },
 ];
+
+const FALLBACK_TEAM_ROLE_OPTIONS: LandlordSettingsResponse["teamRoleOptions"] = [
+  {
+    key: "COMPANY_ADMIN",
+    label: "Company Admin",
+    description: "Full internal workspace access for trusted operations leaders.",
+    permissions: [
+      "Properties","Units","Tenants","Agreements","Payments","Receipts","Notices","Meetings",
+      "Reminders","Reports","Notifications","Caretakers","Team Members","Branding","Payout Settings","Emergency",
+    ].map((label) => ({
+      key: label.toLowerCase().replace(/\s+/g, "_"),
+      label,
+    })),
+  },
+  {
+    key: "OPERATIONS_MANAGER",
+    label: "Operations Manager",
+    description: "Day-to-day portfolio management across properties, tenants, agreements, and notices.",
+    permissions: ["Properties", "Units", "Tenants", "Agreements", "Notices", "Meetings", "Reminders", "Notifications", "Emergency"].map(
+      (label) => ({ key: label.toLowerCase().replace(/\s+/g, "_"), label }),
+    ),
+  },
+  {
+    key: "FINANCE_OFFICER",
+    label: "Finance Officer",
+    description: "Rent collection, receipts, reporting, and finance monitoring.",
+    permissions: ["Payments", "Receipts", "Reports", "Notifications"].map((label) => ({
+      key: label.toLowerCase().replace(/\s+/g, "_"),
+      label,
+    })),
+  },
+  {
+    key: "LEASING_MANAGER",
+    label: "Leasing Manager",
+    description: "Tenant onboarding, units, agreements, and leasing communication.",
+    permissions: ["Properties", "Units", "Tenants", "Agreements", "Notices", "Meetings", "Notifications"].map(
+      (label) => ({ key: label.toLowerCase().replace(/\s+/g, "_"), label }),
+    ),
+  },
+  {
+    key: "SUPPORT_STAFF",
+    label: "Support Staff",
+    description: "Tenant support, updates, and emergency coordination.",
+    permissions: ["Tenants", "Notices", "Meetings", "Notifications", "Emergency"].map(
+      (label) => ({ key: label.toLowerCase().replace(/\s+/g, "_"), label }),
+    ),
+  },
+  {
+    key: "VIEWER",
+    label: "Viewer",
+    description: "Read-only operational visibility for leadership or oversight teams.",
+    permissions: ["Reports", "Receipts", "Notifications"].map((label) => ({
+      key: label.toLowerCase().replace(/\s+/g, "_"),
+      label,
+    })),
+  },
+];
+
+function formatSubscriptionDate(value?: string | null) {
+  if (!value) {
+    return "—";
+  }
+
+  return new Date(value).toLocaleDateString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
 function getWorkspaceModeCopy(mode?: WorkspaceMode) {
   if (mode === "PROPERTY_MANAGER_COMPANY") {
@@ -208,6 +306,9 @@ export default function LandlordSettingsPage() {
   const [savingEnterpriseCollections, setSavingEnterpriseCollections] = useState(false);
   const [invitingMember, setInvitingMember] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [subscriptionAction, setSubscriptionAction] = useState<
+    "renew" | "cancel" | "resume" | null
+  >(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [availableBanks, setAvailableBanks] = useState<PayoutBanksResponse["banks"]>([]);
   const [loadingBanks, setLoadingBanks] = useState(false);
@@ -234,6 +335,23 @@ export default function LandlordSettingsPage() {
   const workspaceModeCopy = getWorkspaceModeCopy(
     settings?.profile.workspaceMode,
   );
+  const selectedTeamRole = useMemo(
+    () =>
+      settings?.teamRoleOptions.find((option) => option.key === teamInviteForm.roleKey) ??
+      null,
+    [settings?.teamRoleOptions, teamInviteForm.roleKey],
+  );
+
+  useEffect(() => {
+    if (!settings?.teamRoleOptions.length || teamInviteForm.roleKey) {
+      return;
+    }
+
+    setTeamInviteForm((current) => ({
+      ...current,
+      roleKey: settings.teamRoleOptions[0]?.key ?? "",
+    }));
+  }, [settings?.teamRoleOptions, teamInviteForm.roleKey]);
 
   useEffect(() => {
     if (!landlordSession?.token) {
@@ -286,7 +404,13 @@ export default function LandlordSettingsPage() {
         );
 
         if (!cancelled) {
-          setSettings(data);
+          setSettings({
+            ...data,
+            teamRoleOptions:
+              Array.isArray(data.teamRoleOptions) && data.teamRoleOptions.length
+                ? data.teamRoleOptions
+                : FALLBACK_TEAM_ROLE_OPTIONS,
+          });
           setSavedPayoutSnapshot({
             bankName: data.payout.bankName ?? "",
             accountNumber: data.payout.accountNumber ?? "",
@@ -549,6 +673,14 @@ export default function LandlordSettingsPage() {
   );
   const canManageAccountUpdates = settings?.capabilities.canManageAccountUpdates ?? true;
   const canManageTeamMembers = settings?.capabilities.canManageTeamMembers ?? true;
+  const canManageNotifications = settings?.capabilities.canViewNotifications ?? true;
+  const canManageEmergency = settings?.capabilities.canManageEmergency ?? false;
+  const canManageBranding = settings?.capabilities.canManageBranding ?? false;
+  const canDeleteAccount = settings?.capabilities.canDeleteAccount ?? false;
+  const canManageSubscriptionLifecycle =
+    settings?.subscription.canManageLifecycle ?? false;
+  const canUseEnterpriseCollections =
+    settings?.capabilities.canUseEnterpriseCollections ?? false;
 
   async function requestPayoutUpdateOtp() {
     if (!landlordSession?.token || !settings) {
@@ -607,21 +739,31 @@ export default function LandlordSettingsPage() {
           body: {
             companyName: settings.profile.companyName,
             workspaceMode: settings.profile.workspaceMode,
-            workspaceSlug: settings.profile.workspaceSlug || undefined,
-            brandDisplayName: settings.profile.brandDisplayName || undefined,
-            brandLogoUrl: settings.profile.brandLogoUrl || undefined,
-            brandLoginBackgroundUrl:
-              settings.profile.brandLoginBackgroundUrl || undefined,
-            publicSupportEmail: settings.profile.publicSupportEmail || undefined,
-            publicSupportPhone: settings.profile.publicSupportPhone || undefined,
-            publicLegalAddress: settings.profile.publicLegalAddress || undefined,
-            brandPrimaryColor: settings.profile.brandPrimaryColor || undefined,
-            brandAccentColor: settings.profile.brandAccentColor || undefined,
+            ...(canManageBranding
+              ? {
+                  workspaceSlug: settings.profile.workspaceSlug || undefined,
+                  brandDisplayName: settings.profile.brandDisplayName || undefined,
+                  brandLogoUrl: settings.profile.brandLogoUrl || undefined,
+                  brandLoginBackgroundUrl:
+                    settings.profile.brandLoginBackgroundUrl || undefined,
+                  publicSupportEmail: settings.profile.publicSupportEmail || undefined,
+                  publicSupportPhone: settings.profile.publicSupportPhone || undefined,
+                  publicLegalAddress: settings.profile.publicLegalAddress || undefined,
+                  brandPrimaryColor: settings.profile.brandPrimaryColor || undefined,
+                  brandAccentColor: settings.profile.brandAccentColor || undefined,
+                }
+              : {}),
             firstName: settings.profile.firstName,
             lastName: settings.profile.lastName,
             phone: settings.profile.phone,
-            emergencyContactName: settings.profile.emergencyContactName || undefined,
-            emergencyContactPhone: settings.profile.emergencyContactPhone || undefined,
+            ...(canManageEmergency
+              ? {
+                  emergencyContactName:
+                    settings.profile.emergencyContactName || undefined,
+                  emergencyContactPhone:
+                    settings.profile.emergencyContactPhone || undefined,
+                }
+              : {}),
             photoUrl: settings.profile.photoUrl || undefined,
           },
           offline: {
@@ -847,6 +989,128 @@ export default function LandlordSettingsPage() {
     }
   }
 
+  async function handleSubscriptionRenewal() {
+    if (!landlordSession?.token || subscriptionAction) {
+      return;
+    }
+
+    setSubscriptionAction("renew");
+
+    try {
+      const response = await apiRequest<{
+        subscription: LandlordSettingsResponse["subscription"];
+        checkout: {
+          authorizationUrl: string;
+          reference: string;
+        };
+      }>("/landlord/settings/subscription/renew", {
+        method: "POST",
+        token: landlordSession.token,
+      });
+
+      setSettings((current) =>
+        current
+          ? {
+              ...current,
+              subscription: response.data.subscription,
+            }
+          : current,
+      );
+      refreshData();
+      showToast(response.message || "Renewal checkout ready", "success");
+      window.location.href = response.data.checkout.authorizationUrl;
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not start your renewal checkout.",
+        "error",
+      );
+    } finally {
+      setSubscriptionAction(null);
+    }
+  }
+
+  async function handleCancelSubscriptionAtPeriodEnd() {
+    if (!landlordSession?.token || subscriptionAction) {
+      return;
+    }
+
+    setSubscriptionAction("cancel");
+
+    try {
+      const response = await apiRequest<LandlordSettingsResponse["subscription"]>(
+        "/landlord/settings/subscription/cancel",
+        {
+          method: "POST",
+          token: landlordSession.token,
+        },
+      );
+
+      setSettings((current) =>
+        current
+          ? {
+              ...current,
+              subscription: response.data,
+            }
+          : current,
+      );
+      refreshData();
+      showToast(
+        response.message ||
+          "Your subscription will stay active until the end of the current billing period.",
+        "success",
+      );
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not schedule your cancellation.",
+        "error",
+      );
+    } finally {
+      setSubscriptionAction(null);
+    }
+  }
+
+  async function handleResumeSubscription() {
+    if (!landlordSession?.token || subscriptionAction) {
+      return;
+    }
+
+    setSubscriptionAction("resume");
+
+    try {
+      const response = await apiRequest<LandlordSettingsResponse["subscription"]>(
+        "/landlord/settings/subscription/resume",
+        {
+          method: "POST",
+          token: landlordSession.token,
+        },
+      );
+
+      setSettings((current) =>
+        current
+          ? {
+              ...current,
+              subscription: response.data,
+            }
+          : current,
+      );
+      refreshData();
+      showToast(response.message || "Automatic renewal restored.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not resume this subscription.",
+        "error",
+      );
+    } finally {
+      setSubscriptionAction(null);
+    }
+  }
+
   async function inviteMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -874,7 +1138,10 @@ export default function LandlordSettingsPage() {
             }
           : current,
       );
-      setTeamInviteForm(initialTeamInviteForm);
+      setTeamInviteForm({
+        ...initialTeamInviteForm,
+        roleKey: settings?.teamRoleOptions[0]?.key ?? "",
+      });
       refreshData();
       showToast("Invite sent", "success");
     } catch (requestError) {
@@ -962,26 +1229,28 @@ export default function LandlordSettingsPage() {
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Workspace Subdomain</label>
-                  <input
-                    className="form-input"
-                    value={settings?.profile.workspaceSlug ?? ""}
-                    onChange={(event) =>
-                      updateProfileField("workspaceSlug", event.target.value.toLowerCase())
-                    }
-                    placeholder="blueoak"
-                  />
-                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
-                    Your branded login page will use{" "}
-                    <strong>
-                      {(settings?.profile.workspaceOrigin ?? "https://usedoorrent.com")
-                        .replace(/^https?:\/\//, "")
-                        .replace(/^www\./, "")}
-                    </strong>
-                    .
+                {canManageBranding ? (
+                  <div className="form-group">
+                    <label className="form-label">Workspace Subdomain</label>
+                    <input
+                      className="form-input"
+                      value={settings?.profile.workspaceSlug ?? ""}
+                      onChange={(event) =>
+                        updateProfileField("workspaceSlug", event.target.value.toLowerCase())
+                      }
+                      placeholder="blueoak"
+                    />
+                    <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                      Your branded login page will use{" "}
+                      <strong>
+                        {(settings?.profile.workspaceOrigin ?? "https://usedoorrent.com")
+                          .replace(/^https?:\/\//, "")
+                          .replace(/^www\./, "")}
+                      </strong>
+                      .
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
                 <div className="form-group">
                   <label className="form-label">Workspace Mode</label>
@@ -1010,181 +1279,185 @@ export default function LandlordSettingsPage() {
                   </div>
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">{workspaceModeCopy.displayLabel}</label>
-                    <input
-                      className="form-input"
-                      value={settings?.profile.brandDisplayName ?? ""}
-                      onChange={(event) =>
-                        updateProfileField("brandDisplayName", event.target.value)
-                      }
-                      placeholder={workspaceModeCopy.displayPlaceholder}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Logo URL</label>
-                    <input
-                      className="form-input"
-                      value={settings?.profile.brandLogoUrl ?? ""}
-                      onChange={(event) =>
-                        updateProfileField("brandLogoUrl", event.target.value)
-                      }
-                      placeholder="https://..."
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Login Background Image URL</label>
-                  <input
-                    className="form-input"
-                    value={settings?.profile.brandLoginBackgroundUrl ?? ""}
-                    onChange={(event) =>
-                      updateProfileField("brandLoginBackgroundUrl", event.target.value)
-                    }
-                    placeholder="https://..."
-                  />
-                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
-                    This image will show on the left side of your branded landlord and tenant login
-                    page.
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Public Support Email</label>
-                    <input
-                      className="form-input"
-                      value={settings?.profile.publicSupportEmail ?? ""}
-                      onChange={(event) =>
-                        updateProfileField("publicSupportEmail", event.target.value)
-                      }
-                      placeholder="support@yourcompany.com"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Public Support Phone</label>
-                    <input
-                      className="form-input"
-                      value={settings?.profile.publicSupportPhone ?? ""}
-                      onChange={(event) =>
-                        updateProfileField("publicSupportPhone", event.target.value)
-                      }
-                      placeholder="+234..."
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Public Business Address</label>
-                  <textarea
-                    className="form-input"
-                    value={settings?.profile.publicLegalAddress ?? ""}
-                    onChange={(event) =>
-                      updateProfileField("publicLegalAddress", event.target.value)
-                    }
-                    placeholder="This will appear on your branded privacy, terms, and refund pages."
-                    rows={3}
-                    style={{ resize: "vertical" }}
-                  />
-                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
-                    Use the company support details that payment providers and customers should see
-                    on your branded public policy pages.
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Primary Color</label>
-                    <input
-                      className="form-input"
-                      value={settings?.profile.brandPrimaryColor ?? ""}
-                      onChange={(event) =>
-                        updateProfileField("brandPrimaryColor", event.target.value)
-                      }
-                      placeholder="#1A6B4A"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Accent Color</label>
-                    <input
-                      className="form-input"
-                      value={settings?.profile.brandAccentColor ?? ""}
-                      onChange={(event) =>
-                        updateProfileField("brandAccentColor", event.target.value)
-                      }
-                      placeholder="#C8A96E"
-                    />
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    border: "1px solid var(--border)",
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 16,
-                    background: "var(--surface2)",
-                  }}
-                >
-                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
-                    Workspace Brand Preview
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    {settings?.profile.brandLogoUrl ? (
-                      <img
-                        src={settings.profile.brandLogoUrl}
-                        alt={`${settings.profile.brandDisplayName || settings.profile.companyName} logo`}
-                        style={{
-                          width: 52,
-                          height: 52,
-                          borderRadius: 14,
-                          objectFit: "cover",
-                          border: "1px solid var(--border)",
-                          background: "#fff",
-                        }}
-                      />
-                    ) : (
-                      <div
-                        className="user-avatar"
-                        style={{
-                          width: 52,
-                          height: 52,
-                          background: settings?.profile.branding?.primaryColor ?? "var(--accent)",
-                          color: "#fff",
-                        }}
-                      >
-                        {settings?.profile.initials ?? "DR"}
-                      </div>
-                    )}
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 700 }}>
-                        {settings?.profile.brandDisplayName ??
-                          settings?.profile.companyName ??
-                          "DoorRent"}
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--ink3)" }}>
-                        This name, logo, and color theme will brand the active workspace.
-                      </div>
-                      {settings?.profile.brandLoginBackgroundUrl ? (
-                        <div
-                          style={{
-                            marginTop: 12,
-                            width: 220,
-                            height: 88,
-                            borderRadius: 12,
-                            border: "1px solid var(--border)",
-                            backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.4), rgba(17, 19, 18, 0.4)), url(${settings.profile.brandLoginBackgroundUrl})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                            boxShadow: "var(--shadow)",
-                          }}
+                {canManageBranding ? (
+                  <>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">{workspaceModeCopy.displayLabel}</label>
+                        <input
+                          className="form-input"
+                          value={settings?.profile.brandDisplayName ?? ""}
+                          onChange={(event) =>
+                            updateProfileField("brandDisplayName", event.target.value)
+                          }
+                          placeholder={workspaceModeCopy.displayPlaceholder}
                         />
-                      ) : null}
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Logo URL</label>
+                        <input
+                          className="form-input"
+                          value={settings?.profile.brandLogoUrl ?? ""}
+                          onChange={(event) =>
+                            updateProfileField("brandLogoUrl", event.target.value)
+                          }
+                          placeholder="https://..."
+                        />
+                      </div>
                     </div>
-                  </div>
-                </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Login Background Image URL</label>
+                      <input
+                        className="form-input"
+                        value={settings?.profile.brandLoginBackgroundUrl ?? ""}
+                        onChange={(event) =>
+                          updateProfileField("brandLoginBackgroundUrl", event.target.value)
+                        }
+                        placeholder="https://..."
+                      />
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        This image will show on the left side of your branded landlord and tenant login
+                        page.
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Public Support Email</label>
+                        <input
+                          className="form-input"
+                          value={settings?.profile.publicSupportEmail ?? ""}
+                          onChange={(event) =>
+                            updateProfileField("publicSupportEmail", event.target.value)
+                          }
+                          placeholder="support@yourcompany.com"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Public Support Phone</label>
+                        <input
+                          className="form-input"
+                          value={settings?.profile.publicSupportPhone ?? ""}
+                          onChange={(event) =>
+                            updateProfileField("publicSupportPhone", event.target.value)
+                          }
+                          placeholder="+234..."
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Public Business Address</label>
+                      <textarea
+                        className="form-input"
+                        value={settings?.profile.publicLegalAddress ?? ""}
+                        onChange={(event) =>
+                          updateProfileField("publicLegalAddress", event.target.value)
+                        }
+                        placeholder="This will appear on your branded privacy, terms, and refund pages."
+                        rows={3}
+                        style={{ resize: "vertical" }}
+                      />
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
+                        Use the company support details that payment providers and customers should see
+                        on your branded public policy pages.
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Primary Color</label>
+                        <input
+                          className="form-input"
+                          value={settings?.profile.brandPrimaryColor ?? ""}
+                          onChange={(event) =>
+                            updateProfileField("brandPrimaryColor", event.target.value)
+                          }
+                          placeholder="#1A6B4A"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Accent Color</label>
+                        <input
+                          className="form-input"
+                          value={settings?.profile.brandAccentColor ?? ""}
+                          onChange={(event) =>
+                            updateProfileField("brandAccentColor", event.target.value)
+                          }
+                          placeholder="#C8A96E"
+                        />
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        padding: 16,
+                        marginBottom: 16,
+                        background: "var(--surface2)",
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10 }}>
+                        Workspace Brand Preview
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                        {sanitizeRemoteAssetUrl(settings?.profile.brandLogoUrl) ? (
+                          <img
+                            src={sanitizeRemoteAssetUrl(settings?.profile.brandLogoUrl) || undefined}
+                            alt={`${settings?.profile.brandDisplayName || settings?.profile.companyName || "Workspace"} logo`}
+                            style={{
+                              width: 52,
+                              height: 52,
+                              borderRadius: 14,
+                              objectFit: "cover",
+                              border: "1px solid var(--border)",
+                              background: "#fff",
+                            }}
+                          />
+                        ) : (
+                          <div
+                            className="user-avatar"
+                            style={{
+                              width: 52,
+                              height: 52,
+                              background: settings?.profile.branding?.primaryColor ?? "var(--accent)",
+                              color: "#fff",
+                            }}
+                          >
+                            {settings?.profile.initials ?? "DR"}
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ fontSize: 15, fontWeight: 700 }}>
+                            {settings?.profile.brandDisplayName ??
+                              settings?.profile.companyName ??
+                              "DoorRent"}
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--ink3)" }}>
+                            This name, logo, and color theme will brand the active workspace.
+                          </div>
+                          {sanitizeRemoteAssetUrl(settings?.profile.brandLoginBackgroundUrl) ? (
+                            <div
+                              style={{
+                                marginTop: 12,
+                                width: 220,
+                                height: 88,
+                                borderRadius: 12,
+                                border: "1px solid var(--border)",
+                                backgroundImage: `linear-gradient(rgba(17, 19, 18, 0.4), rgba(17, 19, 18, 0.4)), url(${sanitizeRemoteAssetUrl(settings?.profile.brandLoginBackgroundUrl)})`,
+                                backgroundSize: "cover",
+                                backgroundPosition: "center",
+                                boxShadow: "var(--shadow)",
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
 
                 <div className="form-row">
                   <div className="form-group">
@@ -1218,58 +1491,62 @@ export default function LandlordSettingsPage() {
                   />
                 </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Emergency Contact Name</label>
-                    <input
-                      className="form-input"
-                      value={settings?.profile.emergencyContactName ?? ""}
-                      onChange={(event) =>
-                        updateProfileField("emergencyContactName", event.target.value)
-                      }
-                      placeholder="Optional responder"
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Emergency Contact Phone</label>
-                    <input
-                      className="form-input"
-                      value={settings?.profile.emergencyContactPhone ?? ""}
-                      onChange={(event) =>
-                        updateProfileField("emergencyContactPhone", event.target.value)
-                      }
-                      placeholder="+234..."
-                    />
-                  </div>
-                </div>
+                {canManageEmergency ? (
+                  <>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Emergency Contact Name</label>
+                        <input
+                          className="form-input"
+                          value={settings?.profile.emergencyContactName ?? ""}
+                          onChange={(event) =>
+                            updateProfileField("emergencyContactName", event.target.value)
+                          }
+                          placeholder="Optional responder"
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Emergency Contact Phone</label>
+                        <input
+                          className="form-input"
+                          value={settings?.profile.emergencyContactPhone ?? ""}
+                          onChange={(event) =>
+                            updateProfileField("emergencyContactPhone", event.target.value)
+                          }
+                          placeholder="+234..."
+                        />
+                      </div>
+                    </div>
 
-                <div
-                  style={{
-                    border: "1px solid rgba(26, 107, 74, 0.12)",
-                    background: "var(--accent-light)",
-                    borderRadius: 12,
-                    padding: 16,
-                    marginBottom: 16,
-                  }}
-                >
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-                    Emergency Access
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "var(--ink2)",
-                      lineHeight: 1.6,
-                      marginBottom: 12,
-                    }}
-                  >
-                    Emergency tools now live inside your profile settings so you can
-                    launch an alert or review your response numbers from one place.
-                  </div>
-                  <Link href="/landlord/emergency" className="btn btn-secondary btn-sm">
-                    Open Emergency
-                  </Link>
-                </div>
+                    <div
+                      style={{
+                        border: "1px solid rgba(26, 107, 74, 0.12)",
+                        background: "var(--accent-light)",
+                        borderRadius: 12,
+                        padding: 16,
+                        marginBottom: 16,
+                      }}
+                    >
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                        Emergency Access
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "var(--ink2)",
+                          lineHeight: 1.6,
+                          marginBottom: 12,
+                        }}
+                      >
+                        Emergency tools now live inside your profile settings so you can
+                        launch an alert or review your response numbers from one place.
+                      </div>
+                      <Link href="/landlord/emergency" className="btn btn-secondary btn-sm">
+                        Open Emergency
+                      </Link>
+                    </div>
+                  </>
+                ) : null}
 
                 <button type="submit" className="btn btn-primary btn-sm" disabled={savingProfile}>
                   {savingProfile ? "Saving..." : "Save Changes"}
@@ -1312,6 +1589,8 @@ export default function LandlordSettingsPage() {
                     alignItems: "center",
                     fontSize: 12,
                     color: "var(--ink2)",
+                    gap: 12,
+                    flexWrap: "wrap",
                   }}
                 >
                   <span>Next billing: {settings?.subscription.nextBilling ?? "—"}</span>
@@ -1319,6 +1598,68 @@ export default function LandlordSettingsPage() {
                     Upgrade Plan
                   </button>
                 </div>
+                {canManageSubscriptionLifecycle ? (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: 12,
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid rgba(23, 28, 24, 0.08)",
+                      background: "rgba(23, 28, 24, 0.03)",
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: "var(--ink2)", lineHeight: 1.7 }}>
+                      {settings?.subscription.autoRenewEnabled
+                        ? `Auto-renew is active${settings.subscription.authorizationHint ? ` via ${settings.subscription.authorizationHint}` : ""}.`
+                        : "Auto-renew is not active for this subscription yet."}
+                    </div>
+                    {settings?.subscription.cancelAtPeriodEnd ? (
+                      <div style={{ fontSize: 12, color: "var(--amber)", lineHeight: 1.7 }}>
+                        Cancellation is scheduled for{" "}
+                        {settings.subscription.cancelEffectiveAt
+                          ? formatSubscriptionDate(settings.subscription.cancelEffectiveAt)
+                          : settings.subscription.nextBilling ?? "the end of this billing period"}
+                        .
+                      </div>
+                    ) : null}
+                    {settings?.subscription.renewalFailureMessage ? (
+                      <div style={{ fontSize: 12, color: "var(--red)", lineHeight: 1.7 }}>
+                        {settings.subscription.renewalFailureMessage}
+                      </div>
+                    ) : null}
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-xs"
+                        onClick={() => void handleSubscriptionRenewal()}
+                        disabled={subscriptionAction !== null}
+                      >
+                        {subscriptionAction === "renew" ? "Starting checkout..." : "Renew Subscription"}
+                      </button>
+                      {settings?.subscription.cancelAtPeriodEnd ? (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-xs"
+                          onClick={() => void handleResumeSubscription()}
+                          disabled={subscriptionAction !== null}
+                        >
+                          {subscriptionAction === "resume" ? "Resuming..." : "Resume Auto-Renew"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-xs"
+                          onClick={() => void handleCancelSubscriptionAtPeriodEnd()}
+                          disabled={subscriptionAction !== null}
+                        >
+                          {subscriptionAction === "cancel" ? "Scheduling..." : "Cancel At Period End"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
                 {settings?.subscription.billingModel === "commission" ? (
                   <div
                     style={{
@@ -1332,7 +1673,7 @@ export default function LandlordSettingsPage() {
                       lineHeight: 1.7,
                     }}
                   >
-                    Full Service landlords can now log offline rent collections from the
+                    Pro workspaces can now log offline rent collections from the
                     Payments page so DoorRent still tracks the{" "}
                     {settings.subscription.commissionRatePercent ?? 3}% base commission per
                     rent year covered.
@@ -1562,14 +1903,14 @@ export default function LandlordSettingsPage() {
                 </div>
                 <div className="card-body">
                   <div className="td-muted">
-                    Basic landlords can update their company profile and notification preferences
-                    here. Payout setup and premium account controls unlock on Full Service or
-                    Enterprise.
+                    Basic workspaces can update their company profile here. Payout setup and
+                    advanced account controls unlock on Pro or Enterprise.
                   </div>
                 </div>
               </div>
             )}
 
+            {canUseEnterpriseCollections ? (
             <form className="card" style={{ marginTop: 16 }} onSubmit={submitEnterpriseCollections}>
               <div className="card-header">
                 <div>
@@ -1788,9 +2129,11 @@ export default function LandlordSettingsPage() {
                 )}
               </div>
             </form>
+            ) : null}
           </div>
 
           <div>
+            {canManageNotifications ? (
             <div className="card" style={{ marginBottom: 16 }}>
               <div className="card-header">
                 <div className="card-title">Notification Preferences</div>
@@ -1827,6 +2170,7 @@ export default function LandlordSettingsPage() {
                 ))}
               </div>
             </div>
+            ) : null}
 
             {canManageTeamMembers ? (
               <div className="card">
@@ -1859,6 +2203,26 @@ export default function LandlordSettingsPage() {
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 13, fontWeight: 500 }}>{member.name}</div>
                         <div style={{ fontSize: 11, color: "var(--ink3)" }}>{member.email}</div>
+                        {member.permissions.length ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 6,
+                              marginTop: 8,
+                            }}
+                          >
+                            {member.permissions.map((permission) => (
+                              <span
+                                key={`${member.id}-${permission.key}`}
+                                className="tag"
+                                style={{ fontSize: 10 }}
+                              >
+                                {permission.label}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                       <span className="tag">{member.role}</span>
                     </div>
@@ -1896,21 +2260,65 @@ export default function LandlordSettingsPage() {
                     </div>
                     <div className="form-group">
                       <label className="form-label">Role</label>
-                      <input
+                      <select
                         className="form-input"
-                        value={teamInviteForm.role}
+                        value={teamInviteForm.roleKey}
                         onChange={(event) =>
                           setTeamInviteForm((current) => ({
                             ...current,
-                            role: event.target.value,
+                            roleKey: event.target.value,
                           }))
                         }
-                        placeholder="Operations Manager"
                         required
-                      />
+                      >
+                        {settings?.teamRoleOptions.map((option) => (
+                          <option key={option.key} value={option.key}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedTeamRole ? (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: 12,
+                            border: "1px solid var(--border)",
+                            borderRadius: 12,
+                            background: "var(--surface2)",
+                          }}
+                        >
+                          <div style={{ fontSize: 12, fontWeight: 600 }}>
+                            {selectedTeamRole.label}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 11,
+                              color: "var(--ink3)",
+                              marginTop: 4,
+                              lineHeight: 1.6,
+                            }}
+                          >
+                            {selectedTeamRole.description}
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 6,
+                              marginTop: 10,
+                            }}
+                          >
+                            {selectedTeamRole.permissions.map((permission) => (
+                              <span key={permission.key} className="tag">
+                                {permission.label}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
 
-                    <button type="submit" className="btn btn-secondary btn-sm" disabled={invitingMember}>
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={invitingMember}>
                       {invitingMember ? "Sending..." : "+ Invite Member"}
                     </button>
                   </form>
@@ -1918,89 +2326,93 @@ export default function LandlordSettingsPage() {
               </div>
             ) : null}
 
-            <div className="card" style={{ marginTop: 16 }}>
-              <div className="card-header">
-                <div>
-                  <div className="card-title">Legal & Account Deletion</div>
-                  <div className="card-subtitle">
-                    Review DoorRent policies and permanently close this landlord account.
+            {canDeleteAccount ? (
+              <div className="card" style={{ marginTop: 16 }}>
+                <div className="card-header">
+                  <div>
+                    <div className="card-title">Legal & Account Deletion</div>
+                    <div className="card-subtitle">
+                      Review DoorRent policies and permanently close this workspace account.
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="card-body">
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 10,
-                    marginBottom: 18,
-                  }}
-                >
-                  <Link href="/terms" className="btn btn-secondary btn-xs">
-                    Terms of Use
-                  </Link>
-                  <Link href="/privacy" className="btn btn-secondary btn-xs">
-                    Privacy Policy
-                  </Link>
-                  <Link href="/refund-policy" className="btn btn-secondary btn-xs">
-                    Refund Policy
-                  </Link>
-                  <Link href="/account-deletion" className="btn btn-secondary btn-xs">
-                    Account Deletion
-                  </Link>
-                </div>
-
-                <div
-                  style={{
-                    border: "1px solid rgba(220, 64, 64, 0.18)",
-                    background: "rgba(220, 64, 64, 0.05)",
-                    borderRadius: 12,
-                    padding: 16,
-                  }}
-                >
-                  <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
-                    Danger Zone
-                  </div>
+                <div className="card-body">
                   <div
                     style={{
-                      fontSize: 12,
-                      color: "var(--ink2)",
-                      lineHeight: 1.6,
-                      marginBottom: 14,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                      marginBottom: 18,
                     }}
                   >
-                    Deleting this account revokes access for this landlord workspace and removes
-                    landlord-managed data tied to it. Review the account deletion policy before you
-                    continue.
+                    <Link href="/terms" className="btn btn-secondary btn-xs">
+                      Terms of Use
+                    </Link>
+                    <Link href="/privacy" className="btn btn-secondary btn-xs">
+                      Privacy Policy
+                    </Link>
+                    <Link href="/refund-policy" className="btn btn-secondary btn-xs">
+                      Refund Policy
+                    </Link>
+                    <Link href="/account-deletion" className="btn btn-secondary btn-xs">
+                      Account Deletion
+                    </Link>
                   </div>
-                  <button
-                    type="button"
-                    className="btn btn-danger btn-sm"
-                    onClick={() => setShowDeleteModal(true)}
-                    disabled={deletingAccount}
+
+                  <div
+                    style={{
+                      border: "1px solid rgba(220, 64, 64, 0.18)",
+                      background: "rgba(220, 64, 64, 0.05)",
+                      borderRadius: 12,
+                      padding: 16,
+                    }}
                   >
-                    {deletingAccount ? "Deleting..." : "Delete Account"}
-                  </button>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                      Danger Zone
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "var(--ink2)",
+                        lineHeight: 1.6,
+                        marginBottom: 14,
+                      }}
+                    >
+                      Deleting this account revokes access for this workspace and removes
+                      workspace-managed data tied to it. Review the account deletion policy before you
+                      continue.
+                    </div>
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm"
+                      onClick={() => setShowDeleteModal(true)}
+                      disabled={deletingAccount}
+                    >
+                      {deletingAccount ? "Deleting..." : "Delete Account"}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
 
-        <AccountDeletionConsentModal
-          open={showDeleteModal}
-          title="Delete landlord account?"
-          description="Deleting this landlord account permanently closes the landlord workspace tied to it."
-          consequences={[
-            "Landlord access and active sessions will be revoked immediately.",
-            "Landlord-managed workspace records will be removed from active product access.",
-            "Some legal, payment, audit, and security records may still be retained where required.",
-          ]}
-          consentLabel="I understand that this landlord account deletion is permanent."
-          busy={deletingAccount}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={deleteAccount}
-        />
+        {canDeleteAccount ? (
+          <AccountDeletionConsentModal
+            open={showDeleteModal}
+            title="Delete workspace account?"
+            description="Deleting this workspace account permanently closes the workspace tied to it."
+            consequences={[
+              "Workspace access and active sessions will be revoked immediately.",
+              "Workspace-managed records will be removed from active product access.",
+              "Some legal, payment, audit, and security records may still be retained where required.",
+            ]}
+            consentLabel="I understand that this workspace account deletion is permanent."
+            busy={deletingAccount}
+            onClose={() => setShowDeleteModal(false)}
+            onConfirm={deleteAccount}
+          />
+        ) : null}
       </LandlordPortalShell>
     </>
   );

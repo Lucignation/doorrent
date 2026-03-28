@@ -5,6 +5,7 @@ import PageMeta from "../../components/layout/PageMeta";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import { resolveLandlordCapabilities } from "../../lib/landlord-access";
 import DataTable from "../../components/ui/DataTable";
 import IdentityCell from "../../components/ui/IdentityCell";
 import PageHeader from "../../components/ui/PageHeader";
@@ -124,6 +125,15 @@ export default function LandlordAgreementsPage() {
   const [creatingDefault, setCreatingDefault] = useState(false);
   const [viewingTemplate, setViewingTemplate] = useState<AgreementTemplate | null>(null);
   const [resendingId, setResendingId] = useState<string | null>(null);
+  const landlordCapabilities = resolveLandlordCapabilities({
+    capabilities: landlordSession?.landlord.capabilities,
+    subscriptionModel: landlordSession?.landlord.subscriptionModel,
+    plan: landlordSession?.landlord.planKey ?? landlordSession?.landlord.plan,
+  });
+  const canManageAgreementTemplates =
+    landlordCapabilities.canManageAgreementTemplates;
+  const canResendAgreements = landlordCapabilities.canResendAgreements;
+  const canExportAgreementPdfs = landlordCapabilities.canExportAgreementPdfs;
 
   useEffect(() => {
     if (!landlordSession?.token) {
@@ -144,9 +154,11 @@ export default function LandlordAgreementsPage() {
           apiRequest<AgreementsResponse>(`/landlord/agreements${query}`, {
             token: landlordToken,
           }),
-          apiRequest<TemplatesResponse>("/landlord/agreements/templates", {
-            token: landlordToken,
-          }),
+          canManageAgreementTemplates
+            ? apiRequest<TemplatesResponse>("/landlord/agreements/templates", {
+                token: landlordToken,
+              })
+            : Promise.resolve({ data: { count: 0, templates: [] } }),
         ]);
 
         if (!cancelled) {
@@ -173,10 +185,15 @@ export default function LandlordAgreementsPage() {
     return () => {
       cancelled = true;
     };
-  }, [dataRefreshVersion, landlordSession?.token, statusFilter]);
+  }, [
+    canManageAgreementTemplates,
+    dataRefreshVersion,
+    landlordSession?.token,
+    statusFilter,
+  ]);
 
   async function handleCreateDefaultTemplate() {
-    if (!landlordSession?.token || creatingDefault) return;
+    if (!landlordSession?.token || creatingDefault || !canManageAgreementTemplates) return;
     setCreatingDefault(true);
     try {
       await apiRequest("/landlord/agreements/templates/default", {
@@ -243,7 +260,7 @@ export default function LandlordAgreementsPage() {
   }
 
   async function handleResendAgreement(row: AgreementRow) {
-    if (!landlordSession?.token || resendingId) return;
+    if (!landlordSession?.token || resendingId || !canResendAgreements) return;
     setResendingId(row.id);
     try {
       await apiRequest(`/landlord/agreements/${row.id}/resend`, {
@@ -308,7 +325,7 @@ export default function LandlordAgreementsPage() {
               >
                 View
               </button>
-              {row.status === "sent" ? (
+              {canResendAgreements && row.status === "sent" ? (
                 <button
                   type="button"
                   className="btn btn-secondary btn-xs"
@@ -318,7 +335,8 @@ export default function LandlordAgreementsPage() {
                   {resendingId === row.id ? "Sending…" : "Resend"}
                 </button>
               ) : null}
-              {(row.status === "signed" || row.status === "sent" || row.status === "draft") ? (
+              {canExportAgreementPdfs &&
+              (row.status === "signed" || row.status === "sent" || row.status === "draft") ? (
                 <button
                   type="button"
                   className="btn btn-secondary btn-xs"
@@ -331,11 +349,13 @@ export default function LandlordAgreementsPage() {
           ),
         },
       ],
-      [showToast, resendingId, router, handleViewAgreement, handleResendAgreement],
+      [canExportAgreementPdfs, canResendAgreements, resendingId, router],
     );
 
   const description = agreementData
-    ? `${agreementData.summary.total} agreements tracked with live signature status`
+    ? landlordCapabilities.isBasicPlan
+      ? `${agreementData.summary.total} agreements tracked with signature status and signed-copy visibility`
+      : `${agreementData.summary.total} agreements tracked with live signature status`
     : loading
       ? "Loading your agreements..."
       : error || "No agreements yet.";
@@ -359,7 +379,15 @@ export default function LandlordAgreementsPage() {
           title="Agreements"
           description={description}
           actions={[
-            { label: "Upload Template", modal: "upload-template", variant: "secondary" },
+            ...(canManageAgreementTemplates
+              ? [
+                  {
+                    label: "Upload Template",
+                    modal: "upload-template" as const,
+                    variant: "secondary" as const,
+                  },
+                ]
+              : []),
             { label: "+ New Agreement", modal: "add-agreement", variant: "primary" },
           ]}
         />
@@ -399,71 +427,78 @@ export default function LandlordAgreementsPage() {
           />
         </div>
 
-        <div className="card">
-          <div className="card-header">
-            <div>
-              <div className="card-title">Agreement Templates</div>
-              <div className="card-subtitle">
-                {templateData
-                  ? `${templateData.count} template${templateData.count === 1 ? "" : "s"} available`
-                  : "Your reusable agreement templates"}
+        {canManageAgreementTemplates ? (
+          <div className="card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Agreement Templates</div>
+                <div className="card-subtitle">
+                  {templateData
+                    ? `${templateData.count} template${templateData.count === 1 ? "" : "s"} available`
+                    : "Your reusable agreement templates"}
+                </div>
               </div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              {templateData && templateData.count === 0 ? (
+              <div style={{ display: "flex", gap: 8 }}>
+                {templateData && templateData.count === 0 ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-xs"
+                    onClick={() => void handleCreateDefaultTemplate()}
+                    disabled={creatingDefault}
+                  >
+                    {creatingDefault ? "Creating..." : "Use Standard Template"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  className="btn btn-secondary btn-xs"
-                  onClick={() => void handleCreateDefaultTemplate()}
-                  disabled={creatingDefault}
+                  className="btn btn-ghost btn-xs"
+                  onClick={() =>
+                    showToast("Use the Upload Template button above to add templates", "info")
+                  }
                 >
-                  {creatingDefault ? "Creating..." : "Use Standard Template"}
+                  Upload Template
                 </button>
-              ) : null}
-              <button
-                type="button"
-                className="btn btn-ghost btn-xs"
-                onClick={() => showToast("Use the Upload Template button above to add templates", "info")}
-              >
-                Upload Template
-              </button>
+              </div>
+            </div>
+            <div className="card-body">
+              {templateData && templateData.templates.length > 0 ? (
+                <div className="template-list">
+                  {templateData.templates.map((tpl) => (
+                    <div key={tpl.id} className="template-row">
+                      <div className="template-info">
+                        <div className="template-name">{tpl.name}</div>
+                        {tpl.description ? (
+                          <div className="template-desc">{tpl.description}</div>
+                        ) : null}
+                        <div className="template-preview">{tpl.contentPreview}</div>
+                      </div>
+                      <div className="template-meta">
+                        <span className="template-usage">
+                          Used in {tpl.agreementsUsingTemplate} agreement
+                          {tpl.agreementsUsingTemplate === 1 ? "" : "s"}
+                        </span>
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          onClick={() => setViewingTemplate(tpl)}
+                        >
+                          View File
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="empty-templates">
+                  <p>
+                    No templates yet. Upload your own or click &quot;Use Standard Template&quot;
+                    {" "}to get started.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
-          <div className="card-body">
-            {templateData && templateData.templates.length > 0 ? (
-              <div className="template-list">
-                {templateData.templates.map((tpl) => (
-                  <div key={tpl.id} className="template-row">
-                    <div className="template-info">
-                      <div className="template-name">{tpl.name}</div>
-                      {tpl.description ? (
-                        <div className="template-desc">{tpl.description}</div>
-                      ) : null}
-                      <div className="template-preview">{tpl.contentPreview}</div>
-                    </div>
-                    <div className="template-meta">
-                      <span className="template-usage">
-                        Used in {tpl.agreementsUsingTemplate} agreement
-                        {tpl.agreementsUsingTemplate === 1 ? "" : "s"}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-xs"
-                        onClick={() => setViewingTemplate(tpl)}
-                      >
-                        View File
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-templates">
-                <p>No templates yet. Upload your own or click &quot;Use Standard Template&quot; to get started.</p>
-              </div>
-            )}
-          </div>
-        </div>
+        ) : null}
 
         {viewingTemplate ? (
           <div className="file-viewer-overlay" onClick={() => setViewingTemplate(null)}>

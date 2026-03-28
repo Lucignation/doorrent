@@ -170,6 +170,7 @@ export default function LandlordDashboardPage() {
   const landlordCapabilities = resolveLandlordCapabilities({
     capabilities: landlordSession?.landlord.capabilities,
     subscriptionModel: landlordSession?.landlord.subscriptionModel,
+    plan: landlordSession?.landlord.planKey ?? landlordSession?.landlord.plan,
   });
   const visibleHighlights = (overview?.highlights ?? []).filter((item) =>
     canAccessLandlordPath(item.cta.href, landlordCapabilities),

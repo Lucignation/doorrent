@@ -87,6 +87,7 @@ interface LandlordPaymentsResponse {
     commissionPolicyLabel?: string;
     referralPolicyLabel?: string | null;
     canRecordOfflineCollection: boolean;
+    canAcceptOnlinePayments: boolean;
     platformCollectionsCount: number;
     platformCollectionsValueFormatted: string;
     offlineCollectionsCount: number;
@@ -481,9 +482,8 @@ export default function LandlordPaymentsPage() {
                   <div>
                     <div className="card-title">Record Offline Collection</div>
                     <div className="card-subtitle">
-                      Full Service landlords can log offline rent so DoorRent still tracks the
-                      collection commission and any eligible referred-agent share on the first
-                      3 renewal years.
+                      Log cash or transfer payments that happened outside DoorRent so the
+                      workspace still keeps complete rent records and receipt history.
                     </div>
                   </div>
                 </div>
@@ -635,12 +635,15 @@ export default function LandlordPaymentsPage() {
                       {paymentData.collectionTracking.commissionTrackedThisYearFormatted}
                     </div>
                     <div className="stat-sub">
-                      {paymentData.collectionTracking.commissionPolicyLabel ??
-                        `${paymentData.collectionTracking.commissionRatePercent}% base commission per rent year covered`}
+                      {paymentData.collectionTracking.canAcceptOnlinePayments
+                        ? paymentData.collectionTracking.commissionPolicyLabel ??
+                          `${paymentData.collectionTracking.commissionRatePercent}% base commission per rent year covered`
+                        : "Not applicable on Basic"}
                     </div>
                   </div>
                 </div>
-                {paymentData.collectionTracking.referralPolicyLabel ? (
+                {paymentData.collectionTracking.canAcceptOnlinePayments &&
+                paymentData.collectionTracking.referralPolicyLabel ? (
                   <div className="td-muted" style={{ marginBottom: 12 }}>
                     {paymentData.collectionTracking.referralPolicyLabel}
                   </div>
@@ -658,14 +661,15 @@ export default function LandlordPaymentsPage() {
                     }}
                   >
                     {paymentData.collectionTracking.reviewFlag}{" "}
-                    {paymentData.collectionTracking.canRecordOfflineCollection
-                      ? "Keep logging offline collections or move rent through DoorRent so your Full Service activity stays visible."
+                    {paymentData.collectionTracking.canAcceptOnlinePayments
+                      ? "Keep logging offline collections or move rent through DoorRent so your Pro or Enterprise activity stays visible."
                       : "Move rent through DoorRent so your lease activity stays visible on the platform."}
                   </div>
                 ) : (
                   <div className="td-muted">
-                    DoorRent now tracks both platform collections and offline collections for
-                    your payment reporting, including multi-year commission logic.
+                    {paymentData.collectionTracking.canAcceptOnlinePayments
+                      ? "DoorRent tracks both platform collections and offline collections for your payment reporting, including multi-year commission logic."
+                      : "Basic keeps a clean record of manual collections and receipts, but online collection automation unlocks on Pro or Enterprise."}
                   </div>
                 )}
               </div>

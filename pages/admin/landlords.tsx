@@ -263,7 +263,7 @@ export default function AdminLandlordsPage() {
             onChange={(event) => setPlan(event.target.value)}
           >
             <option value="">All Plans</option>
-            <option value="STARTER">Starter</option>
+            <option value="STARTER">Basic</option>
             <option value="PRO">Pro</option>
             <option value="ENTERPRISE">Enterprise</option>
           </select>
