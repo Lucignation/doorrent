@@ -2277,6 +2277,65 @@ tbody tr:hover td { background: var(--surface2); cursor: pointer; }
 .checkbox-wrap input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
 .checkbox-wrap label { font-size: 13px; color: var(--ink); cursor: pointer; }
 
+.switch {
+  position: relative;
+  display: inline-flex;
+  width: 46px;
+  height: 28px;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.switch input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  margin: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--border2);
+  transition: var(--transition);
+  box-shadow: inset 0 0 0 1px rgba(26,25,22,0.06);
+}
+
+.switch-slider::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(26,25,22,0.18);
+  transition: var(--transition);
+}
+
+.switch input:checked + .switch-slider {
+  background: var(--accent);
+}
+
+.switch input:checked + .switch-slider::before {
+  transform: translateX(18px);
+}
+
+.switch input:focus-visible + .switch-slider {
+  outline: 2px solid var(--accent2);
+  outline-offset: 2px;
+}
+
+.switch input:disabled + .switch-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .sidebar { position: fixed; left: -100%; z-index: 50; transition: var(--transition); }
   .sidebar.mobile-open { left: 0; box-shadow: var(--shadow-lg); }

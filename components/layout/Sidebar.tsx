@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { LOGO_PATH } from "../../lib/site";
 import type { WorkspaceBranding } from "../../lib/branding";
@@ -42,6 +43,7 @@ export default function Sidebar({
   const isLandlordRoute = router.pathname.startsWith("/landlord");
   const isAdminRoute = router.pathname.startsWith("/admin");
   const isCaretakerRoute = router.pathname.startsWith("/caretaker");
+  const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const signOutHref = isTenantRoute
     ? "/tenant/login"
     : isAdminRoute
@@ -51,7 +53,7 @@ export default function Sidebar({
         : "/portal";
   const brandName = resolveBrandDisplayName(branding, "DoorRent");
   const customBrandLogoUrl = resolveBrandLogoUrl(branding, "");
-  const hasCustomLogo = Boolean(customBrandLogoUrl);
+  const hasCustomLogo = Boolean(customBrandLogoUrl) && !logoLoadFailed;
   const brandLogoUrl = hasCustomLogo ? customBrandLogoUrl : LOGO_PATH;
   const brandInitials = brandName
     .split(/\s+/)
@@ -60,6 +62,10 @@ export default function Sidebar({
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  useEffect(() => {
+    setLogoLoadFailed(false);
+  }, [customBrandLogoUrl]);
 
   function handleSignOut() {
     onNavigate();
@@ -97,6 +103,7 @@ export default function Sidebar({
                 src={brandLogoUrl}
                 alt={`${brandName} logo`}
                 className="logo-image"
+                onError={() => setLogoLoadFailed(true)}
               />
             ) : (
               <span className="logo-mark" aria-hidden="true">
