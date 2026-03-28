@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "check:mobile-no-alerts": "node scripts/check-mobile-no-alerts.mjs"
+    "check:mobile-no-alerts": "node scripts/check-mobile-no-alerts.mjs",
+    "qa:critical": "npm --prefix api run build && node --import ./api/node_modules/tsx/dist/esm/index.mjs ./scripts/critical-qa.ts",
+    "qa:web": "playwright test",
+    "qa:web:headed": "playwright test --headed"
   },
   "dependencies": {
     "next": "^14.2.0",
@@ -15,6 +18,7 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/node": "20.19.37",
     "@types/react": "18.3.28",
     "@types/react-dom": "18.3.7",

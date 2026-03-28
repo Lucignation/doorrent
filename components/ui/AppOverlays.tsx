@@ -65,7 +65,14 @@ interface UnitLookupResponse {
 interface TenantInvitationLookupResponse {
   formOptions: {
     properties: Array<{ id: string; name: string }>;
-    vacantUnits: Array<{ id: string; propertyId: string; label: string }>;
+    vacantUnits: Array<{
+      id: string;
+      propertyId: string;
+      label: string;
+      billingFrequency?: string;
+      billingCyclePrice?: number | null;
+      annualRent?: number | null;
+    }>;
     templates: Array<{ id: string; name: string }>;
   };
 }
@@ -374,12 +381,22 @@ export default function AppOverlays() {
     tenantSession?.token,
   ]);
 
-  const filteredInviteUnits = useMemo(
+  const filteredInviteUnits = useMemo(() => {
+    if (!invitationForm.propertyId) {
+      return [];
+    }
+
+    return (invitationLookup?.formOptions.vacantUnits ?? []).filter(
+      (unit) => unit.propertyId === invitationForm.propertyId,
+    );
+  }, [invitationForm.propertyId, invitationLookup?.formOptions.vacantUnits]);
+
+  const selectedInviteUnit = useMemo(
     () =>
-      (invitationLookup?.formOptions.vacantUnits ?? []).filter(
-        (unit) => !invitationForm.propertyId || unit.propertyId === invitationForm.propertyId,
+      (invitationLookup?.formOptions.vacantUnits ?? []).find(
+        (unit) => unit.id === invitationForm.unitId,
       ),
-    [invitationForm.propertyId, invitationLookup?.formOptions.vacantUnits],
+    [invitationForm.unitId, invitationLookup?.formOptions.vacantUnits],
   );
 
   const filteredAgreementUnits = useMemo(
@@ -397,6 +414,36 @@ export default function AppOverlays() {
       ),
     [agreementForm.tenantId, agreementLookup?.formOptions.tenants],
   );
+
+  useEffect(() => {
+    if (!selectedInviteUnit) {
+      return;
+    }
+
+    const billingFrequency =
+      (selectedInviteUnit.billingFrequency?.toLowerCase() as BillingFrequency) ??
+      invitationForm.billingFrequency;
+    const annualEquivalent =
+      selectedInviteUnit.annualRent && selectedInviteUnit.annualRent > 0
+        ? selectedInviteUnit.annualRent
+        : annualEquivalentFromBilling(
+            selectedInviteUnit.billingCyclePrice ?? 0,
+            billingFrequency,
+          );
+
+    setInvitationAnnualEquivalent(annualEquivalent);
+    setInvitationForm((current) => ({
+      ...current,
+      propertyId: selectedInviteUnit.propertyId,
+      billingFrequency,
+      billingCyclePrice: annualEquivalent
+        ? formatBillingCyclePriceInput(annualEquivalent, billingFrequency)
+        : current.billingCyclePrice,
+    }));
+  }, [
+    invitationForm.billingFrequency,
+    selectedInviteUnit,
+  ]);
 
   useEffect(() => {
     if (!selectedAgreementTenant) {
@@ -709,16 +756,6 @@ export default function AppOverlays() {
         ? formatBillingCyclePriceInput(annualEquivalent, nextFrequency)
         : current.billingCyclePrice,
     }));
-  }
-
-  function handleInvitationBillingCyclePriceChange(nextValue: string) {
-    setInvitationForm((current) => ({
-      ...current,
-      billingCyclePrice: nextValue,
-    }));
-    setInvitationAnnualEquivalent(
-      deriveAnnualEquivalentValue(nextValue, invitationForm.billingFrequency),
-    );
   }
 
   function handleAgreementBillingFrequencyChange(nextFrequency: BillingFrequency) {
@@ -1604,13 +1641,15 @@ export default function AppOverlays() {
                   <select
                     className="form-input"
                     value={invitationForm.propertyId}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      setInvitationAnnualEquivalent(null);
                       setInvitationForm((current) => ({
                         ...current,
                         propertyId: event.target.value,
                         unitId: "",
-                      }))
-                    }
+                        billingCyclePrice: "",
+                      }));
+                    }}
                   >
                     <option value="">Select property</option>
                     {(invitationLookup?.formOptions.properties ?? []).map((property) => (
@@ -1625,12 +1664,23 @@ export default function AppOverlays() {
                   <select
                     className="form-input"
                     value={invitationForm.unitId}
-                    onChange={(event) =>
+                    disabled={!invitationForm.propertyId}
+                    onChange={(event) => {
+                      if (!event.target.value) {
+                        setInvitationAnnualEquivalent(null);
+                        setInvitationForm((current) => ({
+                          ...current,
+                          unitId: "",
+                          billingCyclePrice: "",
+                        }));
+                        return;
+                      }
+
                       setInvitationForm((current) => ({
                         ...current,
                         unitId: event.target.value,
-                      }))
-                    }
+                      }));
+                    }}
                   >
                     <option value="">Select unit</option>
                     {filteredInviteUnits.map((unit) => (
@@ -1695,9 +1745,7 @@ export default function AppOverlays() {
                     type="number"
                     placeholder="2160000"
                     value={invitationForm.billingCyclePrice}
-                    onChange={(event) =>
-                      handleInvitationBillingCyclePriceChange(event.target.value)
-                    }
+                    disabled
                   />
                   {invitationForm.billingCyclePrice ? (
                     <div className="td-muted" style={{ marginTop: 6 }}>
