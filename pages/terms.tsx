@@ -50,8 +50,9 @@ export default function TermsPage({
       <section>
         <h2>2. Roles on the Platform</h2>
         <p>
-          <strong>Landlords</strong> create and manage portfolio records, tenancy workflows,
-          notices, payments, agreements, and team access.
+          <strong>Workspace owners and authorised team members</strong> create and manage
+          portfolio records, tenancy workflows, notices, payments, agreements, branding,
+          subscription settings, and any role-based access granted inside the workspace.
         </p>
         <p>
           <strong>Tenants</strong> access rent, receipts, agreements, notices, meetings, and
@@ -93,8 +94,8 @@ export default function TermsPage({
         <h2>5. Platform Content and Customer Data</h2>
         <p>
           Landlords are responsible for the accuracy and legal basis of the property, unit,
-          tenant, payment, notice, and agreement information they upload or generate in the
-          platform.
+          tenant, payment, notice, agreement, emergency-contact, and workspace-branding
+          information they upload or generate in the platform.
         </p>
         <p>
           DoorRent provides workflow tools and document templates, but DoorRent is not a law
@@ -106,12 +107,23 @@ export default function TermsPage({
       <section>
         <h2>6. Billing, Plans, and Fees</h2>
         <p>
-          DoorRent currently supports subscription-based and commission-based commercial
-          arrangements. Pricing, billing intervals, and feature access may vary by plan.
+          DoorRent currently supports three commercial plans:
+        </p>
+        <ul>
+          <li><strong>Basic</strong>: ₦8,500 per month.</li>
+          <li><strong>Pro</strong>: commission-based pricing at 3% of rent collected.</li>
+          <li><strong>Enterprise</strong>: ₦200,000 per month with guided onboarding.</li>
+        </ul>
+        <p>
+          Feature access varies by plan. Enterprise features such as staff logins with
+          permissions, company-owned Paystack collections, white-label public pages, and
+          branded subdomains are only available while the workspace is on an eligible plan.
         </p>
         <p>
-          Payments authorise us and our payment partners to collect applicable charges. Refund
-          handling is described in the <a href="/refund-policy">Refund Policy</a>.
+          Payments authorise us and our payment partners to collect applicable charges.
+          Subscription cancellations take effect at the end of the current billing period,
+          not immediately. Refund handling is described in the{" "}
+          <a href="/refund-policy">Refund Policy</a>.
         </p>
       </section>
 
@@ -126,7 +138,9 @@ export default function TermsPage({
           Where landlords upload tenant or caretaker data, landlords remain responsible for
           having an appropriate legal basis and for complying with applicable tenancy and data
           protection laws in their jurisdiction, including the Nigeria Data Protection Act
-          where applicable.
+          where applicable. Where a workspace uses branded public pages or a branded subdomain,
+          the workspace operator is also responsible for the accuracy of the public support,
+          legal, and company information shown there.
         </p>
       </section>
 
@@ -158,7 +172,8 @@ export default function TermsPage({
         <p>
           DoorRent is provided on an "as available" basis. We work to maintain reliability and
           security but do not guarantee uninterrupted service, perfect accuracy of user-supplied
-          records, or suitability for every legal or operational workflow.
+          records, processor availability, third-party meeting availability, or suitability for
+          every legal or operational workflow.
         </p>
         <p>
           To the maximum extent permitted by law, indirect, incidental, and consequential losses

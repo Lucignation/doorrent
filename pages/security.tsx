@@ -44,6 +44,8 @@ export default function SecurityPage({
           <li>Authenticated landlord, tenant, caretaker, and internal operations sessions.</li>
           <li>Password hashing, one-time codes, and time-limited magic-link workflows.</li>
           <li>Role-scoped access controls across protected product areas.</li>
+          <li>Biometric unlock on supported mobile experiences.</li>
+          <li>Workspace-aware login controls for branded subdomains and scoped access surfaces.</li>
           <li>Session invalidation when accounts are deleted.</li>
         </ul>
       </section>
@@ -55,6 +57,10 @@ export default function SecurityPage({
           reduce abuse, unauthorised access, and avoidable data exposure. Access to production
           tooling is limited to authorised personnel who require it to operate the service.
         </p>
+        <p>
+          Sensitive processor credentials and reusable billing authorisations are stored using
+          application-level protection controls and are not exposed through public product flows.
+        </p>
       </section>
 
       <section>
@@ -63,6 +69,11 @@ export default function SecurityPage({
           DoorRent relies on carefully selected providers for infrastructure, email, and payment
           processing. Those providers maintain their own security and compliance programs, and we
           use them only for the portions of the workflow they are intended to support.
+        </p>
+        <p>
+          Some workflows may also depend on third-party meeting, messaging, push-notification, or
+          payment services. Their availability and security posture remain subject to their own
+          policies and platform controls.
         </p>
       </section>
 

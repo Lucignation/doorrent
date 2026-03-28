@@ -83,6 +83,11 @@ export default function AccountDeletionPage({
           active sessions are removed, and related portal-level data is deleted or detached based
           on the underlying record type.
         </p>
+        <p>
+          If a workspace had branded public pages or a branded subdomain, those public surfaces
+          may stop resolving once the workspace is deleted or otherwise becomes ineligible for
+          those features.
+        </p>
       </section>
 
       <section>
@@ -108,6 +113,11 @@ export default function AccountDeletionPage({
         <p>
           Deleting an account does not automatically cancel or reverse past charges. Refunds and
           billing questions are handled under the <Link href="/refund-policy">Refund Policy</Link>.
+        </p>
+        <p>
+          Where a subscription is cancelled before deletion, the workspace normally remains active
+          until the end of the current paid billing period unless law or fraud-related action
+          requires earlier suspension.
         </p>
       </section>
 

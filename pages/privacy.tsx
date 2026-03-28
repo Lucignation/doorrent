@@ -35,12 +35,14 @@ export default function PrivacyPage({
         <p>
           We collect information you provide directly, including account identity details,
           contact information, tenancy records, property records, notices, agreements, payment
-          metadata, support requests, and communication preferences.
+          metadata, support requests, communication preferences, workspace-branding settings,
+          public legal-page details, emergency contacts, and staff-role assignments where
+          available.
         </p>
         <p>
           We also collect technical and security data such as session activity, device/browser
-          information, IP address, timestamps, and logs required to keep the service available,
-          secure, and auditable.
+          information, IP address, timestamps, login and session history, push-device records,
+          and logs required to keep the service available, secure, and auditable.
         </p>
       </section>
 
@@ -49,7 +51,7 @@ export default function PrivacyPage({
         <ul>
           <li>To provide landlord, tenant, caretaker, and internal platform operations functionality.</li>
           <li>To authenticate users and secure accounts.</li>
-          <li>To process payments, receipts, notices, reminders, and agreements.</li>
+          <li>To process payments, receipts, notices, reminders, agreements, meetings, and emergency workflows.</li>
           <li>To improve reliability, support, abuse prevention, and fraud monitoring.</li>
           <li>To send transactional emails, verification messages, and service updates.</li>
           <li>To comply with legal obligations, resolve disputes, and enforce our policies.</li>
@@ -60,13 +62,20 @@ export default function PrivacyPage({
         <h2>3. How Information Is Shared</h2>
         <p>
           We share data only where needed to operate the service, including with infrastructure,
-          email, payment, and other service providers acting on our instructions, and with
-          counterparties inside the product as required by a tenancy workflow.
+          email, SMS, push-notification, payment, and other service providers acting on our
+          instructions, and with counterparties inside the product as required by a tenancy
+          workflow.
         </p>
         <p>
           For example, tenants may receive landlord-generated notices or agreements, caretakers
-          may access records within assigned scopes, and payment providers may process billing
-          data needed to complete transactions.
+          may access records within assigned scopes, invited staff may access only the modules
+          and permissions granted to them, and payment providers may process billing data needed
+          to complete transactions.
+        </p>
+        <p>
+          On Enterprise workspaces using company-owned Paystack collections, payment details
+          required to process a tenant payment may be handled directly by the workspace’s own
+          Paystack account in addition to DoorRent’s platform records.
         </p>
       </section>
 
@@ -96,7 +105,16 @@ export default function PrivacyPage({
       </section>
 
       <section>
-        <h2>6. Security</h2>
+        <h2>6. Public Workspace Pages and Branding</h2>
+        <p>
+          If a workspace enables branded public pages, a branded subdomain, or custom legal-page
+          details, the workspace’s display name, logo, support contact, and legal address may be
+          published on those pages for visitors, tenants, or counterparties using that workspace.
+        </p>
+      </section>
+
+      <section>
+        <h2>7. Security</h2>
         <p>
           We use management, technical, and organisational controls designed to protect
           personal data. More detail is available in the <a href="/security">Security</a> page.
@@ -104,7 +122,7 @@ export default function PrivacyPage({
       </section>
 
       <section>
-        <h2>7. Your Choices and Rights</h2>
+        <h2>8. Your Choices and Rights</h2>
         <p>
           Subject to applicable law, you may request access, correction, deletion, or restriction
           of personal information. You may also update profile information directly in supported
@@ -117,7 +135,7 @@ export default function PrivacyPage({
       </section>
 
       <section>
-        <h2>8. International Transfers</h2>
+        <h2>9. International Transfers</h2>
         <p>
           DoorRent may rely on service providers located in multiple jurisdictions. Where data is
           transferred across borders, we apply reasonable contractual and operational safeguards
@@ -126,7 +144,7 @@ export default function PrivacyPage({
       </section>
 
       <section>
-        <h2>9. Children's Privacy</h2>
+        <h2>10. Children's Privacy</h2>
         <p>
           {LEGAL_PRODUCT_NAME} is built for adult tenancy and property-management workflows and is
           not directed to children. Do not use the platform to knowingly submit children's
@@ -136,7 +154,7 @@ export default function PrivacyPage({
       </section>
 
       <section>
-        <h2>10. Contact</h2>
+        <h2>11. Contact</h2>
         <p>
           Privacy questions and requests should be sent to{" "}
           <a href={`mailto:${legal.privacyEmail}`}>{legal.privacyEmail}</a>.

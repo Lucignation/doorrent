@@ -39,24 +39,32 @@ export default function RefundPolicyPage({
       </section>
 
       <section>
-        <h2>2. Basic Subscription Fees</h2>
+        <h2>2. Subscription Fees</h2>
         <p>
-          Monthly or yearly subscription charges are billed in advance. Unless required by law,
-          paid subscription periods are generally non-refundable once access to that billing
-          period has started.
+          Subscription charges for <strong>Basic</strong> and <strong>Enterprise</strong> are
+          billed in advance on a monthly basis. Unless required by law, paid subscription
+          periods are generally non-refundable once access to that billing period has started.
         </p>
         <p>
           We may review refund requests for duplicate charges, accidental multiple renewals, or
           platform-side billing errors reported promptly.
         </p>
+        <p>
+          If you cancel a subscription, the cancellation applies at the end of the current paid
+          billing period. Cancellation does not create an automatic refund for the active month.
+        </p>
       </section>
 
       <section>
-        <h2>3. Commission-Based Fees</h2>
+        <h2>3. Pro Commission Fees</h2>
         <p>
-          Commission-based fees tied to successfully processed payments are generally non-refundable
+          Pro plan fees tied to successfully processed rent payments are generally non-refundable
           once the underlying payment has been completed and settled, except where we determine
           the charge was made in error.
+        </p>
+        <p>
+          Chargebacks, reversals, or processor disputes may require a case-by-case review based
+          on the underlying payment evidence and the payment processor’s final outcome.
         </p>
       </section>
 
@@ -76,6 +84,7 @@ export default function RefundPolicyPage({
           <li>Change of mind after a billing cycle has started.</li>
           <li>Failure to use the service after purchase or renewal.</li>
           <li>Misconfiguration, incomplete onboarding, or data-entry mistakes by the customer.</li>
+          <li>Guided onboarding effort already provided for Enterprise after activation.</li>
           <li>Charges correctly applied under the selected plan or commercial model.</li>
         </ul>
       </section>
@@ -97,7 +106,9 @@ export default function RefundPolicyPage({
         <p>
           We aim to acknowledge billing requests within 3 business days and provide a decision as
           quickly as the available payment and account evidence allows. Approved refunds are sent
-          back through the original payment channel where possible.
+          back through the original payment channel where possible. Where a workspace uses its
+          own payment processor account, the final processor timeline may depend on that
+          provider’s own rules and settlement process.
         </p>
       </section>
 
