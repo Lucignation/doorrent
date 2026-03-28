@@ -292,7 +292,7 @@ export default function LandlordMeetingsPage() {
           description={description}
         />
 
-        <div className="stats-grid" style={{ gridTemplateColumns: "repeat(4,1fr)", marginBottom: 16 }}>
+        <div className="meeting-stats-grid">
           <div className="stat-card accent-blue">
             <div className="stat-label">Total</div>
             <div className="stat-value">{meetingData?.summary.total ?? 0}</div>
@@ -322,9 +322,9 @@ export default function LandlordMeetingsPage() {
             return (
               <div key={meeting.id} className="card">
                 <div className="card-body">
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <div className="meeting-card-header">
+                    <div className="meeting-card-copy">
+                      <div className="meeting-title-row">
                         <h3 style={{ fontSize: 16, fontWeight: 600 }}>{meeting.title}</h3>
                         <StatusBadge tone={statusTone(meeting.status)}>
                           {meeting.status}
@@ -334,18 +334,7 @@ export default function LandlordMeetingsPage() {
                         {meeting.agenda || "No agenda was supplied by the tenant."}
                       </div>
                     </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        padding: 12,
-                        borderRadius: "var(--radius)",
-                        border: "1px solid var(--border)",
-                        background: "var(--surface2)",
-                        minWidth: 220,
-                      }}
-                    >
+                    <div className="meeting-requester-card">
                       <div
                         style={{
                           width: 40,
@@ -442,11 +431,11 @@ export default function LandlordMeetingsPage() {
                     />
                   </div>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-                    <div style={{ fontSize: 12, color: "var(--ink3)" }}>
+                  <div className="meeting-action-row">
+                    <div className="meeting-meta-line">
                       {meeting.audienceLabel} · {meeting.providerLabel} · {meeting.participantCount} participant(s)
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div className="meeting-action-buttons">
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
@@ -496,6 +485,126 @@ export default function LandlordMeetingsPage() {
             </div>
           ) : null}
         </div>
+        <style jsx>{`
+          .meeting-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+          }
+
+          .meeting-card-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 16px;
+            align-items: flex-start;
+          }
+
+          .meeting-card-copy {
+            flex: 1;
+            min-width: 0;
+          }
+
+          .meeting-title-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+          }
+
+          .meeting-requester-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            min-width: 220px;
+            max-width: 100%;
+          }
+
+          .meeting-action-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+          }
+
+          .meeting-meta-line {
+            font-size: 12px;
+            color: var(--ink3);
+            line-height: 1.6;
+            flex: 1;
+            min-width: 180px;
+          }
+
+          .meeting-action-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+          }
+
+          @media (max-width: 960px) {
+            .meeting-stats-grid {
+              grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .meeting-card-header {
+              flex-direction: column;
+            }
+
+            .meeting-requester-card {
+              min-width: 0;
+              width: 100%;
+            }
+          }
+
+          @media (max-width: 640px) {
+            .meeting-stats-grid {
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+            }
+
+            .meeting-action-row {
+              flex-direction: column;
+              align-items: stretch;
+            }
+
+            .meeting-meta-line {
+              min-width: 0;
+            }
+
+            .meeting-action-buttons {
+              width: 100%;
+              display: grid;
+              grid-template-columns: 1fr;
+            }
+
+            .meeting-action-buttons :global(.btn) {
+              width: 100%;
+              justify-content: center;
+            }
+          }
+
+          @media (max-width: 480px) {
+            .meeting-stats-grid {
+              grid-template-columns: 1fr;
+            }
+
+            .meeting-card-header {
+              gap: 12px;
+            }
+
+            .meeting-requester-card {
+              padding: 10px;
+            }
+          }
+        `}</style>
       </LandlordPortalShell>
     </>
   );

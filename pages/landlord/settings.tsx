@@ -41,6 +41,7 @@ interface LandlordSettingsResponse {
   };
   subscription: {
     plan: string;
+    planKey?: string | null;
     planDescription: string;
     price: string;
     nextBilling: string;
@@ -56,6 +57,24 @@ interface LandlordSettingsResponse {
     renewalFailureMessage?: string | null;
     authorizationHint?: string | null;
     commissionRatePercent?: number;
+    availablePlanChanges?: Array<{
+      planKey: "PRO" | "ENTERPRISE";
+      plan: string;
+      description: string;
+      price: string;
+      billingModel: "commission" | "subscription";
+      billingInterval: "per_payment" | "monthly";
+      requiresCheckout: boolean;
+      ctaLabel: string;
+    }>;
+    pendingPlanChange?: {
+      planKey: string;
+      plan: string;
+      price: string;
+      requiresCheckout: boolean;
+      checkoutUrl?: string | null;
+      requestedAt?: string | null;
+    } | null;
   };
   payout: {
     bankId?: string | null;
@@ -307,8 +326,9 @@ export default function LandlordSettingsPage() {
   const [invitingMember, setInvitingMember] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [subscriptionAction, setSubscriptionAction] = useState<
-    "renew" | "cancel" | "resume" | null
+    "renew" | "cancel" | "resume" | "upgrade" | null
   >(null);
+  const [showPlanOptions, setShowPlanOptions] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [availableBanks, setAvailableBanks] = useState<PayoutBanksResponse["banks"]>([]);
   const [loadingBanks, setLoadingBanks] = useState(false);
@@ -1031,6 +1051,61 @@ export default function LandlordSettingsPage() {
     }
   }
 
+  async function handlePlanUpgrade(targetPlan: "PRO" | "ENTERPRISE") {
+    if (!landlordSession?.token || subscriptionAction) {
+      return;
+    }
+
+    setSubscriptionAction("upgrade");
+
+    try {
+      const response = await apiRequest<{
+        subscription: LandlordSettingsResponse["subscription"];
+        checkout: {
+          authorizationUrl: string;
+          reference: string;
+        } | null;
+      }>("/landlord/settings/subscription/upgrade", {
+        method: "POST",
+        token: landlordSession.token,
+        body: JSON.stringify({
+          plan: targetPlan,
+        }),
+      });
+
+      setSettings((current) =>
+        current
+          ? {
+              ...current,
+              subscription: response.data.subscription,
+            }
+          : current,
+      );
+      refreshData();
+      setShowPlanOptions(false);
+      showToast(
+        response.message ||
+          (response.data.checkout
+            ? "Upgrade checkout ready"
+            : "Workspace plan updated successfully."),
+        "success",
+      );
+
+      if (response.data.checkout?.authorizationUrl) {
+        window.location.href = response.data.checkout.authorizationUrl;
+      }
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not change your plan right now.",
+        "error",
+      );
+    } finally {
+      setSubscriptionAction(null);
+    }
+  }
+
   async function handleCancelSubscriptionAtPeriodEnd() {
     if (!landlordSession?.token || subscriptionAction) {
       return;
@@ -1594,10 +1669,122 @@ export default function LandlordSettingsPage() {
                   }}
                 >
                   <span>Next billing: {settings?.subscription.nextBilling ?? "—"}</span>
-                  <button type="button" className="btn btn-secondary btn-xs">
-                    Upgrade Plan
-                  </button>
+                  {settings?.subscription.availablePlanChanges?.length ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-xs"
+                      onClick={() => setShowPlanOptions((current) => !current)}
+                    >
+                      {showPlanOptions ? "Hide Plan Options" : "Upgrade Plan"}
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 12, color: "var(--ink3)" }}>
+                      {settings?.subscription.planKey === "ENTERPRISE"
+                        ? "You’re on the highest plan."
+                        : "No upgrade options available."}
+                    </span>
+                  )}
                 </div>
+                {settings?.subscription.pendingPlanChange ? (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: 12,
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid rgba(26, 115, 232, 0.18)",
+                      background: "rgba(26, 115, 232, 0.06)",
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 600, color: "var(--blue)" }}>
+                      Pending plan change: {settings.subscription.pendingPlanChange.plan}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--ink2)", lineHeight: 1.7 }}>
+                      {settings.subscription.pendingPlanChange.price}
+                      {settings.subscription.pendingPlanChange.requestedAt
+                        ? ` requested on ${formatSubscriptionDate(settings.subscription.pendingPlanChange.requestedAt)}`
+                        : ""}
+                    </div>
+                    {settings.subscription.pendingPlanChange.checkoutUrl ? (
+                      <a
+                        href={settings.subscription.pendingPlanChange.checkoutUrl}
+                        className="btn btn-secondary btn-xs"
+                        style={{ width: "fit-content" }}
+                      >
+                        Continue Checkout
+                      </a>
+                    ) : null}
+                  </div>
+                ) : null}
+                {showPlanOptions && settings?.subscription.availablePlanChanges?.length ? (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      display: "grid",
+                      gap: 12,
+                    }}
+                  >
+                    {settings.subscription.availablePlanChanges.map((option) => (
+                      <div
+                        key={option.planKey}
+                        style={{
+                          padding: 14,
+                          borderRadius: "var(--radius-sm)",
+                          border: "1px solid rgba(23, 28, 24, 0.08)",
+                          background: "#fff",
+                          display: "grid",
+                          gap: 10,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            gap: 16,
+                          }}
+                        >
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)" }}>
+                              {option.plan}
+                            </div>
+                            <div style={{ fontSize: 12, color: "var(--ink2)", lineHeight: 1.7 }}>
+                              {option.description}
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: option.requiresCheckout ? "var(--gold-dark)" : "var(--accent)",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {option.price}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink3)" }}>
+                          {option.requiresCheckout
+                            ? "A Paystack checkout opens and the new plan activates after payment is verified."
+                            : "No upfront payment. Your workspace switches immediately and DoorRent applies commission on rent collected."}
+                        </div>
+                        <div>
+                          <button
+                            type="button"
+                            className="btn btn-primary btn-xs"
+                            disabled={subscriptionAction !== null}
+                            onClick={() => void handlePlanUpgrade(option.planKey)}
+                          >
+                            {subscriptionAction === "upgrade"
+                              ? "Starting..."
+                              : option.ctaLabel}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 {canManageSubscriptionLifecycle ? (
                   <div
                     style={{

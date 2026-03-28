@@ -49,6 +49,17 @@ export default function Sidebar({
       : isCaretakerRoute
         ? "/caretaker/login"
         : "/portal";
+  const brandName = resolveBrandDisplayName(branding, "DoorRent");
+  const customBrandLogoUrl = resolveBrandLogoUrl(branding, "");
+  const hasCustomLogo = Boolean(customBrandLogoUrl);
+  const brandLogoUrl = hasCustomLogo ? customBrandLogoUrl : LOGO_PATH;
+  const brandInitials = brandName
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   function handleSignOut() {
     onNavigate();
@@ -80,13 +91,21 @@ export default function Sidebar({
     <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
       <div className="sidebar-header">
         <Link href={homeHref} className="sidebar-logo" onClick={onNavigate}>
-          <img
-            src={resolveBrandLogoUrl(branding, LOGO_PATH)}
-            alt={`${resolveBrandDisplayName(branding, "DoorRent")} logo`}
-            className="logo-image"
-          />
+          <span className="sidebar-logo-frame">
+            {hasCustomLogo ? (
+              <img
+                src={brandLogoUrl}
+                alt={`${brandName} logo`}
+                className="logo-image"
+              />
+            ) : (
+              <span className="logo-mark" aria-hidden="true">
+                {brandInitials || "DR"}
+              </span>
+            )}
+          </span>
           <span className="logo-name">
-            {resolveBrandDisplayName(branding, "DoorRent")}
+            {brandName}
           </span>
         </Link>
         <button
