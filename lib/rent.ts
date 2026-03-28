@@ -65,6 +65,41 @@ export function annualEquivalentFromBilling(
   return amount;
 }
 
+export function billingCyclePriceFromAnnualEquivalent(
+  annualAmount: number,
+  frequency?: string | null,
+) {
+  const billingFrequency = normalizeBillingFrequency(frequency);
+
+  if (!Number.isFinite(annualAmount) || annualAmount <= 0) {
+    return 0;
+  }
+
+  const convertedAmount =
+    billingFrequency === "daily"
+      ? annualAmount / 365
+      : billingFrequency === "monthly"
+        ? annualAmount / 12
+        : annualAmount;
+
+  return Math.round(convertedAmount * 100) / 100;
+}
+
+export function formatBillingCyclePriceInput(
+  annualAmount: number,
+  frequency?: string | null,
+) {
+  const convertedAmount = billingCyclePriceFromAnnualEquivalent(annualAmount, frequency);
+
+  if (!convertedAmount) {
+    return "";
+  }
+
+  return Number.isInteger(convertedAmount)
+    ? `${convertedAmount}`
+    : `${convertedAmount}`;
+}
+
 export function monthlyEquivalentFromBilling(
   amount: number,
   frequency?: string | null,

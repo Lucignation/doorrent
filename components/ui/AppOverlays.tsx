@@ -7,6 +7,7 @@ import { apiRequest } from "../../lib/api";
 import {
   annualEquivalentFromBilling,
   type BillingFrequency,
+  formatBillingCyclePriceInput,
   formatBillingSchedule,
   formatNaira,
   monthlyEquivalentFromBilling,
@@ -148,6 +149,16 @@ function pricingHelperText(value: string, frequency: BillingFrequency) {
   )}`;
 }
 
+function deriveAnnualEquivalentValue(value: string, frequency: BillingFrequency) {
+  const parsed = Number(value);
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return annualEquivalentFromBilling(parsed, frequency);
+}
+
 function readTextFile(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -257,6 +268,7 @@ export default function AppOverlays() {
     status: "VACANT",
     meterNumber: "",
   });
+  const [unitAnnualEquivalent, setUnitAnnualEquivalent] = useState<number | null>(null);
   const [savingUnit, setSavingUnit] = useState(false);
 
   const [invitationLookup, setInvitationLookup] =
@@ -274,6 +286,9 @@ export default function AppOverlays() {
     depositAmount: "",
     message: "",
   });
+  const [invitationAnnualEquivalent, setInvitationAnnualEquivalent] = useState<number | null>(
+    null,
+  );
   const [savingInvitation, setSavingInvitation] = useState(false);
 
   const [agreementLookup, setAgreementLookup] =
@@ -304,6 +319,9 @@ export default function AppOverlays() {
     notes: "",
     sendNow: true,
   });
+  const [agreementAnnualEquivalent, setAgreementAnnualEquivalent] = useState<number | null>(
+    null,
+  );
   const [agreementStep, setAgreementStep] = useState(1);
   const [savingAgreement, setSavingAgreement] = useState(false);
 
@@ -385,13 +403,25 @@ export default function AppOverlays() {
       return;
     }
 
+    const billingFrequency =
+      (selectedAgreementTenant.billingFrequency?.toLowerCase() as BillingFrequency) ??
+      agreementForm.billingFrequency;
+    const annualEquivalent =
+      selectedAgreementTenant.annualRent && selectedAgreementTenant.annualRent > 0
+        ? selectedAgreementTenant.annualRent
+        : annualEquivalentFromBilling(
+            selectedAgreementTenant.billingCyclePrice ??
+              selectedAgreementTenant.monthlyRent ??
+              selectedAgreementTenant.rentAmount ??
+              0,
+            billingFrequency,
+          );
+
     setAgreementForm((current) => ({
       ...current,
       propertyId: selectedAgreementTenant.propertyId,
       unitId: selectedAgreementTenant.unitId ?? "",
-      billingFrequency:
-        (selectedAgreementTenant.billingFrequency?.toLowerCase() as BillingFrequency) ??
-        current.billingFrequency,
+      billingFrequency,
       title:
         current.title ||
         `Tenancy Agreement - ${
@@ -403,8 +433,9 @@ export default function AppOverlays() {
       leaseEnd: current.leaseEnd || selectedAgreementTenant.leaseEnd.slice(0, 10),
       billingCyclePrice:
         current.billingCyclePrice ||
-        `${selectedAgreementTenant.billingCyclePrice ?? selectedAgreementTenant.annualRent ?? selectedAgreementTenant.monthlyRent ?? selectedAgreementTenant.rentAmount ?? 0}`,
+        formatBillingCyclePriceInput(annualEquivalent, billingFrequency),
     }));
+    setAgreementAnnualEquivalent(annualEquivalent || null);
   }, [selectedAgreementTenant]);
 
   useEffect(() => {
@@ -561,6 +592,7 @@ export default function AppOverlays() {
       status: "VACANT",
       meterNumber: "",
     });
+    setUnitAnnualEquivalent(null);
   }
 
   function resetInvitationForm() {
@@ -577,6 +609,7 @@ export default function AppOverlays() {
       depositAmount: "",
       message: "",
     });
+    setInvitationAnnualEquivalent(null);
   }
 
   function resetAgreementForm() {
@@ -606,6 +639,7 @@ export default function AppOverlays() {
       notes: "",
       sendNow: true,
     });
+    setAgreementAnnualEquivalent(null);
     setAgreementStep(1);
   }
 
@@ -634,6 +668,85 @@ export default function AppOverlays() {
     }
 
     return "var(--green)";
+  }
+
+  function handleUnitBillingFrequencyChange(nextFrequency: BillingFrequency) {
+    const annualEquivalent =
+      unitAnnualEquivalent ??
+      deriveAnnualEquivalentValue(unitForm.billingCyclePrice, unitForm.billingFrequency);
+
+    setUnitAnnualEquivalent(annualEquivalent);
+    setUnitForm((current) => ({
+      ...current,
+      billingFrequency: nextFrequency,
+      billingCyclePrice: annualEquivalent
+        ? formatBillingCyclePriceInput(annualEquivalent, nextFrequency)
+        : current.billingCyclePrice,
+    }));
+  }
+
+  function handleUnitBillingCyclePriceChange(nextValue: string) {
+    setUnitForm((current) => ({
+      ...current,
+      billingCyclePrice: nextValue,
+    }));
+    setUnitAnnualEquivalent(deriveAnnualEquivalentValue(nextValue, unitForm.billingFrequency));
+  }
+
+  function handleInvitationBillingFrequencyChange(nextFrequency: BillingFrequency) {
+    const annualEquivalent =
+      invitationAnnualEquivalent ??
+      deriveAnnualEquivalentValue(
+        invitationForm.billingCyclePrice,
+        invitationForm.billingFrequency,
+      );
+
+    setInvitationAnnualEquivalent(annualEquivalent);
+    setInvitationForm((current) => ({
+      ...current,
+      billingFrequency: nextFrequency,
+      billingCyclePrice: annualEquivalent
+        ? formatBillingCyclePriceInput(annualEquivalent, nextFrequency)
+        : current.billingCyclePrice,
+    }));
+  }
+
+  function handleInvitationBillingCyclePriceChange(nextValue: string) {
+    setInvitationForm((current) => ({
+      ...current,
+      billingCyclePrice: nextValue,
+    }));
+    setInvitationAnnualEquivalent(
+      deriveAnnualEquivalentValue(nextValue, invitationForm.billingFrequency),
+    );
+  }
+
+  function handleAgreementBillingFrequencyChange(nextFrequency: BillingFrequency) {
+    const annualEquivalent =
+      agreementAnnualEquivalent ??
+      deriveAnnualEquivalentValue(
+        agreementForm.billingCyclePrice,
+        agreementForm.billingFrequency,
+      );
+
+    setAgreementAnnualEquivalent(annualEquivalent);
+    setAgreementForm((current) => ({
+      ...current,
+      billingFrequency: nextFrequency,
+      billingCyclePrice: annualEquivalent
+        ? formatBillingCyclePriceInput(annualEquivalent, nextFrequency)
+        : current.billingCyclePrice,
+    }));
+  }
+
+  function handleAgreementBillingCyclePriceChange(nextValue: string) {
+    setAgreementForm((current) => ({
+      ...current,
+      billingCyclePrice: nextValue,
+    }));
+    setAgreementAnnualEquivalent(
+      deriveAnnualEquivalentValue(nextValue, agreementForm.billingFrequency),
+    );
   }
 
   function markAllNotificationsRead() {
@@ -1298,10 +1411,9 @@ export default function AppOverlays() {
                   className="form-input"
                   value={unitForm.billingFrequency}
                   onChange={(event) =>
-                    setUnitForm((current) => ({
-                      ...current,
-                      billingFrequency: event.target.value as BillingFrequency,
-                    }))
+                    handleUnitBillingFrequencyChange(
+                      event.target.value as BillingFrequency,
+                    )
                   }
                 >
                   <option value="daily">Daily</option>
@@ -1316,10 +1428,7 @@ export default function AppOverlays() {
                   type="number"
                   value={unitForm.billingCyclePrice}
                   onChange={(event) =>
-                    setUnitForm((current) => ({
-                      ...current,
-                      billingCyclePrice: event.target.value,
-                    }))
+                    handleUnitBillingCyclePriceChange(event.target.value)
                   }
                 />
                 {unitForm.billingCyclePrice ? (
@@ -1569,10 +1678,9 @@ export default function AppOverlays() {
                     className="form-input"
                     value={invitationForm.billingFrequency}
                     onChange={(event) =>
-                      setInvitationForm((current) => ({
-                        ...current,
-                        billingFrequency: event.target.value as BillingFrequency,
-                      }))
+                      handleInvitationBillingFrequencyChange(
+                        event.target.value as BillingFrequency,
+                      )
                     }
                   >
                     <option value="daily">Daily</option>
@@ -1588,10 +1696,7 @@ export default function AppOverlays() {
                     placeholder="2160000"
                     value={invitationForm.billingCyclePrice}
                     onChange={(event) =>
-                      setInvitationForm((current) => ({
-                        ...current,
-                        billingCyclePrice: event.target.value,
-                      }))
+                      handleInvitationBillingCyclePriceChange(event.target.value)
                     }
                   />
                   {invitationForm.billingCyclePrice ? (
@@ -1827,7 +1932,11 @@ export default function AppOverlays() {
                   <div className="form-group">
                     <label className="form-label">Payment Frequency *</label>
                     <select className="form-input" value={agreementForm.billingFrequency}
-                      onChange={(event) => setAgreementForm((current) => ({ ...current, billingFrequency: event.target.value as BillingFrequency }))}>
+                      onChange={(event) =>
+                        handleAgreementBillingFrequencyChange(
+                          event.target.value as BillingFrequency,
+                        )
+                      }>
                       <option value="monthly">Monthly</option>
                       <option value="yearly">Yearly (Annual)</option>
                       <option value="daily">Daily</option>
@@ -1837,7 +1946,9 @@ export default function AppOverlays() {
                     <label className="form-label">Rent Per Payment Cycle (₦) *</label>
                     <input className="form-input" type="number" placeholder="e.g. 1200000"
                       value={agreementForm.billingCyclePrice}
-                      onChange={(event) => setAgreementForm((current) => ({ ...current, billingCyclePrice: event.target.value }))} />
+                      onChange={(event) =>
+                        handleAgreementBillingCyclePriceChange(event.target.value)
+                      } />
                     {agreementForm.billingCyclePrice ? (
                       <div className="td-muted" style={{ marginTop: 6, fontSize: 12 }}>
                         {pricingHelperText(agreementForm.billingCyclePrice, agreementForm.billingFrequency)}

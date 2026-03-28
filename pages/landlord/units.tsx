@@ -8,6 +8,7 @@ import { apiRequest } from "../../lib/api";
 import {
   annualEquivalentFromBilling,
   type BillingFrequency,
+  formatBillingCyclePriceInput,
   formatBillingSchedule,
   formatNaira,
   monthlyEquivalentFromBilling,
@@ -109,8 +110,19 @@ export default function LandlordUnitsPage() {
     leaseEnd: "",
     meterNumber: "",
   });
+  const [editAnnualEquivalent, setEditAnnualEquivalent] = useState<number | null>(null);
   const [editError, setEditError] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+
+  function deriveAnnualEquivalent(value: string, frequency: BillingFrequency) {
+    const parsed = Number(value);
+
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+
+    return annualEquivalentFromBilling(parsed, frequency);
+  }
 
   useEffect(() => {
     if (!landlordSession?.token) {
@@ -176,17 +188,20 @@ export default function LandlordUnitsPage() {
   }, [dataRefreshVersion, landlordSession?.token, propertyId, refreshNonce, search, status, type]);
 
   function openEditUnit(unit: LandlordUnitRecord) {
+    const billingFrequency = normalizeBillingFrequency(unit.billingFrequency);
+    const annualEquivalent =
+      unit.annualRent && unit.annualRent > 0
+        ? unit.annualRent
+        : annualEquivalentFromBilling(unit.billingCyclePrice ?? 0, billingFrequency);
+
     setEditingUnit(unit);
     setEditError("");
+    setEditAnnualEquivalent(annualEquivalent || null);
     setEditForm({
       unitNumber: unit.unit,
       type: unit.type,
-      billingFrequency: normalizeBillingFrequency(unit.billingFrequency),
-      billingCyclePrice: unit.billingCyclePrice
-        ? String(unit.billingCyclePrice)
-        : unit.annualRent
-          ? String(unit.annualRent)
-          : "",
+      billingFrequency,
+      billingCyclePrice: formatBillingCyclePriceInput(annualEquivalent, billingFrequency),
       leaseEnd: unit.leaseEndIso ? unit.leaseEndIso.slice(0, 10) : "",
       meterNumber: unit.meterNumber ?? "",
     });
@@ -199,6 +214,30 @@ export default function LandlordUnitsPage() {
 
     setEditingUnit(null);
     setEditError("");
+    setEditAnnualEquivalent(null);
+  }
+
+  function handleEditBillingFrequencyChange(nextFrequency: BillingFrequency) {
+    const annualEquivalent =
+      editAnnualEquivalent ??
+      deriveAnnualEquivalent(editForm.billingCyclePrice, editForm.billingFrequency);
+
+    setEditAnnualEquivalent(annualEquivalent);
+    setEditForm((current) => ({
+      ...current,
+      billingFrequency: nextFrequency,
+      billingCyclePrice: annualEquivalent
+        ? formatBillingCyclePriceInput(annualEquivalent, nextFrequency)
+        : current.billingCyclePrice,
+    }));
+  }
+
+  function handleEditBillingCyclePriceChange(nextValue: string) {
+    setEditForm((current) => ({
+      ...current,
+      billingCyclePrice: nextValue,
+    }));
+    setEditAnnualEquivalent(deriveAnnualEquivalent(nextValue, editForm.billingFrequency));
   }
 
   async function submitUnitEdit() {
@@ -483,10 +522,9 @@ export default function LandlordUnitsPage() {
                       className="form-input"
                       value={editForm.billingFrequency}
                       onChange={(event) =>
-                        setEditForm((current) => ({
-                          ...current,
-                          billingFrequency: event.target.value as BillingFrequency,
-                        }))
+                        handleEditBillingFrequencyChange(
+                          event.target.value as BillingFrequency,
+                        )
                       }
                     >
                       <option value="daily">Daily</option>
@@ -503,10 +541,7 @@ export default function LandlordUnitsPage() {
                       step="1000"
                       value={editForm.billingCyclePrice}
                       onChange={(event) =>
-                        setEditForm((current) => ({
-                          ...current,
-                          billingCyclePrice: event.target.value,
-                        }))
+                        handleEditBillingCyclePriceChange(event.target.value)
                       }
                     />
                     <div className="helper-text">
