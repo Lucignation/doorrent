@@ -11,6 +11,7 @@ import {
   formatBillingSchedule,
   formatNaira,
   monthlyEquivalentFromBilling,
+  normalizeBillingFrequency,
 } from "../../lib/rent";
 import type { ModalId } from "../../types/app";
 import type { AgreementPrintData } from "../../lib/agreement-print";
@@ -420,9 +421,7 @@ export default function AppOverlays() {
       return;
     }
 
-    const billingFrequency =
-      (selectedInviteUnit.billingFrequency?.toLowerCase() as BillingFrequency) ??
-      invitationForm.billingFrequency;
+    const billingFrequency = normalizeBillingFrequency(selectedInviteUnit.billingFrequency);
     const annualEquivalent =
       selectedInviteUnit.annualRent && selectedInviteUnit.annualRent > 0
         ? selectedInviteUnit.annualRent
@@ -440,19 +439,16 @@ export default function AppOverlays() {
         ? formatBillingCyclePriceInput(annualEquivalent, billingFrequency)
         : current.billingCyclePrice,
     }));
-  }, [
-    invitationForm.billingFrequency,
-    selectedInviteUnit,
-  ]);
+  }, [selectedInviteUnit]);
 
   useEffect(() => {
     if (!selectedAgreementTenant) {
       return;
     }
 
-    const billingFrequency =
-      (selectedAgreementTenant.billingFrequency?.toLowerCase() as BillingFrequency) ??
-      agreementForm.billingFrequency;
+    const billingFrequency = normalizeBillingFrequency(
+      selectedAgreementTenant.billingFrequency,
+    );
     const annualEquivalent =
       selectedAgreementTenant.annualRent && selectedAgreementTenant.annualRent > 0
         ? selectedAgreementTenant.annualRent
