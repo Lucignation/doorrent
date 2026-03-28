@@ -82,7 +82,9 @@ export function billingCyclePriceFromAnnualEquivalent(
         ? annualAmount / 12
         : annualAmount;
 
-  return Math.round(convertedAmount * 100) / 100;
+  // The API persists rent values in whole naira, so derived billing prices
+  // must stay integer-safe across web and mobile flows.
+  return Math.round(convertedAmount);
 }
 
 export function formatBillingCyclePriceInput(

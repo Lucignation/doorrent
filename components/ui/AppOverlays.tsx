@@ -931,9 +931,9 @@ export default function AppOverlays() {
             leaseStart: invitationForm.leaseStart,
             leaseEnd: invitationForm.leaseEnd,
             billingFrequency: invitationForm.billingFrequency.toUpperCase(),
-            billingCyclePrice: Number(invitationForm.billingCyclePrice),
+            billingCyclePrice: Math.round(Number(invitationForm.billingCyclePrice)),
             depositAmount: invitationForm.depositAmount
-              ? Number(invitationForm.depositAmount)
+              ? Math.round(Number(invitationForm.depositAmount))
               : undefined,
             message: invitationForm.message || undefined,
           },

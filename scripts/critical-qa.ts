@@ -57,8 +57,16 @@ async function main() {
       assert.equal(webRent.billingCyclePriceFromAnnualEquivalent(24, "monthly"), 2);
       assert.equal(webRent.billingCyclePriceFromAnnualEquivalent(3650, "daily"), 10);
       assert.equal(
+        webRent.billingCyclePriceFromAnnualEquivalent(2200000, "daily"),
+        Math.round(2200000 / 365),
+      );
+      assert.equal(
         webRent.formatBillingCyclePriceInput(3400000, "yearly"),
         "3400000",
+      );
+      assert.equal(
+        webRent.formatBillingCyclePriceInput(2200000, "daily"),
+        `${Math.round(2200000 / 365)}`,
       );
 
       const commission = webRent.calculateCommissionPreview({
