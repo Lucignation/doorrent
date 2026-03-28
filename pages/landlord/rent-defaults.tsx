@@ -589,6 +589,39 @@ export default function RentDefaultsPage() {
 
           @media (max-width: 540px) {
             .rd-summary-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+            .rd-modal-backdrop {
+              align-items: flex-end;
+              justify-content: flex-end;
+              padding: 0;
+            }
+
+            .rd-modal {
+              width: 100%;
+              max-height: min(88vh, calc(100dvh - 8px));
+              border-radius: 24px 24px 0 0;
+            }
+
+            .rd-modal-head,
+            .rd-modal-body,
+            .rd-modal-actions {
+              padding-left: 18px;
+              padding-right: 18px;
+            }
+
+            .rd-modal-body {
+              max-height: none;
+              flex: 1 1 auto;
+            }
+
+            .rd-modal-actions {
+              padding-bottom: calc(18px + env(safe-area-inset-bottom));
+              flex-wrap: wrap;
+            }
+
+            .rd-modal-actions > * {
+              flex: 1 1 100%;
+            }
           }
         `}</style>
       </LandlordPortalShell>

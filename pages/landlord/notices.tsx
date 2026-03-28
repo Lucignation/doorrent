@@ -881,8 +881,18 @@ export default function LandlordNoticesPage() {
               grid-template-columns: 1fr 1fr;
             }
 
+            .landlord-notices-modal-backdrop {
+              align-items: flex-end;
+              justify-content: flex-end;
+              padding: 0;
+            }
+
             .landlord-notices-modal {
-              border-radius: 20px;
+              width: 100%;
+              max-height: min(88vh, calc(100dvh - 8px));
+              border-radius: 24px 24px 0 0;
+              display: flex;
+              flex-direction: column;
             }
 
             .landlord-notices-modal-head,
@@ -890,6 +900,19 @@ export default function LandlordNoticesPage() {
             .landlord-notices-modal-actions {
               padding-left: 18px;
               padding-right: 18px;
+            }
+
+            .landlord-notices-modal-body {
+              overflow-y: auto;
+            }
+
+            .landlord-notices-modal-actions {
+              padding-bottom: calc(18px + env(safe-area-inset-bottom));
+              flex-wrap: wrap;
+            }
+
+            .landlord-notices-modal-actions > * {
+              flex: 1 1 100%;
             }
           }
         `}</style>
