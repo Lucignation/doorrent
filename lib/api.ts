@@ -94,7 +94,12 @@ export async function apiRequest<T>(
   { method = "GET", token, body, headers, offline }: ApiRequestOptions = {},
 ) {
   const requestHeaders = mergeRequestHeaders(headers, body, token);
-  const requestBody = body ? JSON.stringify(body) : undefined;
+  const requestBody =
+    body === undefined
+      ? undefined
+      : typeof body === "string"
+        ? body
+        : JSON.stringify(body);
   const cacheEnabled = offline?.cache ?? method === "GET";
   const cacheKey = buildOfflineCacheKey(path, token);
 

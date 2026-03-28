@@ -1068,9 +1068,9 @@ export default function LandlordSettingsPage() {
       }>("/landlord/settings/subscription/upgrade", {
         method: "POST",
         token: landlordSession.token,
-        body: JSON.stringify({
+        body: {
           plan: targetPlan,
-        }),
+        },
       });
 
       setSettings((current) =>
