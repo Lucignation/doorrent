@@ -714,10 +714,9 @@ export default function LandlordPropertiesPage() {
                         <input
                           className="form-input"
                           value={form.ownerName}
-                          onChange={(event) =>
-                            updateCollectionField(property.id, "ownerName", event.target.value)
-                          }
+                          disabled
                           placeholder="Blue Oak Property Holdings"
+                          style={{ background: "var(--bg)" }}
                         />
                       </div>
                       <div className="form-group">
