@@ -112,6 +112,42 @@ function agreementBadgeClass(status: string) {
   return "badge-gray";
 }
 
+function joinLabels(labels: string[]) {
+  if (labels.length <= 1) {
+    return labels[0] ?? "";
+  }
+
+  if (labels.length === 2) {
+    return `${labels[0]} and ${labels[1]}`;
+  }
+
+  return `${labels.slice(0, -1).join(", ")}, and ${labels.at(-1)}`;
+}
+
+function buildPendingAgreementMessage(
+  signing?: NonNullable<TenantAgreementResponse["agreement"]>["signing"],
+) {
+  if (!signing?.tenantSigned || signing.fullySigned) {
+    return "";
+  }
+
+  const completed: string[] = ["you"];
+  if (signing.tenantWitnessSigned) completed.push("your witness");
+  if (signing.landlordSigned) completed.push("your landlord");
+  if (signing.landlordWitnessSigned) completed.push("the landlord witness");
+
+  const remaining: string[] = [];
+  if (!signing.tenantWitnessSigned) remaining.push("your witness");
+  if (!signing.landlordSigned) remaining.push("your landlord");
+  if (!signing.landlordWitnessSigned) remaining.push("the landlord witness");
+
+  if (remaining.length === 0) {
+    return "All required signatures have been completed.";
+  }
+
+  return `${joinLabels(completed)} ${completed.length === 1 ? "has" : "have"} signed this agreement. We’ll notify you as soon as ${joinLabels(remaining)} ${remaining.length === 1 ? "signs" : "sign"} the remaining ${remaining.length === 1 ? "step" : "steps"}.`;
+}
+
 export default function TenantAgreementPage() {
   const { tenantSession } = useTenantPortalSession();
   const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
@@ -395,9 +431,7 @@ export default function TenantAgreementPage() {
                         marginBottom: 16,
                       }}
                     >
-                      {agreement.signing.landlordSigned
-                        ? "You and your landlord have signed this agreement. We’ll notify you as soon as the tenant witness and landlord witness complete the remaining signatures."
-                        : "You have signed this agreement. We’ll notify you as soon as your landlord and the required witnesses complete the remaining signatures so you can download the fully signed copy."}
+                      {buildPendingAgreementMessage(agreement.signing)}
                     </div>
                   ) : null}
 
@@ -419,54 +453,83 @@ export default function TenantAgreementPage() {
                     </div>
                   ) : (
                     <>
-                      <div
-                        style={{
-                          padding: 14,
-                          borderRadius: "var(--radius)",
-                          background: "var(--green-light)",
-                          border: "1px solid rgba(26,107,74,0.18)",
-                          color: "var(--green)",
-                          fontSize: 13,
-                          marginBottom: 16,
-                        }}
-                      >
-                        You have signed this agreement.{agreement.guarantor ? " Share the link below with your guarantor so they can sign their copy." : ""}
-                      </div>
-                      <div
-                        style={{
-                          padding: 14,
-                          borderRadius: "var(--radius)",
-                          background: "var(--surface2)",
-                          border: "1px solid var(--border)",
-                          fontSize: 13,
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                          {agreement.guarantor?.name ? `Guarantor link — ${agreement.guarantor.name}` : "Guarantor link"}
-                        </div>
-                        <div style={{ fontSize: 12, color: "var(--ink3)", marginBottom: 10 }}>
-                          Send this link to your guarantor. They can view the agreement, sign it, and save their copy — without needing a DoorRent account.
-                        </div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                          <input
-                            readOnly
-                            className="form-input"
-                            style={{ fontSize: 12, flex: 1 }}
-                            value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${agreement.guarantorAccessToken}`}
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => {
-                              void navigator.clipboard.writeText(`${window.location.origin}/agreement/guarantor/${agreement.guarantorAccessToken}`);
-                              setGuarantorLinkCopied(true);
-                              setTimeout(() => setGuarantorLinkCopied(false), 2000);
+                      {!agreement.signing.tenantWitnessSigned &&
+                      agreement.guarantorAccessToken ? (
+                        <>
+                          <div
+                            style={{
+                              padding: 14,
+                              borderRadius: "var(--radius)",
+                              background: "var(--green-light)",
+                              border: "1px solid rgba(26,107,74,0.18)",
+                              color: "var(--green)",
+                              fontSize: 13,
+                              marginBottom: 16,
                             }}
                           >
-                            {guarantorLinkCopied ? "Copied!" : "Copy link"}
-                          </button>
-                        </div>
-                      </div>
+                            You have signed this agreement.
+                            {agreement.guarantor
+                              ? " Share the link below with your guarantor so they can sign their copy."
+                              : ""}
+                          </div>
+                          <div
+                            style={{
+                              padding: 14,
+                              borderRadius: "var(--radius)",
+                              background: "var(--surface2)",
+                              border: "1px solid var(--border)",
+                              fontSize: 13,
+                            }}
+                          >
+                            <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                              {agreement.guarantor?.name
+                                ? `Guarantor link — ${agreement.guarantor.name}`
+                                : "Guarantor link"}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: 12,
+                                color: "var(--ink3)",
+                                marginBottom: 10,
+                              }}
+                            >
+                              Send this link to your guarantor. They can view the
+                              agreement, sign it, and save their copy — without
+                              needing a DoorRent account.
+                            </div>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "center",
+                              }}
+                            >
+                              <input
+                                readOnly
+                                className="form-input"
+                                style={{ fontSize: 12, flex: 1 }}
+                                value={`${typeof window !== "undefined" ? window.location.origin : ""}/agreement/guarantor/${agreement.guarantorAccessToken}`}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => {
+                                  void navigator.clipboard.writeText(
+                                    `${window.location.origin}/agreement/guarantor/${agreement.guarantorAccessToken}`,
+                                  );
+                                  setGuarantorLinkCopied(true);
+                                  setTimeout(
+                                    () => setGuarantorLinkCopied(false),
+                                    2000,
+                                  );
+                                }}
+                              >
+                                {guarantorLinkCopied ? "Copied!" : "Copy link"}
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
                     </>
                   )}
                 </div>

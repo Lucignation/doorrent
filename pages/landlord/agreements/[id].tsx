@@ -359,7 +359,8 @@ export default function AgreementDetailPage() {
                 Sign as Landlord
               </button>
             ) : null}
-            {detail.landlordWitnessSigningUrl ? (
+            {detail.landlordWitnessSigningUrl &&
+            !detail.signing.landlordWitnessSigned ? (
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
@@ -512,7 +513,8 @@ export default function AgreementDetailPage() {
               </div>
             ) : null}
 
-            {detail.landlordWitnessSigningUrl ? (
+            {detail.landlordWitnessSigningUrl &&
+            !detail.signing.landlordWitnessSigned ? (
               <div
                 style={{
                   padding: 16,
