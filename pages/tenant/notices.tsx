@@ -80,7 +80,7 @@ export default function TenantNoticesPage() {
   const totalPages = Math.max(1, Math.ceil(filteredNotices.length / PAGE_SIZE));
   const visibleNotices = filteredNotices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  async function markAsRead(noticeId: string) {
+  async function markAsRead(noticeId: string, silent = false) {
     if (!tenantSession?.token) {
       showToast("Tenant session missing. Please sign in again.", "error");
       return;
@@ -93,12 +93,10 @@ export default function TenantNoticesPage() {
         method: "POST",
         token: tenantSession.token,
       });
-      showToast("Notice marked as read", "success");
+      if (!silent) showToast("Notice marked as read", "success");
       refreshData();
       // Update selectedNotice locally so modal reflects read state immediately
-      if (selectedNotice?.id === noticeId) {
-        setSelectedNotice((prev) => prev ? { ...prev, read: true } : prev);
-      }
+      setSelectedNotice((prev) => prev?.id === noticeId ? { ...prev, read: true } : prev);
     } catch (requestError) {
       showToast(
         requestError instanceof Error ? requestError.message : "Notice could not be updated.",
@@ -110,10 +108,10 @@ export default function TenantNoticesPage() {
   }
 
   function openNotice(notice: TenantNoticeRow) {
+    // Set notice first, then auto-mark using the notice object directly (not state)
     setSelectedNotice(notice);
-    // Auto-mark as read when opened
     if (!notice.read) {
-      void markAsRead(notice.id);
+      void markAsRead(notice.id, true);
     }
   }
 
