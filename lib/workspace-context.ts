@@ -7,7 +7,7 @@ function normalizeApiBaseUrl(value: string) {
 }
 
 const configuredApiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://doorrent-api.onrender.com";
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.usedoorrent.com";
 
 export const WORKSPACE_API_BASE_URL = normalizeApiBaseUrl(configuredApiBaseUrl);
 

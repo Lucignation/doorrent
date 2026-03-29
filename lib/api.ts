@@ -21,7 +21,7 @@ function normalizeBaseUrl(value: string) {
 }
 
 const configuredBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://doorrent-api.onrender.com";
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.usedoorrent.com";
 
 export const API_BASE_URL = normalizeBaseUrl(configuredBaseUrl);
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1$/, "");
