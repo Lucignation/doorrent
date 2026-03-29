@@ -361,7 +361,9 @@ export default function LandlordAgreementsPage() {
                 className="btn btn-ghost btn-xs"
                 onClick={() => void router.push(`/landlord/agreements/${row.id}`)}
               >
-                View
+                {row.status === "awaiting_landlord_signature"
+                  ? "Review & Sign"
+                  : "View Details"}
               </button>
               {canResendAgreements && row.status === "sent" ? (
                 <button

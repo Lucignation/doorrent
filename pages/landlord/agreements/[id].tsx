@@ -18,6 +18,7 @@ interface AgreementDetail {
   id: string;
   title: string;
   status: string;
+  statusLabel?: string;
   tenant: {
     id: string;
     name: string;
@@ -56,6 +57,8 @@ interface AgreementDetail {
   landlordSignedDate: string | null;
   canLandlordSign: boolean;
   canLandlordWitnessSign: boolean;
+  landlordWitnessAccessToken?: string | null;
+  landlordWitnessSigningUrl?: string | null;
   signing: {
     tenantSigned: boolean;
     landlordSigned: boolean;
@@ -287,6 +290,24 @@ export default function AgreementDetailPage() {
     }
   }
 
+  async function handleCopyLandlordWitnessLink() {
+    if (!detail?.landlordWitnessSigningUrl) {
+      showToast("Landlord witness link is not available yet.", "error");
+      return;
+    }
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(detail.landlordWitnessSigningUrl);
+        showToast("Landlord witness link copied.", "success");
+      } else {
+        showToast(detail.landlordWitnessSigningUrl, "info");
+      }
+    } catch {
+      showToast("Could not copy the landlord witness link.", "error");
+    }
+  }
+
   if (loading) {
     return (
       <LandlordPortalShell topbarTitle="Agreements" breadcrumb="Dashboard → Agreements → Detail">
@@ -324,8 +345,31 @@ export default function AgreementDetailPage() {
               {detail.template} · Created {detail.createdAt}
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <StatusBadge tone={statusTone(detail.status)}>{detail.status}</StatusBadge>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
+            {detail.canLandlordSign ? (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  const node = document.getElementById("landlord-sign-panel");
+                  node?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                Sign as Landlord
+              </button>
+            ) : null}
+            {detail.landlordWitnessSigningUrl ? (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => void handleCopyLandlordWitnessLink()}
+              >
+                Copy Witness Link
+              </button>
+            ) : null}
+            <StatusBadge tone={statusTone(detail.status)}>
+              {detail.statusLabel ?? detail.status}
+            </StatusBadge>
             <button type="button" className="btn btn-secondary btn-sm" onClick={handleViewPdf}>
               View PDF
             </button>
@@ -443,6 +487,7 @@ export default function AgreementDetailPage() {
 
             {detail.canLandlordSign ? (
               <div
+                id="landlord-sign-panel"
                 style={{
                   padding: 16,
                   border: "1px solid var(--border)",
@@ -463,6 +508,40 @@ export default function AgreementDetailPage() {
                 >
                   {signingAgreement ? "Signing..." : "Sign as Landlord"}
                 </button>
+              </div>
+            ) : null}
+
+            {detail.landlordWitnessSigningUrl ? (
+              <div
+                style={{
+                  padding: 16,
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  marginBottom: 16,
+                  background: "var(--surface2)",
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                  Landlord witness remote signing link
+                </div>
+                <div className="td-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+                  Share this link if the landlord&apos;s witness is in a different location.
+                </div>
+                <div className="form-row" style={{ gap: 10, alignItems: "center" }}>
+                  <input
+                    type="text"
+                    className="form-input"
+                    readOnly
+                    value={detail.landlordWitnessSigningUrl}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => void handleCopyLandlordWitnessLink()}
+                  >
+                    Copy Link
+                  </button>
+                </div>
               </div>
             ) : null}
 
