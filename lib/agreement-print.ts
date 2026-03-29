@@ -143,6 +143,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${esc(data.lease.title)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -391,6 +392,12 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     grid-template-columns: 1fr 1fr;
     gap: 40pt;
     margin-bottom: 28pt;
+  }
+  @media (max-width: 600px) {
+    .sig-pair {
+      grid-template-columns: 1fr;
+      gap: 20pt;
+    }
   }
 
   /* ── Attestation ── */
