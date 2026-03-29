@@ -1,5 +1,5 @@
 const DEFAULT_APP_ORIGIN = "https://usedoorrent.com";
-const DEFAULT_API_ORIGIN = "https://doorrent-api.onrender.com";
+const DEFAULT_API_ORIGIN = "https://api.usedoorrent.com";
 
 function normalizeOrigin(value, fallback) {
   try {
@@ -88,6 +88,14 @@ const sensitiveRouteHeaders = [
 const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+  async rewrites() {
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${apiOrigin}/api/v1/:path*`,
+      },
+    ];
+  },
   async headers() {
     return [
       {

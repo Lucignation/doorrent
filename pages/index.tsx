@@ -2,7 +2,7 @@ import type { GetServerSideProps, GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { Fragment, type FormEvent, useEffect, useRef, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
-import { API_BASE_URL, apiRequest } from "../lib/api";
+import { apiRequest, getApiRequestBaseUrl } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
 import { fetchWorkspaceContextByHost } from "../lib/workspace-context";
 
@@ -479,7 +479,7 @@ export const getServerSideProps: GetServerSideProps<LandingPageProps> = async (
   let marketingOverview: LandingPageProps["marketingOverview"] = null;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/marketplace/public-overview`);
+    const response = await fetch(`${getApiRequestBaseUrl()}/marketplace/public-overview`);
     const payload = (await response.json()) as {
       data?: LandingPageProps["marketingOverview"];
     };

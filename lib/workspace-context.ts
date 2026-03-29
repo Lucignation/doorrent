@@ -10,6 +10,13 @@ const configuredApiBaseUrl =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.usedoorrent.com";
 
 export const WORKSPACE_API_BASE_URL = normalizeApiBaseUrl(configuredApiBaseUrl);
+const WORKSPACE_BROWSER_API_BASE_PATH = "/api/v1";
+
+function getWorkspaceApiBaseUrl() {
+  return typeof window === "undefined"
+    ? WORKSPACE_API_BASE_URL
+    : WORKSPACE_BROWSER_API_BASE_PATH;
+}
 
 export type PublicWorkspaceContext = {
   workspace: null | {
@@ -33,7 +40,7 @@ export async function fetchWorkspaceContextByHost(host?: string | null) {
 
   try {
     const response = await fetch(
-      `${WORKSPACE_API_BASE_URL}/auth/workspace?host=${encodeURIComponent(normalizedHost)}`,
+      `${getWorkspaceApiBaseUrl()}/auth/workspace?host=${encodeURIComponent(normalizedHost)}`,
       {
         cache: "no-store",
         credentials: "omit",

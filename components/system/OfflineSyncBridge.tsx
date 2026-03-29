@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { API_BASE_URL } from "../../lib/api";
+import { getApiRequestBaseUrl } from "../../lib/api";
 import { flushOfflineMutations } from "../../lib/offline-store";
 
 export default function OfflineSyncBridge() {
@@ -9,7 +9,7 @@ export default function OfflineSyncBridge() {
     }
 
     const flush = () => {
-      void flushOfflineMutations(API_BASE_URL);
+      void flushOfflineMutations(getApiRequestBaseUrl());
     };
 
     flush();

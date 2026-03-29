@@ -25,7 +25,12 @@ const configuredBaseUrl =
 
 export const API_BASE_URL = normalizeBaseUrl(configuredBaseUrl);
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1$/, "");
+export const BROWSER_API_BASE_PATH = "/api/v1";
 export const SWAGGER_URL = `${API_ORIGIN}/docs`;
+
+export function getApiRequestBaseUrl() {
+  return typeof window === "undefined" ? API_BASE_URL : BROWSER_API_BASE_PATH;
+}
 
 interface ApiRequestOptions {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -102,9 +107,10 @@ export async function apiRequest<T>(
         : JSON.stringify(body);
   const cacheEnabled = offline?.cache ?? method === "GET";
   const cacheKey = buildOfflineCacheKey(path, token);
+  const requestBaseUrl = getApiRequestBaseUrl();
 
   try {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
+    const response = await fetch(`${requestBaseUrl}${path}`, {
       method,
       headers: requestHeaders,
       body: requestBody,
@@ -133,7 +139,7 @@ export async function apiRequest<T>(
       await setOfflineCachedResponse(cacheKey, result);
     }
 
-    void flushOfflineMutations(API_BASE_URL);
+    void flushOfflineMutations(requestBaseUrl);
 
     return result;
   } catch (error) {
