@@ -26,6 +26,7 @@ async function main() {
     apiSubscriptions,
     apiTeamMembers,
     apiWorkspaceHosts,
+    criticalContracts,
     webRent,
     webLandlordAccess,
     tenantAccess,
@@ -35,6 +36,7 @@ async function main() {
     import("../api/dist/lib/subscriptions.js"),
     import("../api/dist/lib/team-members.js"),
     import("../api/dist/lib/workspace-hosts.js"),
+    import("../lib/contracts/critical-flows"),
     import("../lib/rent"),
     import("../lib/landlord-access"),
     import("../mobile/tenant-app/lib/access"),
@@ -46,6 +48,85 @@ async function main() {
   };
 
   const checks: Check[] = [
+  {
+    name: "Shared critical-flow contracts keep onboarding, invite, and upgrade validation aligned",
+    run() {
+      assert.equal(
+        criticalContracts.validateTenantOnboardingDraft({
+          form: {
+            firstName: "Amaka",
+            lastName: "Nnaji",
+            email: "tenant@lekki.io",
+            phone: "",
+            residentialAddress: "14 Broad Street, Lagos Island, Lagos State",
+            idType: "National ID",
+            idNumber: "",
+            guarantorFullName: "Chinedu Okafor",
+            guarantorRelationship: "Brother",
+            guarantorEmail: "chinedu@example.com",
+            guarantorPhone: "+2348098765432",
+            guarantorOccupation: "Engineer",
+            guarantorCompanyName: "BuildRight Limited",
+            guarantorAddress: "5 Adeola Odeku Street, Victoria Island, Lagos State",
+          },
+          tenantSignatureData: "",
+        }),
+        "Phone number is required.",
+      );
+
+      const onboardingPayload =
+        criticalContracts.buildTenantOnboardingSubmission({
+          form: {
+            firstName: "Amaka",
+            lastName: "Nnaji",
+            email: "TENANT@LEKKI.IO",
+            phone: "+2348012345678",
+            residentialAddress: "14 Broad Street, Lagos Island, Lagos State",
+            idType: "National ID",
+            idNumber: "",
+            guarantorFullName: "Chinedu Okafor",
+            guarantorRelationship: "Brother",
+            guarantorEmail: "CHINEDU@EXAMPLE.COM",
+            guarantorPhone: "+2348098765432",
+            guarantorOccupation: "Engineer",
+            guarantorCompanyName: "BuildRight Limited",
+            guarantorAddress: "5 Adeola Odeku Street, Victoria Island, Lagos State",
+          },
+          idDocument: null,
+          tenantSignatureData: "data:image/png;base64,demo",
+        });
+
+      assert.equal(onboardingPayload.email, "tenant@lekki.io");
+      assert.equal(onboardingPayload.guarantor.email, "chinedu@example.com");
+
+      const invitePayload = criticalContracts.buildTenantInvitationPayload({
+        propertyId: "prop_1",
+        unitId: "unit_1",
+        email: "Resident@Example.com",
+        leaseStart: "2026-03-22",
+        leaseEnd: "2026-04-21",
+        billingFrequency: "monthly",
+        billingCyclePrice: "283333.49",
+        depositAmount: "100000.4",
+      });
+
+      assert.equal(invitePayload.ok, true);
+      if (invitePayload.ok) {
+        assert.equal(invitePayload.payload.email, "resident@example.com");
+        assert.equal(invitePayload.payload.billingCyclePrice, 283333);
+        assert.equal(invitePayload.payload.depositAmount, 100000);
+      }
+
+      assert.equal(
+        criticalContracts.validateSubscriptionUpgradeTarget({
+          targetPlan: "ENTERPRISE",
+          currentPlanKey: "STARTER",
+          availablePlanChanges: [{ planKey: "PRO" }],
+        }),
+        "That upgrade option is not available for this workspace right now.",
+      );
+    },
+  },
   {
     name: "Billing math stays consistent for yearly, monthly, daily, and commission previews",
     run() {

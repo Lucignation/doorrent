@@ -7,6 +7,7 @@ import type { WorkspaceBranding } from "../../lib/branding";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import { validateSubscriptionUpgradeTarget } from "../../lib/contracts/critical-flows";
 import { sanitizeRemoteAssetUrl } from "../../lib/frontend-security";
 import AccountDeletionConsentModal from "../../components/ui/AccountDeletionConsentModal";
 import PageHeader from "../../components/ui/PageHeader";
@@ -1053,6 +1054,17 @@ export default function LandlordSettingsPage() {
 
   async function handlePlanUpgrade(targetPlan: "PRO" | "ENTERPRISE") {
     if (!landlordSession?.token || subscriptionAction) {
+      return;
+    }
+
+    const upgradeValidationMessage = validateSubscriptionUpgradeTarget({
+      targetPlan,
+      currentPlanKey: settings?.subscription.planKey,
+      availablePlanChanges: settings?.subscription.availablePlanChanges ?? [],
+    });
+
+    if (upgradeValidationMessage) {
+      showToast(upgradeValidationMessage, "error");
       return;
     }
 

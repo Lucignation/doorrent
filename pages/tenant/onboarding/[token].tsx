@@ -17,6 +17,12 @@ import {
   resolveBrandLogoUrl,
   type WorkspaceBranding,
 } from "../../../lib/branding";
+import {
+  buildTenantOnboardingSubmission,
+  isEmailAddress,
+  isNigerianAddress,
+  validateTenantOnboardingDraft,
+} from "../../../lib/contracts/critical-flows";
 import { LOGO_PATH } from "../../../lib/site";
 import { fetchWorkspaceContextByHost } from "../../../lib/workspace-context";
 
@@ -98,19 +104,6 @@ interface OnboardingForm {
   guarantorAddress: string;
 }
 
-const NIGERIAN_STATES = [
-  "abia","adamawa","akwa ibom","anambra","bauchi","bayelsa","benue","borno",
-  "cross river","delta","ebonyi","edo","ekiti","enugu","fct","abuja","gombe",
-  "imo","jigawa","kaduna","kano","katsina","kebbi","kogi","kwara","lagos",
-  "nasarawa","niger","ogun","ondo","osun","oyo","plateau","rivers","sokoto",
-  "taraba","yobe","zamfara","nigeria",
-];
-
-function isNigerianAddress(address: string): boolean {
-  const lower = address.toLowerCase();
-  return NIGERIAN_STATES.some((state) => lower.includes(state));
-}
-
 function splitInviteeName(name?: string | null) {
   if (!name) {
     return { firstName: "", lastName: "" };
@@ -184,10 +177,10 @@ export default function TenantOnboardingPage({
   });
   const [idDocument, setIdDocument] = useState<UploadedDocument | null>(null);
   const [tenantSignatureData, setTenantSignatureData] = useState("");
-  const [guarantorSignatureData, setGuarantorSignatureData] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const [submittedAgreementToken, setSubmittedAgreementToken] = useState<string | null>(null);
   const [guarantorLinkCopied, setGuarantorLinkCopied] = useState(false);
   const lockedNameParts = useMemo(
@@ -268,24 +261,12 @@ export default function TenantOnboardingPage({
   const tenantAddressValid = !form.residentialAddress.trim() || isNigerianAddress(form.residentialAddress);
   const guarantorAddressValid = !form.guarantorAddress.trim() || isNigerianAddress(form.guarantorAddress);
 
-  const canSubmit =
-    !invitationData?.duplicateLeaseWarning &&
-    Boolean(form.firstName.trim()) &&
-    Boolean(form.lastName.trim()) &&
-    Boolean(form.email.trim()) &&
-    Boolean(form.phone.trim()) &&
-    Boolean(form.residentialAddress.trim()) &&
-    tenantAddressValid &&
-    guarantorAddressValid &&
-    Boolean(form.idType.trim()) &&
-    Boolean(form.guarantorFullName.trim()) &&
-    Boolean(form.guarantorRelationship.trim()) &&
-    Boolean(form.guarantorEmail.trim()) &&
-    Boolean(form.guarantorPhone.trim()) &&
-    Boolean(form.guarantorOccupation.trim()) &&
-    Boolean(form.guarantorCompanyName.trim()) &&
-    Boolean(form.guarantorAddress.trim()) &&
-    Boolean(tenantSignatureData);
+  const onboardingValidationMessage = validateTenantOnboardingDraft({
+    form,
+    tenantSignatureData,
+    duplicateLeaseWarningBody: invitationData?.duplicateLeaseWarning?.body,
+  });
+  const canSubmit = !onboardingValidationMessage;
 
   async function handleIdUpload(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -313,6 +294,7 @@ export default function TenantOnboardingPage({
   }
 
   function updateField(field: keyof OnboardingForm, value: string) {
+    setSubmitError("");
     setForm((current) => ({
       ...current,
       [field]: value,
@@ -326,37 +308,24 @@ export default function TenantOnboardingPage({
       return;
     }
 
+    const validationMessage = onboardingValidationMessage;
+    if (validationMessage) {
+      setSubmitError(validationMessage);
+      showToast(validationMessage, "error");
+      return;
+    }
+
     setIsSubmitting(true);
+    setSubmitError("");
 
     try {
       const { data } = await apiRequest<SubmitInvitationResponse>(`/tenant-onboarding/${token}/submit`, {
         method: "POST",
-        body: {
-          firstName: form.firstName,
-          lastName: form.lastName,
-          email: form.email,
-          phone: form.phone,
-          residentialAddress: form.residentialAddress,
-          idType: form.idType,
-          ...(form.idNumber.trim() ? { idNumber: form.idNumber } : {}),
-          ...(idDocument
-            ? {
-                idDocumentName: idDocument.name,
-                idDocumentMimeType: idDocument.mimeType,
-                idDocumentContent: idDocument.content,
-              }
-            : {}),
+        body: buildTenantOnboardingSubmission({
+          form,
+          idDocument,
           tenantSignatureData,
-          guarantor: {
-            fullName: form.guarantorFullName,
-            email: form.guarantorEmail,
-            phone: form.guarantorPhone,
-            occupation: form.guarantorOccupation,
-            companyName: form.guarantorCompanyName,
-            relationship: form.guarantorRelationship,
-            address: form.guarantorAddress,
-          },
-        },
+        }),
       });
 
       showToast(
@@ -451,7 +420,7 @@ export default function TenantOnboardingPage({
             gap: 24,
           }}
         >
-          <form onSubmit={submitOnboarding}>
+          <form onSubmit={submitOnboarding} noValidate>
             <div className="card" style={{ marginBottom: 20 }}>
               <div className="card-header">
                 <div>
@@ -557,6 +526,11 @@ export default function TenantOnboardingPage({
                       disabled={lockedFields.email}
                       required
                     />
+                    {form.email.trim() && !isEmailAddress(form.email) ? (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>
+                        Enter a valid email address.
+                      </div>
+                    ) : null}
                     {lockedFields.email ? (
                       <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
                         This onboarding link is locked to the invited email address.
@@ -671,6 +645,11 @@ export default function TenantOnboardingPage({
                       }
                       required
                     />
+                    {form.guarantorEmail.trim() && !isEmailAddress(form.guarantorEmail) ? (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--red)" }}>
+                        Enter a valid guarantor email address.
+                      </div>
+                    ) : null}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Guarantor Phone *</label>
@@ -799,9 +778,30 @@ export default function TenantOnboardingPage({
                   </>
                 ) : (
                   <>
+                    {submitError ? (
+                      <div
+                        style={{
+                          marginBottom: 16,
+                          padding: 12,
+                          borderRadius: "var(--radius-sm)",
+                          background: "var(--red-light)",
+                          border: "1px solid rgba(192,57,43,0.18)",
+                          color: "var(--red)",
+                          fontSize: 12,
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {submitError}
+                      </div>
+                    ) : null}
                     <div style={{ marginBottom: 20 }}>
                       <label className="form-label" style={{ marginBottom: 8, display: "block" }}>Tenant Signature *</label>
-                      <SignaturePad onChange={setTenantSignatureData} />
+                      <SignaturePad
+                        onChange={(nextValue) => {
+                          setSubmitError("");
+                          setTenantSignatureData(nextValue);
+                        }}
+                      />
                     </div>
 
                     <div

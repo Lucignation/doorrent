@@ -4,6 +4,7 @@ import { useRouter } from "next/router";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
+import { buildTenantInvitationPayload } from "../../lib/contracts/critical-flows";
 import {
   annualEquivalentFromBilling,
   type BillingFrequency,
@@ -908,8 +909,15 @@ export default function AppOverlays() {
       return;
     }
 
-    if (!invitationForm.billingCyclePrice || Number(invitationForm.billingCyclePrice) <= 0) {
-      setModalError("Enter the rent amount for this tenant invitation.");
+    const invitationPayloadResult = buildTenantInvitationPayload({
+      ...invitationForm,
+      billingFrequency: invitationForm.billingFrequency,
+      billingCyclePrice: invitationForm.billingCyclePrice,
+      depositAmount: invitationForm.depositAmount,
+    });
+
+    if (!invitationPayloadResult.ok) {
+      setModalError(invitationPayloadResult.message);
       return;
     }
 
@@ -922,21 +930,7 @@ export default function AppOverlays() {
         {
           method: "POST",
           token: landlordSession.token,
-          body: {
-            propertyId: invitationForm.propertyId,
-            unitId: invitationForm.unitId || undefined,
-            email: invitationForm.email,
-            inviteeName: invitationForm.inviteeName || undefined,
-            agreementTemplateId: invitationForm.agreementTemplateId || undefined,
-            leaseStart: invitationForm.leaseStart,
-            leaseEnd: invitationForm.leaseEnd,
-            billingFrequency: invitationForm.billingFrequency.toUpperCase(),
-            billingCyclePrice: Math.round(Number(invitationForm.billingCyclePrice)),
-            depositAmount: invitationForm.depositAmount
-              ? Math.round(Number(invitationForm.depositAmount))
-              : undefined,
-            message: invitationForm.message || undefined,
-          },
+          body: invitationPayloadResult.payload,
         },
       );
 
