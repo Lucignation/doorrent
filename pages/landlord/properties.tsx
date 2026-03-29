@@ -493,7 +493,19 @@ export default function LandlordPropertiesPage() {
     }));
 
     try {
-      await apiRequest(`/landlord/properties/${propertyId}/collection-routing`, {
+      const { data } = await apiRequest<{
+        routing: {
+          enabled: boolean;
+          ownerName?: string | null;
+          managementFeePercent?: number | null;
+          bankId?: string | null;
+          bankCode?: string | null;
+          bankName?: string | null;
+          accountNumber?: string | null;
+          accountName?: string | null;
+          configuredAt?: string | null;
+        };
+      }>(`/landlord/properties/${propertyId}/collection-routing`, {
         method: "PATCH",
         token: landlordSession.token,
         body: {
@@ -508,6 +520,44 @@ export default function LandlordPropertiesPage() {
         },
       });
 
+      setCollectionForms((current) => ({
+        ...current,
+        [propertyId]: {
+          enabled: Boolean(data.routing.enabled),
+          ownerName: data.routing.ownerName ?? "",
+          managementFeePercent:
+            typeof data.routing.managementFeePercent === "number"
+              ? `${data.routing.managementFeePercent}`
+              : "",
+          bankId: data.routing.bankId ?? "",
+          accountNumber: data.routing.accountNumber ?? "",
+          accountName: data.routing.accountName ?? "",
+          saving: false,
+          resolving: false,
+        },
+      }));
+      setPropertyData((current) =>
+        current
+          ? {
+              ...current,
+              properties: current.properties.map((property) =>
+                property.id === propertyId
+                  ? {
+                      ...property,
+                      ownerPayoutEnabled: Boolean(data.routing.enabled),
+                      ownerName: data.routing.ownerName ?? null,
+                      managementFeePercent: data.routing.managementFeePercent ?? null,
+                      ownerPayoutBankCode: data.routing.bankCode ?? null,
+                      ownerPayoutBankName: data.routing.bankName ?? null,
+                      ownerPayoutAccountNumber: data.routing.accountNumber ?? null,
+                      ownerPayoutAccountName: data.routing.accountName ?? null,
+                      splitConfiguredAt: data.routing.configuredAt ?? null,
+                    }
+                  : property,
+              ),
+            }
+          : current,
+      );
       refreshData();
       showToast("Collection routing saved.", "success");
     } catch (requestError) {
