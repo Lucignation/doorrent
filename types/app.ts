@@ -168,6 +168,7 @@ export interface LandlordAgreementRow {
   lastActivity: string;
   status:
     | "fully_signed"
+    | "awaiting_witness_signatures"
     | "awaiting_landlord_signature"
     | "signed"
     | "sent"

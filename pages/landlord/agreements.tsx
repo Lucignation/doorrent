@@ -106,6 +106,10 @@ function statusTone(status: LandlordAgreementRow["status"]): BadgeTone {
     return "green";
   }
 
+  if (status === "awaiting_witness_signatures") {
+    return "amber";
+  }
+
   if (status === "awaiting_landlord_signature") {
     return "blue";
   }

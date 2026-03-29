@@ -105,6 +105,7 @@ interface AgreementMutationResponse {
 
 function agreementBadgeClass(status: string) {
   if (status === "fully_signed") return "badge-green";
+  if (status === "awaiting_witness_signatures") return "badge-amber";
   if (status === "awaiting_landlord_signature") return "badge-blue";
   if (status === "sent") return "badge-amber";
   if (status === "expired") return "badge-red";
@@ -380,7 +381,7 @@ export default function TenantAgreementPage() {
                         marginBottom: 16,
                       }}
                     >
-                      Your landlord has signed this agreement. Your fully signed copy is ready to download.
+                      All four required signatures are now complete. Your fully signed copy is ready to download.
                     </div>
                   ) : agreement.signing.tenantSigned ? (
                     <div
@@ -394,7 +395,9 @@ export default function TenantAgreementPage() {
                         marginBottom: 16,
                       }}
                     >
-                      You have signed this agreement. We’ll notify you as soon as your landlord signs so you can download the fully signed copy.
+                      {agreement.signing.landlordSigned
+                        ? "You and your landlord have signed this agreement. We’ll notify you as soon as the tenant witness and landlord witness complete the remaining signatures."
+                        : "You have signed this agreement. We’ll notify you as soon as your landlord and the required witnesses complete the remaining signatures so you can download the fully signed copy."}
                     </div>
                   ) : null}
 

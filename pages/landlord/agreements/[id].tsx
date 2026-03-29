@@ -98,6 +98,7 @@ interface AgreementDetail {
 
 function statusTone(status: string): BadgeTone {
   if (status === "fully_signed") return "green";
+  if (status === "awaiting_witness_signatures") return "amber";
   if (status === "awaiting_landlord_signature") return "blue";
   if (status === "sent") return "amber";
   if (status === "draft") return "gray";

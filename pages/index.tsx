@@ -1,6 +1,6 @@
 import type { GetServerSideProps, GetServerSidePropsContext } from "next";
 import Link from "next/link";
-import { Fragment, type FormEvent, useEffect, useState } from "react";
+import { Fragment, type FormEvent, useEffect, useRef, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
 import { API_BASE_URL, apiRequest } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
@@ -499,6 +499,8 @@ export const getServerSideProps: GetServerSideProps<LandingPageProps> = async (
 export default function LandingPage({ marketingOverview }: LandingPageProps) {
   const [activeRole, setActiveRole] = useState<RoleKey>("landlord");
   const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
   const [enterpriseFormOpen, setEnterpriseFormOpen] = useState(false);
   const [enterpriseSubmitting, setEnterpriseSubmitting] = useState(false);
   const [enterpriseFeedback, setEnterpriseFeedback] = useState("");
@@ -532,8 +534,16 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
       .querySelectorAll(".marketing-home .reveal")
       .forEach((element) => observer.observe(element));
 
+    const onClickOutside = (e: MouseEvent) => {
+      if (navRef.current && !navRef.current.contains(e.target as Node)) {
+        setMobileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClickOutside);
+
     return () => {
       window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("mousedown", onClickOutside);
       observer.disconnect();
     };
   }, []);
@@ -653,7 +663,7 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
       />
 
       <div className="marketing-home">
-        <nav className={`marketing-nav ${isScrolled ? "is-scrolled" : ""}`}>
+        <nav ref={navRef} className={`marketing-nav${isScrolled ? " is-scrolled" : ""}${mobileMenuOpen ? " menu-open" : ""}`}>
           <div className="marketing-container">
             <div className="marketing-nav-inner">
               <Link href="/" className="marketing-brand">
@@ -670,13 +680,29 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
               </div>
 
               <div className="marketing-nav-cta">
-                <Link href="/marketplace" className="btn btn-ghost-light marketing-mobile-marketplace">
-                  Marketplace
-                </Link>
-<Link href="/portal" className="btn btn-primary">
+                <Link href="/portal" className="btn btn-primary">
                   Get started →
                 </Link>
+                <button
+                  type="button"
+                  className={`marketing-hamburger${mobileMenuOpen ? " is-open" : ""}`}
+                  aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                  aria-expanded={mobileMenuOpen}
+                  onClick={() => setMobileMenuOpen((o) => !o)}
+                >
+                  <span className="bar bar-top" />
+                  <span className="bar bar-mid" />
+                  <span className="bar bar-bot" />
+                </button>
               </div>
+            </div>
+
+            <div className={`marketing-mobile-menu${mobileMenuOpen ? " is-open" : ""}`} aria-hidden={!mobileMenuOpen}>
+              <Link href="/marketplace" className="mmenu-item" style={{ "--i": 0 } as React.CSSProperties} onClick={() => setMobileMenuOpen(false)}>Marketplace</Link>
+              <a href="#features" className="mmenu-item" style={{ "--i": 1 } as React.CSSProperties} onClick={() => setMobileMenuOpen(false)}>Features</a>
+              <a href="#roles" className="mmenu-item" style={{ "--i": 2 } as React.CSSProperties} onClick={() => setMobileMenuOpen(false)}>For Landlords</a>
+              <a href="#pricing" className="mmenu-item" style={{ "--i": 3 } as React.CSSProperties} onClick={() => setMobileMenuOpen(false)}>Pricing</a>
+              <a href="#testimonials" className="mmenu-item" style={{ "--i": 4 } as React.CSSProperties} onClick={() => setMobileMenuOpen(false)}>Testimonials</a>
             </div>
           </div>
         </nav>
@@ -1264,13 +1290,13 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
             <div className="marketing-footer-bottom">
               <p>© 2026 DoorRent – Subsidiary of ReSuply Technologies Limited. All rights reserved.</p>
               <div className="links">
-                <a href="https://x.com" target="_blank" rel="noreferrer">
+                <a href="https://x.com/usedoorrent" target="_blank" rel="noreferrer">
                   Twitter / X
                 </a>
-                <a href="https://linkedin.com" target="_blank" rel="noreferrer">
+                <a href="https://www.linkedin.com/company/doorrent/" target="_blank" rel="noreferrer">
                   LinkedIn
                 </a>
-                <a href="https://instagram.com" target="_blank" rel="noreferrer">
+                <a href="https://www.instagram.com/usedoorrent" target="_blank" rel="noreferrer">
                   Instagram
                 </a>
               </div>
@@ -1557,8 +1583,14 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
           top: 0;
           left: 0;
           right: 0;
+          bottom: auto;
           z-index: 90;
-          transition: all 0.3s ease;
+          transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+          overflow: hidden;
+        }
+        .marketing-nav.menu-open {
+          bottom: 0;
+          overflow-y: auto;
         }
 
         .marketing-nav.is-scrolled {
@@ -1566,6 +1598,12 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
           backdrop-filter: blur(16px);
           border-bottom: 1px solid var(--border);
           box-shadow: var(--shadow);
+        }
+        .marketing-nav.menu-open:not(.is-scrolled) {
+          background: #0f1210;
+        }
+        .marketing-nav.menu-open.is-scrolled {
+          background: #f5f4f0;
         }
 
         .marketing-nav-inner {
@@ -1607,8 +1645,121 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
           gap: 10px;
         }
 
-        .marketing-mobile-marketplace {
+        /* ── Hamburger button ── */
+        .marketing-hamburger {
           display: none;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          width: 40px;
+          height: 40px;
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 10px;
+          cursor: pointer;
+          padding: 0;
+          flex-shrink: 0;
+          position: relative;
+          transition: background 0.25s, border-color 0.25s;
+        }
+        .marketing-hamburger:hover {
+          background: rgba(255,255,255,0.18);
+        }
+        .marketing-nav.is-scrolled .marketing-hamburger {
+          background: rgba(26,25,22,0.07);
+          border-color: var(--border);
+        }
+        .marketing-nav.is-scrolled .marketing-hamburger:hover {
+          background: rgba(26,25,22,0.12);
+        }
+
+        /* Three bars */
+        .marketing-hamburger .bar {
+          position: absolute;
+          left: 50%;
+          width: 20px;
+          height: 2px;
+          border-radius: 2px;
+          background: #fff;
+          transform-origin: center;
+          transition: transform 0.35s cubic-bezier(0.23, 1, 0.32, 1),
+                      opacity 0.25s ease,
+                      top 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+          translate: -50% 0;
+        }
+        .marketing-nav.is-scrolled .marketing-hamburger .bar {
+          background: var(--ink);
+        }
+        .bar-top { top: 13px; }
+        .bar-mid { top: 19px; }
+        .bar-bot { top: 25px; }
+
+        /* Open state → X */
+        .marketing-hamburger.is-open .bar-top {
+          top: 19px;
+          transform: translateX(-50%) rotate(45deg);
+        }
+        .marketing-hamburger.is-open .bar-mid {
+          opacity: 0;
+          transform: translateX(-50%) scaleX(0);
+        }
+        .marketing-hamburger.is-open .bar-bot {
+          top: 19px;
+          transform: translateX(-50%) rotate(-45deg);
+        }
+
+        /* ── Mobile slide-down menu ── */
+        @keyframes mmenu-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes mmenu-item-in {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .marketing-mobile-menu {
+          display: none;
+          flex-direction: column;
+          gap: 2px;
+          border-top: 1px solid rgba(255,255,255,0.12);
+          margin-top: 6px;
+          padding: 16px 20px 40px;
+          min-height: calc(100vh - 80px);
+        }
+        .marketing-nav.is-scrolled .marketing-mobile-menu {
+          border-top-color: var(--border);
+        }
+        .marketing-mobile-menu.is-open {
+          display: flex;
+          animation: mmenu-in 0.3s cubic-bezier(0.23, 1, 0.32, 1) both;
+        }
+
+        .mmenu-item {
+          display: flex;
+          align-items: center;
+          padding: 16px 14px;
+          font-size: 18px;
+          font-weight: 500;
+          color: rgba(255,255,255,0.82);
+          text-decoration: none;
+          border-radius: 12px;
+          letter-spacing: -0.01em;
+          transition: background 0.15s, color 0.15s;
+          opacity: 0;
+          animation: mmenu-item-in 0.35s cubic-bezier(0.23, 1, 0.32, 1) both;
+          animation-delay: calc(var(--i) * 60ms + 80ms);
+        }
+        .mmenu-item:hover {
+          background: rgba(255,255,255,0.08);
+          color: #fff;
+        }
+        .marketing-nav.is-scrolled .mmenu-item {
+          color: var(--ink2);
+        }
+        .marketing-nav.is-scrolled .mmenu-item:hover {
+          background: rgba(26,25,22,0.06);
+          color: var(--ink);
         }
 
         .portal-menu-wrap {
@@ -3290,8 +3441,7 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
             padding-right: 20px;
           }
 
-          .marketing-nav-links,
-          .marketing-nav-cta .btn-secondary {
+          .marketing-nav-links {
             display: none;
           }
 
@@ -3303,19 +3453,13 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
             gap: 8px;
           }
 
-          .marketing-nav-cta .btn {
+          .marketing-nav-cta .btn-primary {
             padding: 10px 14px;
-            font-size: 12px;
+            font-size: 13px;
           }
 
-          .marketing-mobile-marketplace {
-            display: inline-flex;
-          }
-
-          .marketing-nav.is-scrolled .marketing-mobile-marketplace {
-            background: var(--accent-light);
-            color: var(--accent);
-            border-color: rgba(26, 58, 42, 0.14);
+          .marketing-hamburger {
+            display: flex;
           }
 
           .marketing-hero-body {

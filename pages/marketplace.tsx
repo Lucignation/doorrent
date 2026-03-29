@@ -1,5 +1,5 @@
 import Link from "next/link";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
 import { apiRequest } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
@@ -133,28 +133,28 @@ const fmt = (value: number) => `₦${value.toLocaleString("en-NG")}`;
 const MARKETPLACE_PAGE_GUTTER = "clamp(20px, 2vw, 32px)";
 
 function MarketplaceSiteHeader() {
-  const [isCompact, setIsCompact] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    const syncViewport = () => setIsCompact(window.innerWidth < 760);
-
-    syncViewport();
-    window.addEventListener("resize", syncViewport);
-
-    return () => {
-      window.removeEventListener("resize", syncViewport);
+    const onClickOutside = (e: MouseEvent) => {
+      if (headerRef.current && !headerRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
     };
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  const navLinkStyle = {
+  const navLinkStyle: React.CSSProperties = {
     color: BRAND.textMuted,
     textDecoration: "none",
     fontSize: 14,
     padding: "8px 12px",
     borderRadius: 10,
-  } as const;
+  };
 
-  const buttonStyle = {
+  const buttonStyle: React.CSSProperties = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
@@ -163,125 +163,158 @@ function MarketplaceSiteHeader() {
     fontSize: 14,
     fontWeight: 600,
     textDecoration: "none",
-  } as const;
+  };
 
   return (
     <header
+      ref={headerRef}
       style={{
         background: `linear-gradient(180deg, ${BRAND.header} 0%, ${BRAND.headerEnd} 100%)`,
         borderBottom: `1px solid ${BRAND.surfaceSoft}`,
       }}
     >
-      <div
-        style={{
-          width: "100%",
-          padding: `18px ${MARKETPLACE_PAGE_GUTTER}`,
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: isCompact ? "stretch" : "center",
-            justifyContent: "space-between",
-            gap: 16,
-            flexDirection: isCompact ? "column" : "row",
-          }}
-        >
-          <Link
-            href="/"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              textDecoration: "none",
-            }}
-          >
-            <img
-              src={LOGO_PATH}
-              alt="DoorRent logo"
-              style={{
-                width: 42,
-                height: 42,
-                objectFit: "contain",
-              }}
-            />
-            <span
-              style={{
-                fontFamily: '"DM Serif Display", Georgia, serif',
-                fontSize: 22,
-                letterSpacing: "-0.02em",
-                color: BRAND.text,
-              }}
-            >
+      <div style={{ width: "100%", padding: `18px ${MARKETPLACE_PAGE_GUTTER}` }}>
+        {/* Main row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+            <img src={LOGO_PATH} alt="DoorRent logo" style={{ width: 42, height: 42, objectFit: "contain" }} />
+            <span style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: 22, letterSpacing: "-0.02em", color: BRAND.text }}>
               DoorRent
             </span>
           </Link>
 
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: isCompact ? "stretch" : "flex-end",
-              gap: 12,
-              width: isCompact ? "100%" : "auto",
-              marginLeft: isCompact ? 0 : "auto",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: isCompact ? "center" : "flex-end",
-                gap: isCompact ? 6 : 10,
-                flexWrap: "wrap",
-                width: "100%",
-              }}
-            >
-              <Link href="/" style={navLinkStyle}>
-                Home
-              </Link>
-              <Link href="/#features" style={navLinkStyle}>
-                Features
-              </Link>
-              <Link href="/#pricing" style={navLinkStyle}>
-                Why it&apos;s free
-              </Link>
-            </div>
-
-            <div
-              style={{
-                display: isCompact ? "grid" : "flex",
-                gridTemplateColumns: isCompact ? "repeat(2,minmax(0,1fr))" : undefined,
-                gap: 10,
-                width: isCompact ? "100%" : "auto",
-              }}
-            >
-              <Link
-                href="/portal"
-                style={{
-                  ...buttonStyle,
-                  background: "#ffffff",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  color: "#151712",
-                }}
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/portal"
-                style={{
-                  ...buttonStyle,
-                  background: "#1A6B4A",
-                  border: "1px solid #1A6B4A",
-                  color: "#ffffff",
-                }}
-              >
-                Get started →
-              </Link>
-            </div>
+          {/* Desktop nav links */}
+          <div className="mkt-desktop-links" style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", marginRight: 12 }}>
+            <Link href="/" style={navLinkStyle}>Home</Link>
+            <Link href="/#features" style={navLinkStyle}>Features</Link>
+            <Link href="/#pricing" style={navLinkStyle}>Why it&apos;s free</Link>
           </div>
+
+          {/* Desktop CTA buttons */}
+          <div className="mkt-desktop-cta" style={{ display: "flex", gap: 10 }}>
+            <Link href="/portal" style={{ ...buttonStyle, background: "#ffffff", border: "1px solid rgba(255,255,255,0.12)", color: "#151712" }}>
+              Sign in
+            </Link>
+            <Link href="/portal" style={{ ...buttonStyle, background: "#1A6B4A", border: "1px solid #1A6B4A", color: "#ffffff" }}>
+              Get started →
+            </Link>
+          </div>
+
+          {/* Mobile: hamburger only */}
+          <button
+            type="button"
+            className={`mkt-hamburger${menuOpen ? " is-open" : ""}`}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            <span className="mkt-bar mkt-bar-top" />
+            <span className="mkt-bar mkt-bar-mid" />
+            <span className="mkt-bar mkt-bar-bot" />
+          </button>
+        </div>
+
+        {/* Animated mobile menu */}
+        <div className={`mkt-mobile-menu${menuOpen ? " is-open" : ""}`} aria-hidden={!menuOpen}>
+          <Link href="/" className="mkt-mitem" style={{ "--i": 0 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Home</Link>
+          <Link href="/#features" className="mkt-mitem" style={{ "--i": 1 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Features</Link>
+          <Link href="/#pricing" className="mkt-mitem" style={{ "--i": 2 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Why it&apos;s free</Link>
+          <div className="mkt-mdivider" />
+          <Link href="/portal" className="mkt-mitem" style={{ "--i": 3 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Sign in</Link>
+          <Link href="/portal" className="mkt-mitem mkt-mitem-cta" style={{ "--i": 4 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Get started →</Link>
         </div>
       </div>
+
+      <style>{`
+        .mkt-hamburger {
+          display: none;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          width: 40px;
+          height: 40px;
+          background: rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 10px;
+          cursor: pointer;
+          padding: 0;
+          flex-shrink: 0;
+          position: relative;
+          transition: background 0.25s, border-color 0.25s;
+        }
+        .mkt-hamburger:hover { background: rgba(255,255,255,0.18); }
+
+        .mkt-bar {
+          position: absolute;
+          left: 50%;
+          width: 20px;
+          height: 2px;
+          border-radius: 2px;
+          background: ${BRAND.text};
+          transform-origin: center;
+          transition: transform 0.35s cubic-bezier(0.23,1,0.32,1),
+                      opacity 0.25s ease,
+                      top 0.35s cubic-bezier(0.23,1,0.32,1);
+          translate: -50% 0;
+        }
+        .mkt-bar-top { top: 13px; }
+        .mkt-bar-mid { top: 19px; }
+        .mkt-bar-bot { top: 25px; }
+        .mkt-hamburger.is-open .mkt-bar-top { top: 19px; transform: translateX(-50%) rotate(45deg); }
+        .mkt-hamburger.is-open .mkt-bar-mid { opacity: 0; transform: translateX(-50%) scaleX(0); }
+        .mkt-hamburger.is-open .mkt-bar-bot { top: 19px; transform: translateX(-50%) rotate(-45deg); }
+
+        @keyframes mkt-menu-in {
+          from { opacity: 0; transform: translateY(-10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes mkt-item-in {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .mkt-mobile-menu {
+          display: none;
+          flex-direction: column;
+          gap: 2px;
+          border-top: 1px solid ${BRAND.surfaceSoft};
+          margin-top: 8px;
+          padding: 10px 0 14px;
+        }
+        .mkt-mobile-menu.is-open {
+          display: flex;
+          animation: mkt-menu-in 0.3s cubic-bezier(0.23,1,0.32,1) both;
+        }
+        .mkt-mitem {
+          display: flex;
+          align-items: center;
+          padding: 11px 14px;
+          font-size: 15px;
+          font-weight: 500;
+          color: ${BRAND.textMuted};
+          text-decoration: none;
+          border-radius: 10px;
+          opacity: 0;
+          animation: mkt-item-in 0.3s cubic-bezier(0.23,1,0.32,1) both;
+          animation-delay: calc(var(--i) * 50ms + 60ms);
+          transition: background 0.15s, color 0.15s;
+        }
+        .mkt-mitem:hover { background: rgba(255,255,255,0.07); color: ${BRAND.text}; }
+        .mkt-mitem-cta {
+          justify-content: center;
+          background: #1A6B4A;
+          color: #fff !important;
+          font-weight: 600;
+          margin-top: 4px;
+        }
+        .mkt-mitem-cta:hover { background: #15583c !important; }
+        .mkt-mdivider { height: 1px; background: ${BRAND.surfaceSoft}; margin: 6px 2px; }
+
+        @media (max-width: 760px) {
+          .mkt-desktop-links, .mkt-desktop-cta { display: none !important; }
+          .mkt-hamburger { display: flex !important; }
+        }
+      `}</style>
     </header>
   );
 }
@@ -471,13 +504,13 @@ function MarketplaceSiteFooter() {
             © 2026 DoorRent – Subsidiary of ReSuply Technologies Limited. All rights reserved.
           </p>
           <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
-            <a href="https://x.com" target="_blank" rel="noreferrer" style={linkStyle}>
+            <a href="https://x.com/usedoorrent" target="_blank" rel="noreferrer" style={linkStyle}>
               Twitter / X
             </a>
-            <a href="https://linkedin.com" target="_blank" rel="noreferrer" style={linkStyle}>
+            <a href="https://www.linkedin.com/company/doorrent/" target="_blank" rel="noreferrer" style={linkStyle}>
               LinkedIn
             </a>
-            <a href="https://instagram.com" target="_blank" rel="noreferrer" style={linkStyle}>
+            <a href="https://www.instagram.com/usedoorrent" target="_blank" rel="noreferrer" style={linkStyle}>
               Instagram
             </a>
           </div>
