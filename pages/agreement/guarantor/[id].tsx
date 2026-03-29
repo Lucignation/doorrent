@@ -35,6 +35,12 @@ interface GuarantorAgreementResponse {
     tenantIdNumber?: string | null;
     tenantSignatureDataUrl?: string | null;
     tenantSignedDate?: string | null;
+    landlordSignatureDataUrl?: string | null;
+    landlordSignedDate?: string | null;
+    landlordWitnessName?: string | null;
+    landlordWitnessAddress?: string | null;
+    landlordWitnessSignatureDataUrl?: string | null;
+    landlordWitnessDate?: string | null;
     propertyName: string;
     propertyAddress: string;
     unitNumber: string;
@@ -66,6 +72,8 @@ interface GuarantorAgreementResponse {
       address?: string | null;
     } | null;
     notes?: string | null;
+    status?: string;
+    statusLabel?: string;
     guarantorSigned: boolean;
     witnessName?: string | null;
     witnessDate?: string | null;
@@ -163,7 +171,14 @@ export default function GuarantorSigningPage({
     printAgreementDocument({
       agreementRef: a.id,
       generatedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
-      landlord: { companyName: a.landlordCompany, name: a.landlordName, email: a.landlordEmail, phone: a.landlordPhone },
+      landlord: {
+        companyName: a.landlordCompany,
+        name: a.landlordName,
+        email: a.landlordEmail,
+        phone: a.landlordPhone,
+        signatureDataUrl: a.landlordSignatureDataUrl || undefined,
+        signedDate: a.landlordSignedDate || undefined,
+      },
       tenant: { name: a.tenantName, email: a.tenantEmail, phone: a.tenantPhone, residentialAddress: a.tenantResidentialAddress, idType: a.tenantIdType, idNumber: a.tenantIdNumber, signatureDataUrl: a.tenantSignatureDataUrl || undefined },
       premises: { propertyName: a.propertyName, address: a.propertyAddress, unitNumber: a.unitNumber },
       lease: { title: a.title, startDate: a.leaseStartIso, endDate: a.leaseEndIso },
@@ -176,6 +191,12 @@ export default function GuarantorSigningPage({
         address: witnessAddress.trim() || a.witnessAddress || a.guarantor?.address || undefined,
         witnessDate: a.witnessDate || (savedSignature ? new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : undefined),
       },
+      landlordWitness: {
+        name: a.landlordWitnessName || undefined,
+        address: a.landlordWitnessAddress || undefined,
+        signatureDataUrl: a.landlordWitnessSignatureDataUrl || undefined,
+        witnessDate: a.landlordWitnessDate || undefined,
+      },
       notes: a.notes,
       templateName: a.templateName,
     });
@@ -186,7 +207,14 @@ export default function GuarantorSigningPage({
     ? buildAgreementHtml({
         agreementRef: agreement.id,
         generatedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
-        landlord: { companyName: agreement.landlordCompany, name: agreement.landlordName, email: agreement.landlordEmail, phone: agreement.landlordPhone },
+        landlord: {
+          companyName: agreement.landlordCompany,
+          name: agreement.landlordName,
+          email: agreement.landlordEmail,
+          phone: agreement.landlordPhone,
+          signatureDataUrl: agreement.landlordSignatureDataUrl || undefined,
+          signedDate: agreement.landlordSignedDate || undefined,
+        },
         tenant: { name: agreement.tenantName, email: agreement.tenantEmail, phone: agreement.tenantPhone, residentialAddress: agreement.tenantResidentialAddress, idType: agreement.tenantIdType, idNumber: agreement.tenantIdNumber, signatureDataUrl: agreement.tenantSignatureDataUrl || undefined, signedDate: agreement.tenantSignedDate || undefined },
         premises: { propertyName: agreement.propertyName, address: agreement.propertyAddress, unitNumber: agreement.unitNumber },
         lease: { title: agreement.title, startDate: agreement.leaseStartIso, endDate: agreement.leaseEndIso },
@@ -200,6 +228,12 @@ export default function GuarantorSigningPage({
           witnessDate: signed
             ? new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })
             : agreement.witnessDate || undefined,
+        },
+        landlordWitness: {
+          name: agreement.landlordWitnessName || undefined,
+          address: agreement.landlordWitnessAddress || undefined,
+          signatureDataUrl: agreement.landlordWitnessSignatureDataUrl || undefined,
+          witnessDate: agreement.landlordWitnessDate || undefined,
         },
         notes: agreement.notes,
         templateName: agreement.templateName,

@@ -24,6 +24,7 @@ interface AgreementSummary {
 interface AgreementRow extends LandlordAgreementRow {
   id: string;
   title?: string;
+  statusLabel?: string;
   property: string;
   annualRent?: number;
   billingFrequency?: string;
@@ -43,6 +44,10 @@ interface AgreementRow extends LandlordAgreementRow {
   tenantResidentialAddress?: string | null;
   tenantIdType?: string | null;
   tenantIdNumber?: string | null;
+  tenantSignatureDataUrl?: string | null;
+  tenantSignedDate?: string | null;
+  landlordSignatureDataUrl?: string | null;
+  landlordSignedDate?: string | null;
   propertyAddress?: string;
   unitNumber?: string | null;
   guarantor?: {
@@ -53,7 +58,12 @@ interface AgreementRow extends LandlordAgreementRow {
     occupation?: string | null;
     company?: string | null;
     address?: string | null;
+    signatureDataUrl?: string | null;
+    witnessDate?: string | null;
   } | null;
+  witnessAddress?: string | null;
+  witnessSignatureDataUrl?: string | null;
+  witnessDate?: string | null;
   conditions?: {
     noticePeriodDays?: number | null;
     utilities?: string | null;
@@ -61,6 +71,10 @@ interface AgreementRow extends LandlordAgreementRow {
     specialConditions?: string | null;
   } | null;
   notes?: string | null;
+  landlordWitnessName?: string | null;
+  landlordWitnessAddress?: string | null;
+  landlordWitnessSignatureDataUrl?: string | null;
+  landlordWitnessDate?: string | null;
 }
 
 interface AgreementsResponse {
@@ -88,8 +102,12 @@ interface TemplatesResponse {
 }
 
 function statusTone(status: LandlordAgreementRow["status"]): BadgeTone {
-  if (status === "signed") {
+  if (status === "signed" || status === "fully_signed") {
     return "green";
+  }
+
+  if (status === "awaiting_landlord_signature") {
+    return "blue";
   }
 
   if (status === "sent") {
@@ -224,6 +242,8 @@ export default function LandlordAgreementsPage() {
         name: row.landlordName ?? "",
         email: row.landlordEmail ?? "",
         phone: row.landlordPhone,
+        signatureDataUrl: row.landlordSignatureDataUrl,
+        signedDate: row.landlordSignedDate,
       },
       tenant: {
         name: row.tenant,
@@ -232,6 +252,8 @@ export default function LandlordAgreementsPage() {
         residentialAddress: row.tenantResidentialAddress,
         idType: row.tenantIdType,
         idNumber: row.tenantIdNumber,
+        signatureDataUrl: row.tenantSignatureDataUrl,
+        signedDate: row.tenantSignedDate,
       },
       premises: {
         propertyName: row.property,
@@ -253,7 +275,21 @@ export default function LandlordAgreementsPage() {
         serviceCharge: row.serviceCharge,
       },
       conditions: row.conditions,
-      guarantor: row.guarantor,
+      guarantor: row.guarantor
+        ? {
+            ...row.guarantor,
+            address: row.witnessAddress ?? row.guarantor.address ?? null,
+            signatureDataUrl:
+              row.witnessSignatureDataUrl ?? row.guarantor.signatureDataUrl ?? null,
+            witnessDate: row.witnessDate ?? null,
+          }
+        : null,
+      landlordWitness: {
+        name: row.landlordWitnessName,
+        address: row.landlordWitnessAddress,
+        signatureDataUrl: row.landlordWitnessSignatureDataUrl,
+        witnessDate: row.landlordWitnessDate,
+      },
       notes: row.notes,
       templateName: row.template,
     });
@@ -310,7 +346,9 @@ export default function LandlordAgreementsPage() {
           key: "status",
           label: "Status",
           render: (row) => (
-            <StatusBadge tone={statusTone(row.status)}>{row.status}</StatusBadge>
+            <StatusBadge tone={statusTone(row.status)}>
+              {row.statusLabel ?? row.status}
+            </StatusBadge>
           ),
         },
         {
@@ -336,7 +374,11 @@ export default function LandlordAgreementsPage() {
                 </button>
               ) : null}
               {canExportAgreementPdfs &&
-              (row.status === "signed" || row.status === "sent" || row.status === "draft") ? (
+              (row.status === "signed" ||
+                row.status === "fully_signed" ||
+                row.status === "awaiting_landlord_signature" ||
+                row.status === "sent" ||
+                row.status === "draft") ? (
                 <button
                   type="button"
                   className="btn btn-secondary btn-xs"

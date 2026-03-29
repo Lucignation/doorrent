@@ -1,3 +1,8 @@
+import {
+  canRenderSignaturePreview,
+  resolveSignatureDisplayUrl,
+} from "./signature-data";
+
 function esc(value: string | null | undefined) {
   if (!value) return "—";
   return String(value)
@@ -47,6 +52,10 @@ function fmtMoneyWords(amount: number | null | undefined) {
   return toWords(Math.round(amount));
 }
 
+function isRenderableSignatureUri(value: string | null | undefined) {
+  return canRenderSignaturePreview(value);
+}
+
 function leaseDurationText(startIso: string, endIso: string) {
   try {
     const start = new Date(startIso);
@@ -74,6 +83,8 @@ export interface AgreementPrintData {
     email: string;
     phone?: string | null;
     address?: string | null;
+    signatureDataUrl?: string | null;
+    signedDate?: string | null;
   };
 
   tenant: {
@@ -124,6 +135,13 @@ export interface AgreementPrintData {
     relationship?: string | null;
     occupation?: string | null;
     company?: string | null;
+    address?: string | null;
+    signatureDataUrl?: string | null;
+    witnessDate?: string | null;
+  } | null;
+
+  landlordWitness?: {
+    name?: string | null;
     address?: string | null;
     signatureDataUrl?: string | null;
     witnessDate?: string | null;
@@ -844,10 +862,16 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
         Email: ${esc(data.landlord.email)}<br>
         ${data.landlord.phone ? `Phone: ${esc(data.landlord.phone)}<br>` : ""}
       </div>
-      <div class="sig-line"></div>
+      ${isRenderableSignatureUri(data.landlord.signatureDataUrl)
+        ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.landlord.signatureDataUrl) ?? ""}" style="height:48pt;max-width:200pt;display:block;" alt="Landlord Signature" /></div>`
+        : '<div class="sig-line"></div>'}
       <div class="sig-meta">Authorised Signature</div>
-      <div class="sig-date-line"></div>
-      <div class="sig-meta">Date</div>
+      ${data.landlord.signatureDataUrl && !isRenderableSignatureUri(data.landlord.signatureDataUrl)
+        ? '<div class="sig-meta" style="margin-top:6pt;">Signed electronically via DoorRent</div>'
+        : ""}
+      ${data.landlord.signedDate
+        ? `<div class="sig-meta" style="margin-top:6pt;">Date: <strong>${esc(data.landlord.signedDate)}</strong></div>`
+        : '<div class="sig-date-line"></div><div class="sig-meta">Date</div>'}
     </div>
 
     <div class="sig-block">
@@ -858,10 +882,13 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
         ${data.tenant.phone ? `Phone: ${esc(data.tenant.phone)}<br>` : ""}
         ${data.tenant.idType && data.tenant.idNumber ? `ID: ${esc(data.tenant.idType)} — ${esc(data.tenant.idNumber)}<br>` : ""}
       </div>
-      ${data.tenant.signatureDataUrl
-        ? `<div style="margin:10pt 0 4pt;"><img src="${data.tenant.signatureDataUrl}" style="height:48pt;max-width:200pt;display:block;" alt="Tenant Signature" /></div>`
+      ${isRenderableSignatureUri(data.tenant.signatureDataUrl)
+        ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.tenant.signatureDataUrl) ?? ""}" style="height:48pt;max-width:200pt;display:block;" alt="Tenant Signature" /></div>`
         : '<div class="sig-line"></div>'}
       <div class="sig-meta">Tenant's Signature</div>
+      ${data.tenant.signatureDataUrl && !isRenderableSignatureUri(data.tenant.signatureDataUrl)
+        ? '<div class="sig-meta" style="margin-top:6pt;">Signed electronically via DoorRent</div>'
+        : ""}
       ${data.tenant.signedDate
         ? `<div class="sig-meta" style="margin-top:6pt;">Date: <strong>${esc(data.tenant.signedDate)}</strong></div>`
         : '<div class="sig-date-line"></div><div class="sig-meta">Date</div>'}
@@ -873,18 +900,40 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     <div class="sig-pair">
       <div class="sig-block">
         <div class="sig-label">Witness to Landlord's Signature</div>
-        <div class="sig-line"></div>
-        <div class="sig-meta">Full Name: ___________________________________</div>
+        ${isRenderableSignatureUri(data.landlordWitness?.signatureDataUrl)
+          ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.landlordWitness?.signatureDataUrl) ?? ""}" style="height:48pt;max-width:200pt;display:block;" alt="Landlord Witness Signature" /></div>`
+          : '<div class="sig-line"></div>'}
+        ${data.landlordWitness?.signatureDataUrl &&
+        !isRenderableSignatureUri(data.landlordWitness.signatureDataUrl)
+          ? '<div class="sig-meta" style="margin-bottom:6pt;">Signed electronically via DoorRent</div>'
+          : ""}
+        <div class="sig-meta">
+          ${data.landlordWitness?.name
+            ? `Full Name: <strong>${esc(data.landlordWitness.name)}</strong>`
+            : "Full Name: ___________________________________"}
+        </div>
         <div style="height:6pt;"></div>
-        <div class="sig-meta">Address: ___________________________________</div>
-        <div class="sig-date-line"></div>
-        <div class="sig-meta">Date</div>
+        <div class="sig-meta">
+          ${data.landlordWitness?.address
+            ? `Address: <strong>${esc(data.landlordWitness.address)}</strong>`
+            : "Address: ___________________________________"}
+        </div>
+        <div style="height:6pt;"></div>
+        <div class="sig-meta">
+          ${data.landlordWitness?.witnessDate
+            ? `Date: <strong>${esc(data.landlordWitness.witnessDate)}</strong>`
+            : "Date: ___________________________________"}
+        </div>
       </div>
       <div class="sig-block">
         <div class="sig-label">Witness to Tenant's Signature</div>
-        ${data.guarantor?.signatureDataUrl
-          ? `<div style="margin:10pt 0 4pt;"><img src="${data.guarantor.signatureDataUrl}" style="height:48pt;max-width:200pt;display:block;" alt="Witness Signature" /></div>`
+        ${isRenderableSignatureUri(data.guarantor?.signatureDataUrl)
+          ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.guarantor?.signatureDataUrl) ?? ""}" style="height:48pt;max-width:200pt;display:block;" alt="Witness Signature" /></div>`
           : '<div class="sig-line"></div>'}
+        ${data.guarantor?.signatureDataUrl &&
+        !isRenderableSignatureUri(data.guarantor.signatureDataUrl)
+          ? '<div class="sig-meta" style="margin-bottom:6pt;">Signed electronically via DoorRent</div>'
+          : ""}
         <div class="sig-meta">
           ${data.guarantor?.name
             ? `Full Name: <strong>${esc(data.guarantor.name)}</strong>`

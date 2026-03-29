@@ -1,11 +1,16 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import LandlordPortalShell from "../../../components/auth/LandlordPortalShell";
 import PageMeta from "../../../components/layout/PageMeta";
 import StatusBadge from "../../../components/ui/StatusBadge";
+import SignaturePad from "../../../components/ui/SignaturePad";
 import { useLandlordPortalSession } from "../../../context/TenantSessionContext";
 import { apiRequest } from "../../../lib/api";
 import { printAgreementDocument } from "../../../lib/agreement-print";
+import {
+  canRenderSignaturePreview,
+  resolveSignatureDisplayUrl,
+} from "../../../lib/signature-data";
 import { usePrototypeUI } from "../../../context/PrototypeUIContext";
 import type { BadgeTone } from "../../../types/app";
 
@@ -45,6 +50,19 @@ interface AgreementDetail {
   sentAt: string | null;
   lastActivity: string | null;
   createdAt: string;
+  tenantSignatureDataUrl: string | null;
+  tenantSignedDate: string | null;
+  landlordSignatureDataUrl: string | null;
+  landlordSignedDate: string | null;
+  canLandlordSign: boolean;
+  canLandlordWitnessSign: boolean;
+  signing: {
+    tenantSigned: boolean;
+    landlordSigned: boolean;
+    tenantWitnessSigned: boolean;
+    landlordWitnessSigned: boolean;
+    fullySigned: boolean;
+  };
   guarantor: {
     name: string | null;
     phone: string | null;
@@ -52,7 +70,17 @@ interface AgreementDetail {
     relationship: string | null;
     occupation: string | null;
     company: string | null;
+    address?: string | null;
+    signatureDataUrl?: string | null;
   } | null;
+  witnessName?: string | null;
+  witnessAddress?: string | null;
+  witnessSignatureDataUrl?: string | null;
+  witnessDate?: string | null;
+  landlordWitnessName?: string | null;
+  landlordWitnessAddress?: string | null;
+  landlordWitnessSignatureDataUrl?: string | null;
+  landlordWitnessDate?: string | null;
   conditions: {
     noticePeriodDays: number | null;
     utilities: string | null;
@@ -66,10 +94,15 @@ interface AgreementDetail {
 }
 
 function statusTone(status: string): BadgeTone {
-  if (status === "signed") return "green";
+  if (status === "fully_signed") return "green";
+  if (status === "awaiting_landlord_signature") return "blue";
   if (status === "sent") return "amber";
   if (status === "draft") return "gray";
   return "red";
+}
+
+function isRenderableSignatureUrl(value?: string | null) {
+  return canRenderSignaturePreview(value);
 }
 
 export default function AgreementDetailPage() {
@@ -81,28 +114,37 @@ export default function AgreementDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [resending, setResending] = useState(false);
+  const [landlordSignatureData, setLandlordSignatureData] = useState("");
+  const [landlordWitnessSignatureData, setLandlordWitnessSignatureData] =
+    useState("");
+  const [landlordWitnessName, setLandlordWitnessName] = useState("");
+  const [landlordWitnessAddress, setLandlordWitnessAddress] = useState("");
+  const [signingAgreement, setSigningAgreement] = useState(false);
+  const [signingWitness, setSigningWitness] = useState(false);
 
-  useEffect(() => {
+  const loadAgreement = useCallback(async () => {
     const token = landlordSession?.token;
     if (!token || !id || Array.isArray(id)) return;
-    let cancelled = false;
 
-    async function load() {
-      setLoading(true);
-      setError("");
-      try {
-        const res = await apiRequest<AgreementDetail>(`/landlord/agreements/${id}`, { token });
-        if (!cancelled) setDetail(res.data);
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load agreement.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiRequest<AgreementDetail>(`/landlord/agreements/${id}`, {
+        token,
+      });
+      setDetail(res.data);
+      setLandlordWitnessName(res.data.landlordWitnessName ?? "");
+      setLandlordWitnessAddress(res.data.landlordWitnessAddress ?? "");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not load agreement.");
+    } finally {
+      setLoading(false);
     }
-
-    void load();
-    return () => { cancelled = true; };
   }, [id, landlordSession?.token]);
+
+  useEffect(() => {
+    void loadAgreement();
+  }, [loadAgreement]);
 
   function handleViewPdf() {
     if (!detail) return;
@@ -114,6 +156,8 @@ export default function AgreementDetailPage() {
         name: detail.landlordName,
         email: detail.landlordEmail,
         phone: detail.landlordPhone,
+        signatureDataUrl: detail.landlordSignatureDataUrl,
+        signedDate: detail.landlordSignedDate,
       },
       tenant: {
         name: detail.tenant.name,
@@ -122,6 +166,8 @@ export default function AgreementDetailPage() {
         residentialAddress: detail.tenant.residentialAddress,
         idType: detail.tenant.idType,
         idNumber: detail.tenant.idNumber,
+        signatureDataUrl: detail.tenantSignatureDataUrl,
+        signedDate: detail.tenantSignedDate,
       },
       premises: {
         propertyName: detail.property.name,
@@ -143,7 +189,23 @@ export default function AgreementDetailPage() {
         serviceCharge: detail.serviceCharge,
       },
       conditions: detail.conditions,
-      guarantor: detail.guarantor,
+      guarantor: detail.guarantor
+        ? {
+            ...detail.guarantor,
+            address: detail.witnessAddress ?? detail.guarantor.address ?? null,
+            signatureDataUrl:
+              detail.witnessSignatureDataUrl ??
+              detail.guarantor.signatureDataUrl ??
+              null,
+            witnessDate: detail.witnessDate ?? null,
+          }
+        : null,
+      landlordWitness: {
+        name: detail.landlordWitnessName,
+        address: detail.landlordWitnessAddress,
+        signatureDataUrl: detail.landlordWitnessSignatureDataUrl,
+        witnessDate: detail.landlordWitnessDate,
+      },
       notes: null,
       templateName: detail.template,
     });
@@ -162,6 +224,66 @@ export default function AgreementDetailPage() {
       showToast(err instanceof Error ? err.message : "Could not resend agreement.", "error");
     } finally {
       setResending(false);
+    }
+  }
+
+  async function handleLandlordSign() {
+    if (!landlordSession?.token || !detail || !detail.canLandlordSign) return;
+    if (!landlordSignatureData) {
+      showToast("Add the landlord signature before signing.", "error");
+      return;
+    }
+
+    setSigningAgreement(true);
+    try {
+      await apiRequest(`/landlord/agreements/${detail.id}/sign`, {
+        method: "POST",
+        token: landlordSession.token,
+        body: {
+          signatureData: landlordSignatureData,
+        },
+      });
+      showToast("Agreement signed successfully.", "success");
+      setLandlordSignatureData("");
+      await loadAgreement();
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Could not sign agreement.",
+        "error",
+      );
+    } finally {
+      setSigningAgreement(false);
+    }
+  }
+
+  async function handleLandlordWitnessSign() {
+    if (!landlordSession?.token || !detail || !detail.canLandlordWitnessSign) return;
+    if (!landlordWitnessSignatureData || !landlordWitnessName.trim()) {
+      showToast("Add the witness name and signature before continuing.", "error");
+      return;
+    }
+
+    setSigningWitness(true);
+    try {
+      await apiRequest(`/landlord/agreements/${detail.id}/witness-sign`, {
+        method: "POST",
+        token: landlordSession.token,
+        body: {
+          signatureData: landlordWitnessSignatureData,
+          witnessName: landlordWitnessName.trim(),
+          witnessAddress: landlordWitnessAddress.trim() || undefined,
+        },
+      });
+      showToast("Landlord witness signed successfully.", "success");
+      setLandlordWitnessSignatureData("");
+      await loadAgreement();
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Could not record witness signature.",
+        "error",
+      );
+    } finally {
+      setSigningWitness(false);
     }
   }
 
@@ -263,6 +385,155 @@ export default function AgreementDetailPage() {
                 </div>
               ) : null}
             </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title">Execution</div>
+          </div>
+          <div className="card-body">
+            <div className="form-row" style={{ marginBottom: 16 }}>
+              <div>
+                <div className="td-muted" style={{ fontSize: 12 }}>Tenant</div>
+                <div style={{ fontWeight: 600 }}>
+                  {detail.signing.tenantSigned
+                    ? `Signed${detail.tenantSignedDate ? ` · ${detail.tenantSignedDate}` : ""}`
+                    : "Pending"}
+                </div>
+              </div>
+              <div>
+                <div className="td-muted" style={{ fontSize: 12 }}>Landlord</div>
+                <div style={{ fontWeight: 600 }}>
+                  {detail.signing.landlordSigned
+                    ? `Signed${detail.landlordSignedDate ? ` · ${detail.landlordSignedDate}` : ""}`
+                    : detail.signing.tenantSigned
+                      ? "Awaiting landlord signature"
+                      : "Waiting for tenant"}
+                </div>
+              </div>
+              <div>
+                <div className="td-muted" style={{ fontSize: 12 }}>Landlord witness</div>
+                <div style={{ fontWeight: 600 }}>
+                  {detail.signing.landlordWitnessSigned
+                    ? `Signed${detail.landlordWitnessDate ? ` · ${detail.landlordWitnessDate}` : ""}`
+                    : detail.signing.landlordSigned
+                      ? "Optional"
+                      : "Locked"}
+                </div>
+              </div>
+            </div>
+
+            {detail.landlordSignatureDataUrl ? (
+              <div style={{ marginBottom: 16 }}>
+                <div className="td-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                  Landlord signature on file
+                </div>
+                {isRenderableSignatureUrl(detail.landlordSignatureDataUrl) ? (
+                  <img
+                    src={resolveSignatureDisplayUrl(detail.landlordSignatureDataUrl) ?? ""}
+                    alt="Landlord signature"
+                    style={{ maxWidth: 220, height: 80, objectFit: "contain" }}
+                  />
+                ) : (
+                  <div className="td-muted">Signed electronically via DoorRent</div>
+                )}
+              </div>
+            ) : null}
+
+            {detail.canLandlordSign ? (
+              <div
+                style={{
+                  padding: 16,
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                  marginBottom: 16,
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 10 }}>
+                  Add landlord signature
+                </div>
+                <SignaturePad onChange={setLandlordSignatureData} />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ marginTop: 12 }}
+                  onClick={() => void handleLandlordSign()}
+                  disabled={signingAgreement || !landlordSignatureData}
+                >
+                  {signingAgreement ? "Signing..." : "Sign as Landlord"}
+                </button>
+              </div>
+            ) : null}
+
+            {detail.landlordWitnessSignatureDataUrl ? (
+              <div style={{ marginBottom: 16 }}>
+                <div className="td-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                  Landlord witness signature on file
+                </div>
+                {isRenderableSignatureUrl(detail.landlordWitnessSignatureDataUrl) ? (
+                  <img
+                    src={
+                      resolveSignatureDisplayUrl(
+                        detail.landlordWitnessSignatureDataUrl,
+                      ) ?? ""
+                    }
+                    alt="Landlord witness signature"
+                    style={{ maxWidth: 220, height: 80, objectFit: "contain" }}
+                  />
+                ) : (
+                  <div className="td-muted">Signed electronically via DoorRent</div>
+                )}
+              </div>
+            ) : null}
+
+            {detail.canLandlordWitnessSign ? (
+              <div
+                style={{
+                  padding: 16,
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius)",
+                }}
+              >
+                <div style={{ fontWeight: 600, marginBottom: 10 }}>
+                  Add landlord witness
+                </div>
+                <div className="form-row" style={{ marginBottom: 12 }}>
+                  <div>
+                    <label className="form-label">Witness Name</label>
+                    <input
+                      className="form-input"
+                      value={landlordWitnessName}
+                      onChange={(event) => setLandlordWitnessName(event.target.value)}
+                      placeholder="Enter witness name"
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label">Witness Address</label>
+                    <input
+                      className="form-input"
+                      value={landlordWitnessAddress}
+                      onChange={(event) => setLandlordWitnessAddress(event.target.value)}
+                      placeholder="Enter witness address"
+                    />
+                  </div>
+                </div>
+                <SignaturePad onChange={setLandlordWitnessSignatureData} />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ marginTop: 12 }}
+                  onClick={() => void handleLandlordWitnessSign()}
+                  disabled={
+                    signingWitness ||
+                    !landlordWitnessName.trim() ||
+                    !landlordWitnessSignatureData
+                  }
+                >
+                  {signingWitness ? "Saving..." : "Sign as Witness"}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
 

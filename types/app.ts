@@ -166,7 +166,13 @@ export interface LandlordAgreementRow {
   template: string;
   sent: string;
   lastActivity: string;
-  status: "signed" | "sent" | "draft" | "expired";
+  status:
+    | "fully_signed"
+    | "awaiting_landlord_signature"
+    | "signed"
+    | "sent"
+    | "draft"
+    | "expired";
 }
 
 export interface LandlordReceiptRow {

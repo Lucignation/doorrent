@@ -71,6 +71,19 @@ interface TenantAgreementResponse {
       signatureDataUrl?: string | null;
       witnessDate?: string | null;
     } | null;
+    landlordSignatureDataUrl?: string | null;
+    landlordSignedDate?: string | null;
+    landlordWitnessName?: string | null;
+    landlordWitnessAddress?: string | null;
+    landlordWitnessSignatureDataUrl?: string | null;
+    landlordWitnessDate?: string | null;
+    signing: {
+      tenantSigned: boolean;
+      landlordSigned: boolean;
+      tenantWitnessSigned: boolean;
+      landlordWitnessSigned: boolean;
+      fullySigned: boolean;
+    };
     notes?: string | null;
     contentSections: string[];
     canSign: boolean;
@@ -88,6 +101,14 @@ interface AgreementMutationResponse {
     statusLabel: string;
     lastActivity: string | null;
   };
+}
+
+function agreementBadgeClass(status: string) {
+  if (status === "fully_signed") return "badge-green";
+  if (status === "awaiting_landlord_signature") return "badge-blue";
+  if (status === "sent") return "badge-amber";
+  if (status === "expired") return "badge-red";
+  return "badge-gray";
 }
 
 export default function TenantAgreementPage() {
@@ -194,6 +215,8 @@ export default function TenantAgreementPage() {
         name: a.landlordName,
         email: a.landlordEmail,
         phone: a.landlordPhone,
+        signatureDataUrl: a.landlordSignatureDataUrl,
+        signedDate: a.landlordSignedDate,
       },
       tenant: {
         name: t.name,
@@ -224,6 +247,12 @@ export default function TenantAgreementPage() {
       },
       conditions: a.conditions,
       guarantor: a.guarantor,
+      landlordWitness: {
+        name: a.landlordWitnessName,
+        address: a.landlordWitnessAddress,
+        signatureDataUrl: a.landlordWitnessSignatureDataUrl,
+        witnessDate: a.landlordWitnessDate,
+      },
       notes: a.notes,
       templateName: a.templateName,
     });
@@ -270,9 +299,7 @@ export default function TenantAgreementPage() {
                     </div>
                   </div>
                   <span
-                    className={`badge ${
-                      agreement.status === "signed" ? "badge-green" : "badge-amber"
-                    }`}
+                    className={`badge ${agreementBadgeClass(agreement.status)}`}
                   >
                     {agreement.statusLabel}
                   </span>
@@ -281,13 +308,27 @@ export default function TenantAgreementPage() {
                   const htmlSrc = buildAgreementHtml({
                     agreementRef: agreement.id,
                     generatedAt: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }),
-                    landlord: { companyName: agreement.landlordCompany, name: agreement.landlordName, email: agreement.landlordEmail, phone: agreement.landlordPhone },
+                    landlord: {
+                      companyName: agreement.landlordCompany,
+                      name: agreement.landlordName,
+                      email: agreement.landlordEmail,
+                      phone: agreement.landlordPhone,
+                      signatureDataUrl: agreement.landlordSignatureDataUrl || undefined,
+                      signedDate: agreement.landlordSignedDate || undefined,
+                    },
                     tenant: { name: agreementData?.tenant.name ?? "", email: agreement.tenantEmail, phone: agreement.tenantPhone, residentialAddress: agreement.tenantResidentialAddress, idType: agreement.tenantIdType, idNumber: agreement.tenantIdNumber, signatureDataUrl: savedSignature || agreement.tenantSignatureDataUrl || undefined, signedDate: agreement.tenantSignedDate || undefined },
                     premises: { propertyName: agreement.propertyName, address: agreement.propertyAddress, unitNumber: agreement.unitNumber },
                     lease: { title: agreement.title, startDate: agreement.leaseStartIso, endDate: agreement.leaseEndIso },
                     financial: { annualRent: agreement.annualRent, billingFrequency: agreement.billingFrequency, billingFrequencyLabel: agreement.billingFrequencyLabel, billingCyclePrice: agreement.billingCyclePrice, billingSchedule: agreement.billingSchedule, depositAmount: agreement.depositAmount, serviceCharge: agreement.serviceCharge },
                     conditions: agreement.conditions,
                     guarantor: agreement.guarantor,
+                    landlordWitness: {
+                      name: agreement.landlordWitnessName || undefined,
+                      address: agreement.landlordWitnessAddress || undefined,
+                      signatureDataUrl:
+                        agreement.landlordWitnessSignatureDataUrl || undefined,
+                      witnessDate: agreement.landlordWitnessDate || undefined,
+                    },
                     notes: agreement.notes,
                     templateName: agreement.templateName,
                   });
@@ -326,6 +367,36 @@ export default function TenantAgreementPage() {
                       Download PDF
                     </button>
                   </div>
+
+                  {agreement.signing.fullySigned ? (
+                    <div
+                      style={{
+                        padding: 14,
+                        borderRadius: "var(--radius)",
+                        background: "var(--green-light)",
+                        border: "1px solid rgba(26,107,74,0.18)",
+                        color: "var(--green)",
+                        fontSize: 13,
+                        marginBottom: 16,
+                      }}
+                    >
+                      Your landlord has signed this agreement. Your fully signed copy is ready to download.
+                    </div>
+                  ) : agreement.signing.tenantSigned ? (
+                    <div
+                      style={{
+                        padding: 14,
+                        borderRadius: "var(--radius)",
+                        background: "rgba(21, 90, 161, 0.08)",
+                        border: "1px solid rgba(21, 90, 161, 0.16)",
+                        color: "var(--blue)",
+                        fontSize: 13,
+                        marginBottom: 16,
+                      }}
+                    >
+                      You have signed this agreement. We’ll notify you as soon as your landlord signs so you can download the fully signed copy.
+                    </div>
+                  ) : null}
 
                   {agreement.canSign ? (
                     <div>
