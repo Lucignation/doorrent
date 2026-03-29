@@ -78,6 +78,8 @@ interface LandlordPaymentsResponse {
       label: string;
       currentDue: number;
       currentDueFormatted: string;
+      status: string;
+      hasOutstandingBalance: boolean;
     }>;
   };
   collectionTracking: {
@@ -135,6 +137,9 @@ export default function LandlordPaymentsPage() {
   });
   const [offlineError, setOfflineError] = useState("");
   const [savingOffline, setSavingOffline] = useState(false);
+  const [paymentsPage, setPaymentsPage] = useState(1);
+
+  const PAYMENT_HISTORY_PAGE_SIZE = 10;
 
   useEffect(() => {
     const landlordToken = landlordSession?.token;
@@ -223,6 +228,10 @@ export default function LandlordPaymentsPage() {
     });
   }, [dateFilter, paymentData, propertyFilter, query]);
 
+  useEffect(() => {
+    setPaymentsPage(1);
+  }, [query, propertyFilter, dateFilter]);
+
   const filteredArrears = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
 
@@ -253,6 +262,16 @@ export default function LandlordPaymentsPage() {
     [offlineForm.tenantId, paymentData?.formOptions.offlineCollectionTenants],
   );
 
+  const paymentHistoryTotalPages = Math.max(
+    1,
+    Math.ceil(filteredPayments.length / PAYMENT_HISTORY_PAGE_SIZE),
+  );
+  const safePaymentsPage = Math.min(paymentsPage, paymentHistoryTotalPages);
+  const paginatedPayments = useMemo(() => {
+    const startIndex = (safePaymentsPage - 1) * PAYMENT_HISTORY_PAGE_SIZE;
+    return filteredPayments.slice(startIndex, startIndex + PAYMENT_HISTORY_PAGE_SIZE);
+  }, [filteredPayments, safePaymentsPage]);
+
   async function recordOfflineCollection() {
     if (!landlordSession?.token) {
       return;
@@ -265,6 +284,23 @@ export default function LandlordPaymentsPage() {
 
     if (!offlineForm.amount || Number(offlineForm.amount) <= 0) {
       setOfflineError("Enter a valid offline collection amount.");
+      return;
+    }
+
+    if (selectedOfflineTenant && selectedOfflineTenant.currentDue <= 0) {
+      setOfflineError(
+        "This tenancy does not have any outstanding rent right now. DoorRent does not support recording offline overpayments on this screen yet.",
+      );
+      return;
+    }
+
+    if (
+      selectedOfflineTenant &&
+      Number(offlineForm.amount) > selectedOfflineTenant.currentDue
+    ) {
+      setOfflineError(
+        `You can only record up to ${selectedOfflineTenant.currentDueFormatted} for this tenancy right now.`,
+      );
       return;
     }
 
@@ -519,12 +555,17 @@ export default function LandlordPaymentsPage() {
                       {(paymentData.formOptions.offlineCollectionTenants ?? []).map((tenant) => (
                         <option key={tenant.id} value={tenant.id}>
                           {tenant.label}
+                          {tenant.hasOutstandingBalance
+                            ? ` · Due ${tenant.currentDueFormatted}`
+                            : " · No outstanding balance"}
                         </option>
                       ))}
                     </select>
                     <div className="td-muted" style={{ marginTop: 6 }}>
                       {selectedOfflineTenant
-                        ? `Current due: ${selectedOfflineTenant.currentDueFormatted}`
+                        ? selectedOfflineTenant.currentDue > 0
+                          ? `Current due: ${selectedOfflineTenant.currentDueFormatted}`
+                          : "This tenancy has no outstanding balance right now. Offline overpayments are not supported on this form yet."
                         : "Choose the tenancy that received the offline payment."}
                     </div>
                   </div>
@@ -535,6 +576,7 @@ export default function LandlordPaymentsPage() {
                         className="form-input"
                         type="number"
                         value={offlineForm.amount}
+                        max={selectedOfflineTenant?.currentDue || undefined}
                         onChange={(event) =>
                           setOfflineForm((current) => ({
                             ...current,
@@ -592,10 +634,18 @@ export default function LandlordPaymentsPage() {
                     type="button"
                     className="btn btn-primary"
                     onClick={() => void recordOfflineCollection()}
-                    disabled={savingOffline}
+                    disabled={
+                      savingOffline ||
+                      Boolean(selectedOfflineTenant && selectedOfflineTenant.currentDue <= 0)
+                    }
                   >
                     {savingOffline ? "Recording..." : "Record Offline Collection"}
                   </button>
+                  <div className="td-muted" style={{ marginTop: 8 }}>
+                    Offline collections on this form must be less than or equal to the tenant&apos;s
+                    current outstanding balance. Overpayments and rent credits need a separate
+                    prepayment flow.
+                  </div>
                 </div>
               </div>
             ) : null}
@@ -741,9 +791,65 @@ export default function LandlordPaymentsPage() {
           <div className="card-body" style={{ padding: 0 }}>
             <DataTable
               columns={paymentColumns}
-              rows={filteredPayments}
+              rows={paginatedPayments}
               emptyMessage={loading ? "Loading payments..." : "No payments found."}
             />
+            {filteredPayments.length > PAYMENT_HISTORY_PAGE_SIZE ? (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "16px 20px",
+                  borderTop: "1px solid var(--border)",
+                }}
+              >
+                <div className="td-muted">
+                  Showing {(safePaymentsPage - 1) * PAYMENT_HISTORY_PAGE_SIZE + 1}
+                  {" "}to{" "}
+                  {Math.min(
+                    safePaymentsPage * PAYMENT_HISTORY_PAGE_SIZE,
+                    filteredPayments.length,
+                  )}{" "}
+                  of {filteredPayments.length} payments
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setPaymentsPage((current) => Math.max(1, current - 1))}
+                    disabled={safePaymentsPage <= 1}
+                  >
+                    Previous
+                  </button>
+                  <div
+                    style={{
+                      minWidth: 88,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 13,
+                      color: "var(--ink2)",
+                    }}
+                  >
+                    Page {safePaymentsPage} of {paymentHistoryTotalPages}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() =>
+                      setPaymentsPage((current) =>
+                        Math.min(paymentHistoryTotalPages, current + 1),
+                      )
+                    }
+                    disabled={safePaymentsPage >= paymentHistoryTotalPages}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       </LandlordPortalShell>

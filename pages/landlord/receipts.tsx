@@ -241,7 +241,7 @@ export default function LandlordReceiptsPage() {
             className="btn btn-secondary btn-xs"
             onClick={() => openReceipt(row)}
           >
-            Print
+            Download PDF
           </button>
         </div>
       ),
@@ -419,7 +419,7 @@ export default function LandlordReceiptsPage() {
                     onClick={() => openReceipt(selectedReceipt)}
                     disabled={detailLoading}
                   >
-                    {detailLoading ? "Loading..." : "Print This Receipt"}
+                    {detailLoading ? "Loading..." : "Download PDF"}
                   </button>
                 </div>
               ) : (
