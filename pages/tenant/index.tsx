@@ -327,7 +327,7 @@ export default function TenantDashboardPage() {
           </Link>
         ) : null}
 
-        <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3,1fr)" }}>
+        <div className="stats-grid">
           <div className="stat-card accent-gold">
             <div className="stat-label">Billing Cycle</div>
             <div className="stat-value">{dashboardData?.rent.billingSchedule ?? "—"}</div>

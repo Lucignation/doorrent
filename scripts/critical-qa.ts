@@ -21,6 +21,7 @@ const rootDir = path.resolve(scriptDir, "..");
 
 async function main() {
   const [
+    apiRent,
     apiLandlordAccess,
     apiLandlordNotificationAccess,
     apiSubscriptions,
@@ -31,6 +32,7 @@ async function main() {
     webLandlordAccess,
     tenantAccess,
   ] = await Promise.all([
+    import("../api/dist/lib/rent.js"),
     import("../api/dist/lib/landlord-access.js"),
     import("../api/dist/lib/landlord-notification-access.js"),
     import("../api/dist/lib/subscriptions.js"),
@@ -130,6 +132,17 @@ async function main() {
   {
     name: "Billing math stays consistent for yearly, monthly, daily, and commission previews",
     run() {
+      const legacyDailyMismatch = apiRent.resolveStoredRentSnapshot({
+        billingFrequency: "YEARLY",
+        billingCyclePrice: 6027,
+        annualRent: 6027 * 365,
+      });
+
+      assert.equal(legacyDailyMismatch.billingFrequency, "DAILY");
+      assert.equal(legacyDailyMismatch.billingCyclePrice, 6027);
+      assert.equal(legacyDailyMismatch.annualRent, 6027 * 365);
+      assert.equal(legacyDailyMismatch.monthlyRent, 6027 * 30);
+
       assert.equal(webRent.annualEquivalentFromBilling(24, "yearly"), 24);
       assert.equal(webRent.annualEquivalentFromBilling(2, "monthly"), 24);
       assert.equal(webRent.annualEquivalentFromBilling(10, "daily"), 3650);
