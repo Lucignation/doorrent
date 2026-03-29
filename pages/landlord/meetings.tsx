@@ -78,6 +78,27 @@ export default function LandlordMeetingsPage() {
     Record<string, { status: string; scheduledFor: string; durationMinutes: string; meetingLink: string; landlordNotes: string }>
   >({});
 
+  // Google connection status
+  const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const token = landlordSession?.token;
+    if (!token) return;
+    apiRequest<{ connected: boolean; email: string | null }>("/landlord/google/status", { token })
+      .then(({ data }) => setGoogleConnected(data.connected))
+      .catch(() => setGoogleConnected(false));
+  }, [landlordSession?.token]);
+
+  async function connectGoogle() {
+    if (!landlordSession?.token) return;
+    try {
+      const { data } = await apiRequest<{ url: string }>("/landlord/google/connect", { token: landlordSession.token });
+      window.location.href = data.url;
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not start Google connection.", "error");
+    }
+  }
+
   // Schedule meeting modal
   const [showSchedule, setShowSchedule] = useState(false);
   const [tenants, setTenants] = useState<TenantOption[]>([]);
@@ -384,6 +405,18 @@ export default function LandlordMeetingsPage() {
           </div>
         </div>
 
+        {googleConnected === false ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 12, padding: "12px 16px", marginBottom: 8, flexWrap: "wrap" }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>Connect Google Calendar to generate Meet links</div>
+              <div style={{ fontSize: 13, color: "var(--ink3)", marginTop: 2 }}>One-time setup · Links created directly in your Google Calendar</div>
+            </div>
+            <button type="button" className="btn btn-primary btn-sm" onClick={() => void connectGoogle()}>
+              Connect Google
+            </button>
+          </div>
+        ) : null}
+
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {(meetingData?.meetings ?? []).map((meeting) => {
             const draft = drafts[meeting.id];
@@ -638,27 +671,21 @@ export default function LandlordMeetingsPage() {
 
               <div className="form-group">
                 <label className="form-label">Meeting Link <span style={{ color: "var(--ink3)", fontWeight: 400 }}>(optional)</span></label>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <input
-                    className="form-input"
-                    style={{ flex: 1 }}
-                    value={scheduleForm.meetingLink}
-                    onChange={(e) => setScheduleForm((f) => ({ ...f, meetingLink: e.target.value }))}
-                    placeholder="Paste a link or click Generate"
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    style={{ whiteSpace: "nowrap", flexShrink: 0 }}
-                    onClick={() => {
-                      const chars = "abcdefghijklmnopqrstuvwxyz";
-                      const seg = (n: number) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
-                      setScheduleForm((f) => ({ ...f, meetingLink: `https://meet.jit.si/doorrent-${seg(3)}-${seg(4)}-${seg(3)}` }));
-                    }}
-                  >
-                    ⚡ Generate
-                  </button>
-                </div>
+                <input
+                  className="form-input"
+                  value={scheduleForm.meetingLink}
+                  onChange={(e) => setScheduleForm((f) => ({ ...f, meetingLink: e.target.value }))}
+                  placeholder="Paste a link, or use ⚡ Generate after saving"
+                />
+                {googleConnected === false ? (
+                  <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4 }}>
+                    Connect Google Calendar in Settings to auto-generate a Meet link.
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4 }}>
+                    Leave blank and use the ⚡ Generate button after saving to create a Google Meet link.
+                  </div>
+                )}
               </div>
 
               <div className="form-group">

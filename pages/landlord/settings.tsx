@@ -353,6 +353,9 @@ export default function LandlordSettingsPage() {
   const [teamInviteForm, setTeamInviteForm] = useState<TeamInviteForm>(
     initialTeamInviteForm,
   );
+  const [googleStatus, setGoogleStatus] = useState<{ connected: boolean; email: string | null } | null>(null);
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
+
   const workspaceModeCopy = getWorkspaceModeCopy(
     settings?.profile.workspaceMode,
   );
@@ -467,6 +470,24 @@ export default function LandlordSettingsPage() {
       cancelled = true;
     };
   }, [dataRefreshVersion, landlordSession?.token, showToast]);
+
+  useEffect(() => {
+    const token = landlordSession?.token;
+    if (!token) return;
+    apiRequest<{ connected: boolean; email: string | null }>("/landlord/google/status", { token })
+      .then(({ data }) => setGoogleStatus(data))
+      .catch(() => setGoogleStatus({ connected: false, email: null }));
+
+    // Handle redirect back from Google OAuth
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("google_connected")) {
+      showToast("Google Calendar connected successfully", "success");
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (params.get("google_error")) {
+      showToast(`Google connection failed: ${params.get("google_error")}`, "error");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [landlordSession?.token, showToast]);
 
   useEffect(() => {
     if (settings?.payout.bankName) {
@@ -2555,6 +2576,71 @@ export default function LandlordSettingsPage() {
 
             {canDeleteAccount ? (
               <div className="card" style={{ marginTop: 16 }}>
+                <div className="card">
+                  <div className="card-header">
+                    <div>
+                      <div className="card-title">Google Calendar</div>
+                      <div className="card-subtitle">Connect your Google account to generate Google Meet links directly from DoorRent.</div>
+                    </div>
+                  </div>
+                  <div className="card-body">
+                    {googleStatus?.connected ? (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
+                            <span style={{ fontSize: 14, fontWeight: 500 }}>Connected</span>
+                          </div>
+                          {googleStatus.email ? (
+                            <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 2 }}>{googleStatus.email}</div>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          disabled={disconnectingGoogle}
+                          onClick={async () => {
+                            if (!landlordSession?.token) return;
+                            setDisconnectingGoogle(true);
+                            try {
+                              await apiRequest("/landlord/google/connection", { method: "DELETE", token: landlordSession.token });
+                              setGoogleStatus({ connected: false, email: null });
+                              showToast("Google Calendar disconnected", "success");
+                            } catch (err) {
+                              showToast(err instanceof Error ? err.message : "Could not disconnect.", "error");
+                            } finally {
+                              setDisconnectingGoogle(false);
+                            }
+                          }}
+                        >
+                          {disconnectingGoogle ? "Disconnecting…" : "Disconnect"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <div style={{ fontSize: 13, color: "var(--ink2)" }}>
+                          Not connected. Connect once to generate Google Meet links with one click.
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          onClick={async () => {
+                            if (!landlordSession?.token) return;
+                            try {
+                              const { data } = await apiRequest<{ url: string }>("/landlord/google/connect", { token: landlordSession.token });
+                              window.location.href = data.url;
+                            } catch (err) {
+                              showToast(err instanceof Error ? err.message : "Could not start Google connection.", "error");
+                            }
+                          }}
+                        >
+                          Connect Google Calendar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="card-header">
                   <div>
                     <div className="card-title">Legal & Account Deletion</div>
