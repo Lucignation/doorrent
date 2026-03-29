@@ -72,6 +72,12 @@ export default function TenantPayPage() {
   const monthlyEquivalentAmount = tenantProfile?.monthlyEquivalent ?? 0;
   const currentDueAmount = tenantProfile?.currentDue ?? 0;
   const billingCycleAmount = tenantProfile?.billingCyclePrice ?? 0;
+  const paymentReference =
+    typeof router.query.reference === "string"
+      ? router.query.reference
+      : typeof router.query.trxref === "string"
+        ? router.query.trxref
+        : null;
   const propertyName = tenantProfile?.propertyName ?? "Assigned property";
   const unitLabel = tenantProfile?.unitNumber
     ? `${tenantProfile.unitNumber}${tenantProfile.unitType ? ` — ${tenantProfile.unitType}` : ""}`
@@ -188,8 +194,17 @@ export default function TenantPayPage() {
   ]);
 
   useEffect(() => {
-    const reference =
-      typeof router.query.reference === "string" ? router.query.reference : null;
+    if (!router.isReady || !paymentReference || tenantSession?.token) {
+      return;
+    }
+
+    void router.replace(
+      `/tenant/payment-callback?reference=${encodeURIComponent(paymentReference)}`,
+    );
+  }, [paymentReference, router, router.isReady, tenantSession?.token]);
+
+  useEffect(() => {
+    const reference = paymentReference;
     const tenantToken = tenantSession?.token;
 
     if (!reference || !tenantToken) {
@@ -245,7 +260,7 @@ export default function TenantPayPage() {
     return () => {
       active = false;
     };
-  }, [refreshData, router, router.query.reference, showToast, tenantSession?.token]);
+  }, [paymentReference, refreshData, router, showToast, tenantSession?.token]);
 
   async function initializePayment(action: "open" | "share") {
     if (!tenantSession?.token) {
@@ -284,7 +299,7 @@ export default function TenantPayPage() {
       }
 
       if (action === "share") {
-        const shareMessage = `Help me complete my DoorRent rent payment for ${propertyName}, ${unitLabel}. Pay securely via Paystack: ${safeAuthorizationUrl}`;
+        const shareMessage = `Help me complete my DoorRent rent payment for ${propertyName}, ${unitLabel}. Pay securely via Paystack.`;
 
         if (typeof navigator !== "undefined" && navigator.share) {
           await navigator.share({
@@ -317,6 +332,20 @@ export default function TenantPayPage() {
     } finally {
       setInitializingAction(null);
     }
+  }
+
+  if (paymentReference && !tenantSession?.token) {
+    return (
+      <>
+        <PageMeta title="DoorRent — Payment Callback" />
+        <div className="tenant-access-state">
+          <div className="tenant-access-card">
+            <h2>Confirming payment</h2>
+            <p>Redirecting you to the secure payment confirmation page.</p>
+          </div>
+        </div>
+      </>
+    );
   }
 
   return (
