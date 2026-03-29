@@ -80,6 +80,7 @@ export default function LandlordMeetingsPage() {
 
   // Google connection status
   const [googleConnected, setGoogleConnected] = useState<boolean | null>(null);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
 
   useEffect(() => {
     const token = landlordSession?.token;
@@ -91,6 +92,7 @@ export default function LandlordMeetingsPage() {
 
   async function connectGoogle() {
     if (!landlordSession?.token) return;
+    setConnectingGoogle(true);
     try {
       const returnTo =
         typeof window === "undefined" ? "" : encodeURIComponent(window.location.href);
@@ -100,6 +102,7 @@ export default function LandlordMeetingsPage() {
       );
       window.location.href = data.url;
     } catch (err) {
+      setConnectingGoogle(false);
       showToast(err instanceof Error ? err.message : "Could not start Google connection.", "error");
     }
   }
@@ -416,8 +419,13 @@ export default function LandlordMeetingsPage() {
               <div style={{ fontSize: 14, fontWeight: 600 }}>Connect Google Calendar to generate Meet links</div>
               <div style={{ fontSize: 13, color: "var(--ink3)", marginTop: 2 }}>One-time setup · Links created directly in your Google Calendar</div>
             </div>
-            <button type="button" className="btn btn-primary btn-sm" onClick={() => void connectGoogle()}>
-              Connect Google
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              disabled={connectingGoogle}
+              onClick={() => void connectGoogle()}
+            >
+              {connectingGoogle ? "Connecting…" : "Connect Google"}
             </button>
           </div>
         ) : null}

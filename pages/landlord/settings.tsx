@@ -354,6 +354,7 @@ export default function LandlordSettingsPage() {
     initialTeamInviteForm,
   );
   const [googleStatus, setGoogleStatus] = useState<{ connected: boolean; email: string | null } | null>(null);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
 
   const workspaceModeCopy = getWorkspaceModeCopy(
@@ -2624,8 +2625,10 @@ export default function LandlordSettingsPage() {
                         <button
                           type="button"
                           className="btn btn-primary btn-sm"
+                          disabled={connectingGoogle}
                           onClick={async () => {
                             if (!landlordSession?.token) return;
+                            setConnectingGoogle(true);
                             try {
                               const returnTo =
                                 typeof window === "undefined" ? "" : encodeURIComponent(window.location.href);
@@ -2635,11 +2638,12 @@ export default function LandlordSettingsPage() {
                               );
                               window.location.href = data.url;
                             } catch (err) {
+                              setConnectingGoogle(false);
                               showToast(err instanceof Error ? err.message : "Could not start Google connection.", "error");
                             }
                           }}
                         >
-                          Connect Google Calendar
+                          {connectingGoogle ? "Connecting…" : "Connect Google Calendar"}
                         </button>
                       </div>
                     )}
