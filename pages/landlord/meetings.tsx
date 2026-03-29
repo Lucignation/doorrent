@@ -73,6 +73,7 @@ export default function LandlordMeetingsPage() {
   const [error, setError] = useState("");
   const [savingMeetingId, setSavingMeetingId] = useState<string | null>(null);
   const [inviteLoadingId, setInviteLoadingId] = useState<string | null>(null);
+  const [generatingLinkId, setGeneratingLinkId] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<
     Record<string, { status: string; scheduledFor: string; durationMinutes: string; meetingLink: string; landlordNotes: string }>
   >({});
@@ -138,7 +139,7 @@ export default function LandlordMeetingsPage() {
 
     async function loadTenants() {
       try {
-        const { data } = await apiRequest<{ tenants: Array<{ id: string; firstName: string; lastName: string; unit: { unitNumber: string } | null; property: { name: string } }> }>(
+        const { data } = await apiRequest<{ tenants: Array<{ id: string; tenant: string; unit: string; property: string }> }>(
           "/landlord/tenants",
           { token: landlordSession!.token },
         );
@@ -146,9 +147,9 @@ export default function LandlordMeetingsPage() {
           setTenants(
             (data.tenants ?? []).map((t) => ({
               id: t.id,
-              name: `${t.firstName} ${t.lastName}`,
-              unit: t.unit?.unitNumber ?? "—",
-              property: t.property.name,
+              name: t.tenant,
+              unit: t.unit,
+              property: t.property,
             })),
           );
         }
@@ -233,6 +234,31 @@ export default function LandlordMeetingsPage() {
       showToast(err instanceof Error ? err.message : "We could not update this meeting.", "error");
     } finally {
       setSavingMeetingId(null);
+    }
+  }
+
+  async function generateMeetingLink(meetingId: string) {
+    if (!landlordSession?.token) return;
+    setGeneratingLinkId(meetingId);
+    try {
+      const { data } = await apiRequest<LandlordMeetingMutationResponse>(
+        `/landlord/meetings/${meetingId}/generate-link`,
+        { method: "POST", token: landlordSession.token },
+      );
+      setMeetingData((current) =>
+        current
+          ? { ...current, meetings: current.meetings.map((m) => (m.id === meetingId ? data.meeting : m)) }
+          : current,
+      );
+      setDrafts((current) => ({
+        ...current,
+        [meetingId]: { ...current[meetingId], meetingLink: data.meeting.meetingLink ?? "" },
+      }));
+      showToast("Meeting link generated", "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not generate link.", "error");
+    } finally {
+      setGeneratingLinkId(null);
     }
   }
 
@@ -459,13 +485,25 @@ export default function LandlordMeetingsPage() {
                       />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">Google Meet Link</label>
-                      <input
-                        className="form-input"
-                        value={draft?.meetingLink ?? meeting.meetingLink ?? ""}
-                        onChange={(e) => updateDraft(meeting.id, "meetingLink", e.target.value)}
-                        placeholder="https://meet.google.com/abc-defg-hij"
-                      />
+                      <label className="form-label">Meeting Link</label>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <input
+                          className="form-input"
+                          style={{ flex: 1 }}
+                          value={draft?.meetingLink ?? meeting.meetingLink ?? ""}
+                          onChange={(e) => updateDraft(meeting.id, "meetingLink", e.target.value)}
+                          placeholder="Paste a link or click Generate"
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                          onClick={() => void generateMeetingLink(meeting.id)}
+                          disabled={generatingLinkId === meeting.id}
+                        >
+                          {generatingLinkId === meeting.id ? "Generating…" : "⚡ Generate"}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -537,7 +575,7 @@ export default function LandlordMeetingsPage() {
                   >
                     <option value="">Select a tenant…</option>
                     {tenants.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name} — Unit {t.unit} · {t.property}</option>
+                      <option key={t.id} value={t.id}>{t.name} — {t.unit}</option>
                     ))}
                   </select>
                 </div>
@@ -599,13 +637,28 @@ export default function LandlordMeetingsPage() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Google Meet Link <span style={{ color: "var(--ink3)", fontWeight: 400 }}>(optional)</span></label>
-                <input
-                  className="form-input"
-                  value={scheduleForm.meetingLink}
-                  onChange={(e) => setScheduleForm((f) => ({ ...f, meetingLink: e.target.value }))}
-                  placeholder="https://meet.google.com/abc-defg-hij"
-                />
+                <label className="form-label">Meeting Link <span style={{ color: "var(--ink3)", fontWeight: 400 }}>(optional)</span></label>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    className="form-input"
+                    style={{ flex: 1 }}
+                    value={scheduleForm.meetingLink}
+                    onChange={(e) => setScheduleForm((f) => ({ ...f, meetingLink: e.target.value }))}
+                    placeholder="Paste a link or click Generate"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ whiteSpace: "nowrap", flexShrink: 0 }}
+                    onClick={() => {
+                      const chars = "abcdefghijklmnopqrstuvwxyz";
+                      const seg = (n: number) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+                      setScheduleForm((f) => ({ ...f, meetingLink: `https://meet.jit.si/doorrent-${seg(3)}-${seg(4)}-${seg(3)}` }));
+                    }}
+                  >
+                    ⚡ Generate
+                  </button>
+                </div>
               </div>
 
               <div className="form-group">
