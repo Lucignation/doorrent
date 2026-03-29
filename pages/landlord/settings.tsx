@@ -2072,11 +2072,18 @@ export default function LandlordSettingsPage() {
                     >
                       {settings?.payout.isVerified
                         ? "Paystack subaccount verified"
-                        : "Awaiting Paystack verification"}
+                        : "Paystack payout subaccount pending verification"}
                     </div>
                     <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 4 }}>
                       Subaccount: {settings?.payout.subaccountCode || "Not configured yet"}
                     </div>
+                    {!settings?.payout.isVerified ? (
+                      <div style={{ fontSize: 12, color: "var(--ink2)", marginTop: 6 }}>
+                        DoorRent has created a Paystack payout subaccount for this workspace,
+                        but Paystack has not confirmed it yet. Rent payouts may not settle to
+                        this account until verification is complete.
+                      </div>
+                    ) : null}
                   </div>
 
                   <button
@@ -2322,7 +2329,7 @@ export default function LandlordSettingsPage() {
                     </div>
                     <div>
                       {settings?.enterpriseCollections.reason ??
-                        "This feature is only available on the Enterprise ₦200,000/month subscription for property management companies."}
+                        "This feature is only available to property management company workspaces on the Enterprise ₦200,000/month subscription."}
                     </div>
                   </div>
                 )}
