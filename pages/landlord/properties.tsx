@@ -314,9 +314,26 @@ export default function LandlordPropertiesPage() {
         saving: current[propertyId]?.saving ?? false,
         resolving: current[propertyId]?.resolving ?? false,
         [field]: value,
+        // Clear resolved name whenever bank or account number changes
+        ...(field === "bankId" || field === "accountNumber" ? { accountName: "" } : {}),
       },
     }));
   }
+
+  // Auto-resolve when both bankId and a 10-digit accountNumber are present
+  useEffect(() => {
+    Object.entries(collectionForms).forEach(([propertyId, form]) => {
+      if (
+        form.bankId &&
+        form.accountNumber.length === 10 &&
+        !form.accountName &&
+        !form.resolving
+      ) {
+        void resolveCollectionAccount(propertyId);
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Object.entries(collectionForms).map(([id, f]) => `${id}:${f.bankId}:${f.accountNumber}`).join("|")]);
 
   async function saveEmergencySetup(propertyId: string) {
     if (!landlordSession?.token) {
@@ -759,14 +776,23 @@ export default function LandlordPropertiesPage() {
 
                     <div className="form-group" style={{ marginBottom: 12 }}>
                       <label className="form-label">Resolved Owner Account Name</label>
-                      <input
-                        className="form-input"
-                        value={form.accountName}
-                        onChange={(event) =>
-                          updateCollectionField(property.id, "accountName", event.target.value)
-                        }
-                        placeholder="Resolved account name"
-                      />
+                      <div style={{ position: "relative" }}>
+                        <input
+                          className="form-input"
+                          value={form.resolving ? "" : form.accountName}
+                          disabled
+                          placeholder={form.resolving ? "Verifying account..." : "Auto-filled after account number is entered"}
+                          style={{ background: "var(--bg)", color: form.accountName ? "var(--ink)" : undefined, paddingRight: form.resolving ? 36 : undefined }}
+                        />
+                        {form.resolving && (
+                          <span style={{
+                            position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+                            width: 16, height: 16, border: "2px solid var(--border)", borderTopColor: "var(--accent)",
+                            borderRadius: "50%", display: "inline-block",
+                            animation: "spin 0.7s linear infinite",
+                          }} />
+                        )}
+                      </div>
                       <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 6 }}>
                         DoorRent will keep the platform fee, your company receives the management share,
                         and the owner receives the balance on successful tenant payment.
@@ -776,17 +802,9 @@ export default function LandlordPropertiesPage() {
                     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                       <button
                         type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => void resolveCollectionAccount(property.id)}
-                        disabled={form.resolving || !form.bankId || form.accountNumber.length !== 10}
-                      >
-                        {form.resolving ? "Resolving..." : "Resolve Owner Account"}
-                      </button>
-                      <button
-                        type="button"
                         className="btn btn-primary btn-sm"
                         onClick={() => void saveCollectionRouting(property.id)}
-                        disabled={form.saving}
+                        disabled={form.saving || !form.accountName}
                       >
                         {form.saving ? "Saving..." : "Save Collection Routing"}
                       </button>
