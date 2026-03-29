@@ -208,7 +208,7 @@ export default function GuarantorSigningPage({
 
   return (
     <>
-      <PageMeta title={`${brandDisplayName} — Guarantor Agreement Signing`} />
+      <PageMeta title={`${brandDisplayName} — Witness Agreement Signing`} />
       <div
         style={{
           minHeight: "100vh",
@@ -248,10 +248,10 @@ export default function GuarantorSigningPage({
             <>
               <div style={{ marginBottom: 20 }}>
                 <h1 style={{ fontSize: 24, fontFamily: "var(--font-display)", letterSpacing: "-0.02em", marginBottom: 6 }}>
-                  Guarantor Signing
+                  Witness Signing
                 </h1>
                 <p style={{ color: "var(--ink3)", fontSize: 14 }}>
-                  You have been asked to sign as guarantor for <strong>{agreement.tenantName}</strong> on the tenancy agreement below. Review the document carefully, then add your signature.
+                  You have been asked to sign as witness for <strong>{agreement.tenantName}</strong> on the tenancy agreement below. Review the document carefully, then add your signature.
                 </p>
               </div>
 
@@ -279,7 +279,7 @@ export default function GuarantorSigningPage({
                 <div className="card">
                   <div className="card-body">
                     <div style={{ padding: 14, borderRadius: "var(--radius)", background: "var(--green-light)", border: "1px solid rgba(26,107,74,0.18)", color: "var(--green)", fontSize: 13, marginBottom: 16 }}>
-                      You have signed this agreement as guarantor. Click below to save your signed copy.
+                      You have signed this agreement as witness. Click below to save your signed copy.
                     </div>
                     <button type="button" className="btn btn-primary" onClick={handleDownload}>
                       Save signed copy (PDF)
