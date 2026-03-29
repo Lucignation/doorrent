@@ -25,6 +25,8 @@ interface TenantNoticesResponse {
   notices: TenantNoticeRow[];
 }
 
+const PAGE_SIZE = 10;
+
 export default function TenantNoticesPage() {
   const { tenantSession } = useTenantPortalSession();
   const { dataRefreshVersion, refreshData, showToast } = usePrototypeUI();
@@ -33,13 +35,12 @@ export default function TenantNoticesPage() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [pendingNoticeId, setPendingNoticeId] = useState("");
+  const [selectedNotice, setSelectedNotice] = useState<TenantNoticeRow | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const tenantToken = tenantSession?.token;
-
-    if (!tenantToken) {
-      return;
-    }
+    if (!tenantToken) return;
 
     let cancelled = false;
 
@@ -51,39 +52,33 @@ export default function TenantNoticesPage() {
         const { data } = await apiRequest<TenantNoticesResponse>("/tenant/notices", {
           token: tenantToken,
         });
-
-        if (!cancelled) {
-          setNoticeData(data);
-        }
+        if (!cancelled) setNoticeData(data);
       } catch (requestError) {
-        if (!cancelled) {
+        if (!cancelled)
           setError(
             requestError instanceof Error
               ? requestError.message
               : "We could not load your notices.",
           );
-        }
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     }
 
     void loadNotices();
-
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [dataRefreshVersion, tenantSession?.token]);
 
-  const visibleNotices = useMemo(() => {
-    if (filter === "unread") {
-      return (noticeData?.notices ?? []).filter((notice) => !notice.read);
-    }
+  // Reset to page 1 when filter changes
+  useEffect(() => { setPage(1); }, [filter]);
 
-    return noticeData?.notices ?? [];
+  const filteredNotices = useMemo(() => {
+    const all = noticeData?.notices ?? [];
+    return filter === "unread" ? all.filter((n) => !n.read) : all;
   }, [filter, noticeData?.notices]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredNotices.length / PAGE_SIZE));
+  const visibleNotices = filteredNotices.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   async function markAsRead(noticeId: string) {
     if (!tenantSession?.token) {
@@ -100,15 +95,25 @@ export default function TenantNoticesPage() {
       });
       showToast("Notice marked as read", "success");
       refreshData();
+      // Update selectedNotice locally so modal reflects read state immediately
+      if (selectedNotice?.id === noticeId) {
+        setSelectedNotice((prev) => prev ? { ...prev, read: true } : prev);
+      }
     } catch (requestError) {
       showToast(
-        requestError instanceof Error
-          ? requestError.message
-          : "Notice could not be updated.",
+        requestError instanceof Error ? requestError.message : "Notice could not be updated.",
         "error",
       );
     } finally {
       setPendingNoticeId("");
+    }
+  }
+
+  function openNotice(notice: TenantNoticeRow) {
+    setSelectedNotice(notice);
+    // Auto-mark as read when opened
+    if (!notice.read) {
+      void markAsRead(notice.id);
     }
   }
 
@@ -126,9 +131,7 @@ export default function TenantNoticesPage() {
 
         {error ? (
           <div className="card" style={{ marginBottom: 16 }}>
-            <div className="card-body" style={{ color: "var(--red)" }}>
-              {error}
-            </div>
+            <div className="card-body" style={{ color: "var(--red)" }}>{error}</div>
           </div>
         ) : null}
 
@@ -153,10 +156,22 @@ export default function TenantNoticesPage() {
               <div
                 key={notice.id}
                 className="card"
-                style={notice.read ? undefined : { borderLeft: "3px solid var(--accent)" }}
+                onClick={() => openNotice(notice)}
+                style={{
+                  cursor: "pointer",
+                  borderLeft: notice.read ? undefined : "3px solid var(--accent)",
+                  transition: "box-shadow 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.boxShadow =
+                    "0 2px 12px rgba(0,0,0,0.08)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.boxShadow = "";
+                }}
               >
                 <div className="card-body">
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <div
                       style={{
                         width: 40,
@@ -173,13 +188,13 @@ export default function TenantNoticesPage() {
                     >
                       {notice.icon}
                     </div>
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                       <div
                         style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
-                          marginBottom: 6,
+                          marginBottom: 4,
                           flexWrap: "wrap",
                         }}
                       >
@@ -202,24 +217,22 @@ export default function TenantNoticesPage() {
                           {notice.date}
                         </span>
                       </div>
-                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
                         {notice.title}
                       </div>
-                      <div style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.6 }}>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "var(--ink2)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
                         {notice.body}
                       </div>
-                      {!notice.read ? (
-                        <button
-                          type="button"
-                          className="btn btn-secondary btn-xs"
-                          style={{ marginTop: 12 }}
-                          onClick={() => markAsRead(notice.id)}
-                          disabled={pendingNoticeId === notice.id}
-                        >
-                          {pendingNoticeId === notice.id ? "Updating..." : "Mark as read"}
-                        </button>
-                      ) : null}
                     </div>
+                    <div style={{ color: "var(--ink3)", fontSize: 18, flexShrink: 0 }}>›</div>
                   </div>
                 </div>
               </div>
@@ -232,7 +245,177 @@ export default function TenantNoticesPage() {
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginTop: 24,
+            }}
+          >
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+            >
+              ← Prev
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPage(p)}
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: p === page ? "var(--accent)" : "var(--card)",
+                  color: p === page ? "#fff" : "var(--ink)",
+                  fontWeight: p === page ? 700 : 400,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+            >
+              Next →
+            </button>
+          </div>
+        )}
       </TenantPortalShell>
+
+      {/* Detail modal */}
+      {selectedNotice && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.45)",
+          }}
+          onClick={() => setSelectedNotice(null)}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: 680,
+              background: "var(--card)",
+              borderRadius: "16px 16px 0 0",
+              padding: "28px 28px 40px",
+              maxHeight: "80vh",
+              overflowY: "auto",
+              boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Handle bar */}
+            <div
+              style={{
+                width: 40,
+                height: 4,
+                borderRadius: 99,
+                background: "var(--border)",
+                margin: "0 auto 20px",
+              }}
+            />
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 20 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: "var(--bg)",
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 22,
+                  flexShrink: 0,
+                }}
+              >
+                {selectedNotice.icon}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                  <span className={`badge badge-${selectedNotice.badge}`}>{selectedNotice.type}</span>
+                  {!selectedNotice.read ? (
+                    <span
+                      style={{
+                        background: "var(--accent)",
+                        color: "#fff",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                      }}
+                    >
+                      NEW
+                    </span>
+                  ) : null}
+                  <span style={{ fontSize: 12, color: "var(--ink3)", marginLeft: "auto" }}>
+                    {selectedNotice.date}
+                  </span>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700 }}>{selectedNotice.title}</div>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div
+              style={{
+                fontSize: 14,
+                color: "var(--ink)",
+                lineHeight: 1.75,
+                whiteSpace: "pre-wrap",
+                borderTop: "1px solid var(--border)",
+                paddingTop: 16,
+              }}
+            >
+              {selectedNotice.body}
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+              {!selectedNotice.read && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => markAsRead(selectedNotice.id)}
+                  disabled={pendingNoticeId === selectedNotice.id}
+                >
+                  {pendingNoticeId === selectedNotice.id ? "Updating..." : "Mark as read"}
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setSelectedNotice(null)}
+                style={{ marginLeft: "auto" }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
