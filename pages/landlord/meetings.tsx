@@ -92,7 +92,12 @@ export default function LandlordMeetingsPage() {
   async function connectGoogle() {
     if (!landlordSession?.token) return;
     try {
-      const { data } = await apiRequest<{ url: string }>("/landlord/google/connect", { token: landlordSession.token });
+      const returnTo =
+        typeof window === "undefined" ? "" : encodeURIComponent(window.location.href);
+      const { data } = await apiRequest<{ url: string }>(
+        `/landlord/google/connect${returnTo ? `?returnTo=${returnTo}` : ""}`,
+        { token: landlordSession.token },
+      );
       window.location.href = data.url;
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not start Google connection.", "error");
