@@ -110,7 +110,7 @@ export default function LandlordMeetingsPage() {
   // Schedule meeting modal
   const [showSchedule, setShowSchedule] = useState(false);
   const [tenants, setTenants] = useState<TenantOption[]>([]);
-  const [scheduling, setScheduling] = useState(false);
+  const [scheduleSubmittingMode, setScheduleSubmittingMode] = useState<null | "manual" | "google">(null);
   const [scheduleForm, setScheduleForm] = useState({
     tenantId: "",
     audience: "SOLO",
@@ -308,13 +308,13 @@ export default function LandlordMeetingsPage() {
     }
   }
 
-  async function scheduleNewMeeting() {
+  async function scheduleNewMeeting(mode: "manual" | "google" = "manual") {
     if (!landlordSession?.token) return;
     if (!scheduleForm.tenantId) { showToast("Please select a tenant.", "error"); return; }
     if (!scheduleForm.title.trim()) { showToast("Please enter a meeting title.", "error"); return; }
     if (!scheduleForm.scheduledFor) { showToast("Please select a date and time.", "error"); return; }
 
-    setScheduling(true);
+    setScheduleSubmittingMode(mode);
     try {
       const { data } = await apiRequest<LandlordMeetingMutationResponse>("/landlord/meetings", {
         method: "POST",
@@ -331,9 +331,29 @@ export default function LandlordMeetingsPage() {
         },
       });
 
+      let createdMeeting = data.meeting;
+      let generateLinkError: string | null = null;
+      const shouldGenerateGoogleMeet =
+        mode === "google" &&
+        googleConnected === true &&
+        !scheduleForm.meetingLink.trim();
+
+      if (shouldGenerateGoogleMeet) {
+        try {
+          const generated = await apiRequest<LandlordMeetingMutationResponse>(
+            `/landlord/meetings/${data.meeting.id}/generate-link`,
+            { method: "POST", token: landlordSession.token },
+          );
+          createdMeeting = generated.data.meeting;
+        } catch (err) {
+          generateLinkError =
+            err instanceof Error ? err.message : "Google Meet link could not be generated.";
+        }
+      }
+
       setMeetingData((current) => {
         if (!current) return current;
-        const updated = [data.meeting, ...current.meetings].sort(
+        const updated = [createdMeeting, ...current.meetings].sort(
           (a, b) => new Date(a.scheduledFor).getTime() - new Date(b.scheduledFor).getTime(),
         );
         return {
@@ -348,23 +368,29 @@ export default function LandlordMeetingsPage() {
       });
       setDrafts((current) => ({
         ...current,
-        [data.meeting.id]: {
-          status: data.meeting.status.toUpperCase(),
-          scheduledFor: toDateTimeInputValue(data.meeting.scheduledFor),
-          durationMinutes: `${data.meeting.durationMinutes}`,
-          meetingLink: data.meeting.meetingLink ?? "",
-          landlordNotes: data.meeting.landlordNotes ?? "",
+        [createdMeeting.id]: {
+          status: createdMeeting.status.toUpperCase(),
+          scheduledFor: toDateTimeInputValue(createdMeeting.scheduledFor),
+          durationMinutes: `${createdMeeting.durationMinutes}`,
+          meetingLink: createdMeeting.meetingLink ?? "",
+          landlordNotes: createdMeeting.landlordNotes ?? "",
         },
       }));
 
       setShowSchedule(false);
       setScheduleForm({ tenantId: "", audience: "SOLO", title: "", agenda: "", scheduledFor: "", durationMinutes: "30", meetingLink: "", landlordNotes: "" });
       refreshData();
-      showToast("Meeting scheduled", "success");
+      if (generateLinkError) {
+        showToast(`Meeting scheduled, but ${generateLinkError}`, "error");
+      } else if (shouldGenerateGoogleMeet) {
+        showToast("Meeting scheduled with Google Meet", "success");
+      } else {
+        showToast("Meeting scheduled", "success");
+      }
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not schedule meeting.", "error");
     } finally {
-      setScheduling(false);
+      setScheduleSubmittingMode(null);
     }
   }
 
@@ -688,7 +714,7 @@ export default function LandlordMeetingsPage() {
                   className="form-input"
                   value={scheduleForm.meetingLink}
                   onChange={(e) => setScheduleForm((f) => ({ ...f, meetingLink: e.target.value }))}
-                  placeholder="Paste a link, or use ⚡ Generate after saving"
+                  placeholder="Paste a custom link, or use Schedule + Google Meet"
                 />
                 {googleConnected === false ? (
                   <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4 }}>
@@ -696,7 +722,7 @@ export default function LandlordMeetingsPage() {
                   </div>
                 ) : (
                   <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4 }}>
-                    Leave blank and use the ⚡ Generate button after saving to create a Google Meet link.
+                    Leave this blank and use the button below to create a Google Meet link automatically while scheduling.
                   </div>
                 )}
               </div>
@@ -714,9 +740,37 @@ export default function LandlordMeetingsPage() {
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 8 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowSchedule(false)}>Cancel</button>
-                <button type="button" className="btn btn-primary" onClick={() => void scheduleNewMeeting()} disabled={scheduling}>
-                  {scheduling ? "Scheduling…" : "Schedule Meeting"}
-                </button>
+                {googleConnected === true ? (
+                  <>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => void scheduleNewMeeting("manual")}
+                      disabled={scheduleSubmittingMode !== null}
+                    >
+                      {scheduleSubmittingMode === "manual" ? "Scheduling…" : "Schedule Only"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => void scheduleNewMeeting("google")}
+                      disabled={scheduleSubmittingMode !== null}
+                    >
+                      {scheduleSubmittingMode === "google"
+                        ? "Scheduling + Meet…"
+                        : "Schedule + Google Meet"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => void scheduleNewMeeting("manual")}
+                    disabled={scheduleSubmittingMode !== null}
+                  >
+                    {scheduleSubmittingMode === "manual" ? "Scheduling…" : "Schedule Meeting"}
+                  </button>
+                )}
               </div>
             </div>
           </div>
