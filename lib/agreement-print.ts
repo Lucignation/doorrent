@@ -175,6 +175,9 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
       background: #fff;
       box-shadow: 0 2px 24px rgba(0,0,0,0.12);
     }
+    @media (max-width: 600px) {
+      .page { padding: 16px 12px 24px; }
+    }
   }
 
   /* ── Running header (screen only, not print) ── */
