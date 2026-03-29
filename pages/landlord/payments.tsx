@@ -479,7 +479,7 @@ export default function LandlordPaymentsPage() {
           </div>
         ) : null}
 
-        <div className="stats-grid" style={{ gridTemplateColumns: "repeat(4,1fr)" }}>
+        <div className="stats-grid">
           <div className="stat-card accent-green">
             <div className="stat-label">Collected This Month</div>
             <div className="stat-value">
@@ -660,7 +660,7 @@ export default function LandlordPaymentsPage() {
                 </div>
               </div>
               <div className="card-body">
-                <div className="stats-grid" style={{ gridTemplateColumns: "repeat(3,1fr)", marginBottom: 12 }}>
+                <div className="stats-grid" style={{ marginBottom: 12 }}>
                   <div className="stat-card accent-blue">
                     <div className="stat-label">Platform Logged</div>
                     <div className="stat-value">
