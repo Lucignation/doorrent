@@ -733,14 +733,14 @@ export default function LandlordPaymentsPage() {
             <input
               className="search-input"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => { setQuery(event.target.value); setPaymentsPage(1); }}
               placeholder="Search tenant, reference, property, or period..."
             />
           </div>
           <select
             className="filter-select"
             value={propertyFilter}
-            onChange={(event) => setPropertyFilter(event.target.value)}
+            onChange={(event) => { setPropertyFilter(event.target.value); setPaymentsPage(1); }}
           >
             <option value="all">All Properties</option>
             {(paymentData?.filters.properties ?? []).map((property) => (
@@ -752,7 +752,7 @@ export default function LandlordPaymentsPage() {
           <select
             className="filter-select"
             value={dateFilter}
-            onChange={(event) => setDateFilter(event.target.value)}
+            onChange={(event) => { setDateFilter(event.target.value); setPaymentsPage(1); }}
           >
             <option value="all">All Time</option>
             <option value="month">This Month</option>
@@ -794,62 +794,54 @@ export default function LandlordPaymentsPage() {
               rows={paginatedPayments}
               emptyMessage={loading ? "Loading payments..." : "No payments found."}
             />
-            {filteredPayments.length > PAYMENT_HISTORY_PAGE_SIZE ? (
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "16px 20px",
-                  borderTop: "1px solid var(--border)",
-                }}
-              >
-                <div className="td-muted">
-                  Showing {(safePaymentsPage - 1) * PAYMENT_HISTORY_PAGE_SIZE + 1}
-                  {" "}to{" "}
-                  {Math.min(
-                    safePaymentsPage * PAYMENT_HISTORY_PAGE_SIZE,
-                    filteredPayments.length,
-                  )}{" "}
-                  of {filteredPayments.length} payments
-                </div>
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setPaymentsPage((current) => Math.max(1, current - 1))}
-                    disabled={safePaymentsPage <= 1}
-                  >
-                    Previous
-                  </button>
-                  <div
-                    style={{
-                      minWidth: 88,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 13,
-                      color: "var(--ink2)",
-                    }}
-                  >
-                    Page {safePaymentsPage} of {paymentHistoryTotalPages}
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-sm"
-                    onClick={() =>
-                      setPaymentsPage((current) =>
-                        Math.min(paymentHistoryTotalPages, current + 1),
-                      )
-                    }
-                    disabled={safePaymentsPage >= paymentHistoryTotalPages}
-                  >
-                    Next
-                  </button>
-                </div>
+            <div className="pagination">
+              <span className="pagination-info">
+                {loading
+                  ? "Loading payments..."
+                  : filteredPayments.length === 0
+                    ? "No payments"
+                    : `${(safePaymentsPage - 1) * PAYMENT_HISTORY_PAGE_SIZE + 1}–${Math.min(safePaymentsPage * PAYMENT_HISTORY_PAGE_SIZE, filteredPayments.length)} of ${filteredPayments.length} payments`}
+              </span>
+              <div className="pagination-controls">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  disabled={safePaymentsPage <= 1}
+                  onClick={() => setPaymentsPage((p) => p - 1)}
+                >
+                  ← Prev
+                </button>
+                {Array.from({ length: paymentHistoryTotalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === paymentHistoryTotalPages || Math.abs(p - safePaymentsPage) <= 1)
+                  .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                    if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+                    acc.push(p);
+                    return acc;
+                  }, [])
+                  .map((p, idx) =>
+                    p === "…" ? (
+                      <span key={`ellipsis-${idx}`} style={{ padding: "0 4px", color: "var(--ink3)", fontSize: 13 }}>…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        type="button"
+                        className={`btn btn-xs${p === safePaymentsPage ? " btn-primary" : " btn-ghost"}`}
+                        onClick={() => setPaymentsPage(p as number)}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  disabled={safePaymentsPage >= paymentHistoryTotalPages}
+                  onClick={() => setPaymentsPage((p) => p + 1)}
+                >
+                  Next →
+                </button>
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
       </LandlordPortalShell>

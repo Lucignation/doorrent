@@ -470,16 +470,33 @@ export default function AgreementDetailPage() {
               </div>
             </div>
 
-            {detail.landlordSignatureDataUrl ? (
-              <div style={{ marginBottom: 16 }}>
+            {detail.tenantSignatureDataUrl ? (
+              <div style={{ marginBottom: 16, padding: "12px 14px", background: "var(--surface2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
                 <div className="td-muted" style={{ fontSize: 12, marginBottom: 8 }}>
-                  Landlord signature on file
+                  Tenant signature on file{detail.tenantSignedDate ? ` · ${detail.tenantSignedDate}` : ""}
+                </div>
+                {isRenderableSignatureUrl(detail.tenantSignatureDataUrl) ? (
+                  <img
+                    src={resolveSignatureDisplayUrl(detail.tenantSignatureDataUrl) ?? ""}
+                    alt="Tenant signature"
+                    style={{ maxWidth: 220, height: 80, objectFit: "contain", display: "block" }}
+                  />
+                ) : (
+                  <div className="td-muted">Signed electronically via DoorRent</div>
+                )}
+              </div>
+            ) : null}
+
+            {detail.landlordSignatureDataUrl ? (
+              <div style={{ marginBottom: 16, padding: "12px 14px", background: "var(--surface2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+                <div className="td-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+                  Landlord signature on file{detail.landlordSignedDate ? ` · ${detail.landlordSignedDate}` : ""}
                 </div>
                 {isRenderableSignatureUrl(detail.landlordSignatureDataUrl) ? (
                   <img
                     src={resolveSignatureDisplayUrl(detail.landlordSignatureDataUrl) ?? ""}
                     alt="Landlord signature"
-                    style={{ maxWidth: 220, height: 80, objectFit: "contain" }}
+                    style={{ maxWidth: 220, height: 80, objectFit: "contain", display: "block" }}
                   />
                 ) : (
                   <div className="td-muted">Signed electronically via DoorRent</div>

@@ -399,13 +399,20 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     border-bottom: 1px solid #333;
     height: 32pt;
     margin: 14pt 0 6pt;
-    width: 80%;
+    width: 100%;
   }
   .sig-date-line {
     border-bottom: 1px solid #999;
     height: 22pt;
     margin: 10pt 0 4pt;
-    width: 50%;
+    width: 60%;
+  }
+  .sig-img {
+    display: block;
+    height: 48pt;
+    max-width: 200pt;
+    margin: 10pt 0 4pt;
+    object-fit: contain;
   }
   .sig-meta { font-size: 9pt; color: #555; margin-top: 4pt; line-height: 1.6; }
   .sig-pair {
@@ -863,7 +870,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
         ${data.landlord.phone ? `Phone: ${esc(data.landlord.phone)}<br>` : ""}
       </div>
       ${isRenderableSignatureUri(data.landlord.signatureDataUrl)
-        ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.landlord.signatureDataUrl) ?? ""}" style="height:48pt;max-width:200pt;display:block;" alt="Landlord Signature" /></div>`
+        ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.landlord.signatureDataUrl) ?? ""}" class="sig-img" alt="Landlord Signature" /></div>`
         : '<div class="sig-line"></div>'}
       <div class="sig-meta">Authorised Signature</div>
       ${data.landlord.signatureDataUrl && !isRenderableSignatureUri(data.landlord.signatureDataUrl)
@@ -883,7 +890,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
         ${data.tenant.idType && data.tenant.idNumber ? `ID: ${esc(data.tenant.idType)} — ${esc(data.tenant.idNumber)}<br>` : ""}
       </div>
       ${isRenderableSignatureUri(data.tenant.signatureDataUrl)
-        ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.tenant.signatureDataUrl) ?? ""}" style="height:48pt;max-width:200pt;display:block;" alt="Tenant Signature" /></div>`
+        ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.tenant.signatureDataUrl) ?? ""}" class="sig-img" alt="Tenant Signature" /></div>`
         : '<div class="sig-line"></div>'}
       <div class="sig-meta">Tenant's Signature</div>
       ${data.tenant.signatureDataUrl && !isRenderableSignatureUri(data.tenant.signatureDataUrl)
@@ -901,7 +908,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
       <div class="sig-block">
         <div class="sig-label">Witness to Landlord's Signature</div>
         ${isRenderableSignatureUri(data.landlordWitness?.signatureDataUrl)
-          ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.landlordWitness?.signatureDataUrl) ?? ""}" style="height:48pt;max-width:200pt;display:block;" alt="Landlord Witness Signature" /></div>`
+          ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.landlordWitness?.signatureDataUrl) ?? ""}" class="sig-img" alt="Landlord Witness Signature" /></div>`
           : '<div class="sig-line"></div>'}
         ${data.landlordWitness?.signatureDataUrl &&
         !isRenderableSignatureUri(data.landlordWitness.signatureDataUrl)
@@ -928,7 +935,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
       <div class="sig-block">
         <div class="sig-label">Witness to Tenant's Signature</div>
         ${isRenderableSignatureUri(data.guarantor?.signatureDataUrl)
-          ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.guarantor?.signatureDataUrl) ?? ""}" style="height:48pt;max-width:200pt;display:block;" alt="Witness Signature" /></div>`
+          ? `<div style="margin:10pt 0 4pt;"><img src="${resolveSignatureDisplayUrl(data.guarantor?.signatureDataUrl) ?? ""}" class="sig-img" alt="Witness Signature" /></div>`
           : '<div class="sig-line"></div>'}
         ${data.guarantor?.signatureDataUrl &&
         !isRenderableSignatureUri(data.guarantor.signatureDataUrl)

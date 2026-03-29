@@ -56,6 +56,9 @@ export function buildTenantNav(
         ...(resolved.canViewNotifications
           ? [{ label: "Notifications", href: "/tenant/notifications", icon: "chat" as const }]
           : []),
+        ...(resolved.canManageRiskWorkflows
+          ? [{ label: "Grace Period", href: "/tenant/grace-period", icon: "clock" as const }]
+          : []),
       ],
     },
     {

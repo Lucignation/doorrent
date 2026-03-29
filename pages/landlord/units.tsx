@@ -101,6 +101,8 @@ export default function LandlordUnitsPage() {
   const [status, setStatus] = useState("");
   const [type, setType] = useState("");
   const [refreshNonce, setRefreshNonce] = useState(0);
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 15;
   const [editingUnit, setEditingUnit] = useState<LandlordUnitRecord | null>(null);
   const [editForm, setEditForm] = useState({
     unitNumber: "",
@@ -389,13 +391,13 @@ export default function LandlordUnitsPage() {
               className="search-input"
               placeholder="Search units or tenants..."
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => { setSearch(event.target.value); setPage(1); }}
             />
           </div>
           <select
             className="filter-select"
             value={propertyId}
-            onChange={(event) => setPropertyId(event.target.value)}
+            onChange={(event) => { setPropertyId(event.target.value); setPage(1); }}
           >
             <option value="">All Properties</option>
             {(unitsData?.filters.properties ?? []).map((property) => (
@@ -407,7 +409,7 @@ export default function LandlordUnitsPage() {
           <select
             className="filter-select"
             value={status}
-            onChange={(event) => setStatus(event.target.value)}
+            onChange={(event) => { setStatus(event.target.value); setPage(1); }}
           >
             <option value="">All Status</option>
             {(unitsData?.filters.statuses ?? []).map((option) => (
@@ -419,7 +421,7 @@ export default function LandlordUnitsPage() {
           <select
             className="filter-select"
             value={type}
-            onChange={(event) => setType(event.target.value)}
+            onChange={(event) => { setType(event.target.value); setPage(1); }}
           >
             <option value="">All Types</option>
             {(unitsData?.filters.types ?? []).map((option) => (
@@ -431,18 +433,68 @@ export default function LandlordUnitsPage() {
         </div>
 
         <div className="card">
-          <DataTable
-            columns={unitColumns}
-            rows={unitsData?.units ?? []}
-            emptyMessage={loading ? "Loading units..." : "No units found."}
-          />
-          <div className="pagination">
-            <span>
-              {loading
-                ? "Loading units..."
-                : `Showing ${unitsData?.units.length ?? 0} of ${unitsData?.count ?? 0} units`}
-            </span>
-          </div>
+          {(() => {
+            const allUnits = unitsData?.units ?? [];
+            const totalPages = Math.max(1, Math.ceil(allUnits.length / PAGE_SIZE));
+            const safePage = Math.min(page, totalPages);
+            const pageRows = allUnits.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+            const from = allUnits.length === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
+            const to = Math.min(safePage * PAGE_SIZE, allUnits.length);
+
+            return (
+              <>
+                <DataTable
+                  columns={unitColumns}
+                  rows={pageRows}
+                  emptyMessage={loading ? "Loading units..." : "No units found."}
+                />
+                <div className="pagination">
+                  <span className="pagination-info">
+                    {loading ? "Loading units..." : allUnits.length === 0 ? "No units" : `${from}–${to} of ${allUnits.length} units`}
+                  </span>
+                  <div className="pagination-controls">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      disabled={safePage <= 1}
+                      onClick={() => setPage(safePage - 1)}
+                    >
+                      ← Prev
+                    </button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - safePage) <= 1)
+                      .reduce<(number | "…")[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("…");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, idx) =>
+                        p === "…" ? (
+                          <span key={`ellipsis-${idx}`} style={{ padding: "0 4px", color: "var(--ink3)", fontSize: 13 }}>…</span>
+                        ) : (
+                          <button
+                            key={p}
+                            type="button"
+                            className={`btn btn-xs${p === safePage ? " btn-primary" : " btn-ghost"}`}
+                            onClick={() => setPage(p as number)}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-xs"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setPage(safePage + 1)}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
         </div>
 
         {editingUnit ? (
