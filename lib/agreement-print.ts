@@ -385,6 +385,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
   /* ── Signature page ── */
   .sig-block {
     margin-bottom: 28pt;
+    text-align: center;
   }
   .sig-label {
     font-size: 8.5pt;
@@ -393,28 +394,29 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     color: #555;
     font-family: Arial, sans-serif;
     margin-bottom: 4pt;
+    text-align: center;
   }
-  .sig-name { font-size: 11pt; font-weight: bold; margin-bottom: 3pt; }
+  .sig-name { font-size: 11pt; font-weight: bold; margin-bottom: 3pt; text-align: center; }
   .sig-line {
     border-bottom: 1px solid #333;
     height: 32pt;
-    margin: 14pt 0 6pt;
-    width: 100%;
+    margin: 14pt auto 6pt;
+    width: 80%;
   }
   .sig-date-line {
     border-bottom: 1px solid #999;
     height: 22pt;
-    margin: 10pt 0 4pt;
+    margin: 10pt auto 4pt;
     width: 60%;
   }
   .sig-img {
     display: block;
     height: 48pt;
     max-width: 200pt;
-    margin: 10pt 0 4pt;
+    margin: 10pt auto 4pt;
     object-fit: contain;
   }
-  .sig-meta { font-size: 9pt; color: #555; margin-top: 4pt; line-height: 1.6; }
+  .sig-meta { font-size: 9pt; color: #555; margin-top: 4pt; line-height: 1.6; text-align: center; }
   .sig-pair {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -898,7 +900,9 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
         : ""}
       ${data.tenant.signedDate
         ? `<div class="sig-meta" style="margin-top:6pt;">Date: <strong>${esc(data.tenant.signedDate)}</strong></div>`
-        : '<div class="sig-date-line"></div><div class="sig-meta">Date</div>'}
+        : data.tenant.signatureDataUrl
+          ? '<div class="sig-meta" style="margin-top:6pt;color:#888;">Date: <em>Signed electronically — date not recorded</em></div>'
+          : '<div class="sig-date-line"></div><div class="sig-meta">Date</div>'}
     </div>
   </div>
 
