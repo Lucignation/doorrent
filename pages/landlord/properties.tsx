@@ -43,6 +43,7 @@ interface LandlordPropertiesResponse {
 interface PayoutBanksResponse {
   banks: Array<{
     id: string;
+    code: string;
     name: string;
   }>;
 }
@@ -139,9 +140,24 @@ export default function LandlordPropertiesPage() {
             const next = { ...current };
 
             data.properties.forEach((property) => {
+              const matchedBank = availableBanks.find(
+                (bank) =>
+                  bank.code === property.ownerPayoutBankCode ||
+                  bank.name === property.ownerPayoutBankName,
+              );
+
               next[property.id] = next[property.id]
                 ? {
                     ...next[property.id],
+                    enabled: Boolean(property.ownerPayoutEnabled),
+                    ownerName: property.ownerName ?? "",
+                    managementFeePercent:
+                      typeof property.managementFeePercent === "number"
+                        ? `${property.managementFeePercent}`
+                        : "",
+                    bankId: matchedBank?.id ?? "",
+                    accountNumber: property.ownerPayoutAccountNumber ?? "",
+                    accountName: property.ownerPayoutAccountName ?? "",
                     saving: false,
                     resolving: false,
                   }
@@ -152,10 +168,7 @@ export default function LandlordPropertiesPage() {
                       typeof property.managementFeePercent === "number"
                         ? `${property.managementFeePercent}`
                         : "",
-                    bankId:
-                      availableBanks.find(
-                        (bank) => bank.name === property.ownerPayoutBankName,
-                      )?.id ?? "",
+                    bankId: matchedBank?.id ?? "",
                     accountNumber: property.ownerPayoutAccountNumber ?? "",
                     accountName: property.ownerPayoutAccountName ?? "",
                     saving: false,
@@ -251,7 +264,9 @@ export default function LandlordPropertiesPage() {
 
         const property = propertyData.properties.find((item) => item.id === propertyId);
         const matchedBank = availableBanks.find(
-          (bank) => bank.name === property?.ownerPayoutBankName,
+          (bank) =>
+            bank.code === property?.ownerPayoutBankCode ||
+            bank.name === property?.ownerPayoutBankName,
         );
 
         if (matchedBank) {
@@ -663,7 +678,9 @@ export default function LandlordPropertiesPage() {
                       : "",
                   bankId:
                     availableBanks.find(
-                      (bank) => bank.name === property.ownerPayoutBankName,
+                      (bank) =>
+                        bank.code === property.ownerPayoutBankCode ||
+                        bank.name === property.ownerPayoutBankName,
                     )?.id ?? "",
                   accountNumber: property.ownerPayoutAccountNumber ?? "",
                   accountName: property.ownerPayoutAccountName ?? "",
