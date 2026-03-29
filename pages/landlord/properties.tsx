@@ -88,6 +88,8 @@ export default function LandlordPropertiesPage() {
       }
     >
   >({});
+  const [collapsedProperties, setCollapsedProperties] = useState<Record<string, boolean>>({});
+  const [collapsedEmergency, setCollapsedEmergency] = useState<Record<string, boolean>>({});
   const [availableBanks, setAvailableBanks] = useState<PayoutBanksResponse["banks"]>([]);
   const [loadingBanks, setLoadingBanks] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -634,80 +636,121 @@ export default function LandlordPropertiesPage() {
                   saving: false,
                 };
 
+                const isEmergencyCollapsed = collapsedEmergency[property.id] !== false;
+                const hasEmergencyData = !!(form.estateName || form.estateSecurityPhones || form.policeEmergencyPhone);
+
                 return (
                   <div
                     key={property.id}
                     style={{
                       border: "1px solid var(--border)",
                       borderRadius: "var(--radius-sm)",
-                      padding: 16,
                       background: "var(--surface2)",
+                      overflow: "hidden",
                     }}
                   >
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600 }}>{property.name}</div>
-                      <div style={{ fontSize: 12, color: "var(--ink3)" }}>
-                        {property.address}, {property.city}, {property.state}
-                      </div>
-                    </div>
-
-                    <div className="form-row">
-                      <div className="form-group">
-                        <label className="form-label">Estate Name</label>
-                        <input
-                          className="form-input"
-                          value={form.estateName}
-                          onChange={(event) =>
-                            updateEmergencyField(property.id, "estateName", event.target.value)
-                          }
-                          placeholder="Optional estate or compound name"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Police Emergency Number</label>
-                        <input
-                          className="form-input"
-                          value={form.policeEmergencyPhone}
-                          onChange={(event) =>
-                            updateEmergencyField(
-                              property.id,
-                              "policeEmergencyPhone",
-                              event.target.value,
-                            )
-                          }
-                          placeholder="Local police line or leave blank for 112"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: 12 }}>
-                      <label className="form-label">Estate Security Numbers</label>
-                      <input
-                        className="form-input"
-                        value={form.estateSecurityPhones}
-                        onChange={(event) =>
-                          updateEmergencyField(
-                            property.id,
-                            "estateSecurityPhones",
-                            event.target.value,
-                          )
-                        }
-                        placeholder="Comma-separated phone numbers"
-                      />
-                      <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 6 }}>
-                        These numbers are shown to tenants and will receive the tenant's
-                        full property address during an emergency alert.
-                      </div>
-                    </div>
-
                     <button
                       type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => void saveEmergencySetup(property.id)}
-                      disabled={form.saving}
+                      onClick={() =>
+                        setCollapsedEmergency((prev) => ({
+                          ...prev,
+                          [property.id]: !isEmergencyCollapsed,
+                        }))
+                      }
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        padding: "14px 16px",
+                        background: "none",
+                        border: "none",
+                        borderBottom: isEmergencyCollapsed ? "none" : "1px solid var(--border)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
                     >
-                      {form.saving ? "Saving..." : "Save Emergency Setup"}
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{property.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 2 }}>
+                          {property.address}, {property.city}, {property.state}
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                        {hasEmergencyData && (
+                          <span style={{ fontSize: 11, background: "var(--green-light)", color: "var(--green)", padding: "3px 10px", borderRadius: 999, fontWeight: 600 }}>Configured</span>
+                        )}
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          fontSize: 11,
+                          color: "var(--ink3)",
+                          transition: "transform 0.2s",
+                          transform: isEmergencyCollapsed ? "rotate(0deg)" : "rotate(180deg)",
+                        }}>▾</span>
+                      </div>
                     </button>
+
+                    {!isEmergencyCollapsed && (
+                      <div style={{ padding: 16 }}>
+                        <div className="form-row">
+                          <div className="form-group">
+                            <label className="form-label">Estate Name</label>
+                            <input
+                              className="form-input"
+                              value={form.estateName}
+                              onChange={(event) =>
+                                updateEmergencyField(property.id, "estateName", event.target.value)
+                              }
+                              placeholder="Optional estate or compound name"
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Police Emergency Number</label>
+                            <input
+                              className="form-input"
+                              value={form.policeEmergencyPhone}
+                              onChange={(event) =>
+                                updateEmergencyField(property.id, "policeEmergencyPhone", event.target.value)
+                              }
+                              placeholder="Local police line or leave blank for 112"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 12 }}>
+                          <label className="form-label">Estate Security Numbers</label>
+                          <input
+                            className="form-input"
+                            value={form.estateSecurityPhones}
+                            onChange={(event) =>
+                              updateEmergencyField(property.id, "estateSecurityPhones", event.target.value)
+                            }
+                            placeholder="Comma-separated phone numbers"
+                          />
+                          <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 6 }}>
+                            These numbers are shown to tenants and will receive the tenant's
+                            full property address during an emergency alert.
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => void saveEmergencySetup(property.id)}
+                          disabled={form.saving}
+                        >
+                          {form.saving ? "Saving..." : "Save Emergency Setup"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -747,23 +790,72 @@ export default function LandlordPropertiesPage() {
                   resolving: false,
                 };
 
+                const isCollapsed = collapsedProperties[property.id] !== false;
+
                 return (
                   <div
                     key={`${property.id}-collection`}
                     style={{
                       border: "1px solid var(--border)",
                       borderRadius: "var(--radius-sm)",
-                      padding: 16,
                       background: "var(--surface2)",
+                      overflow: "hidden",
                     }}
                   >
-                    <div style={{ marginBottom: 14 }}>
-                      <div style={{ fontSize: 15, fontWeight: 600 }}>{property.name}</div>
-                      <div style={{ fontSize: 12, color: "var(--ink3)" }}>
-                        {property.address}, {property.city}, {property.state}
+                    {/* Collapsible header */}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setCollapsedProperties((prev) => ({
+                          ...prev,
+                          [property.id]: !isCollapsed,
+                        }))
+                      }
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        padding: "14px 16px",
+                        background: "none",
+                        border: "none",
+                        borderBottom: isCollapsed ? "none" : "1px solid var(--border)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>{property.name}</div>
+                        <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 2 }}>
+                          {property.address}, {property.city}, {property.state}
+                        </div>
                       </div>
-                    </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                        {form.accountName && !isCollapsed ? (
+                          <span style={{ fontSize: 11, background: "var(--green-light)", color: "var(--green)", padding: "3px 10px", borderRadius: 999, fontWeight: 600 }}>Configured</span>
+                        ) : form.accountName ? (
+                          <span style={{ fontSize: 11, background: "var(--green-light)", color: "var(--green)", padding: "3px 10px", borderRadius: 999, fontWeight: 600 }}>Configured</span>
+                        ) : null}
+                        <span style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 24,
+                          height: 24,
+                          borderRadius: "50%",
+                          background: "var(--bg)",
+                          border: "1px solid var(--border)",
+                          fontSize: 11,
+                          color: "var(--ink3)",
+                          transition: "transform 0.2s",
+                          transform: isCollapsed ? "rotate(0deg)" : "rotate(180deg)",
+                        }}>▾</span>
+                      </div>
+                    </button>
 
+                    {!isCollapsed && (
+                    <div style={{ padding: 16 }}>
                     <label
                       style={{
                         display: "flex",
@@ -890,6 +982,8 @@ export default function LandlordPropertiesPage() {
                         Split enabled on {new Date(property.splitConfiguredAt).toLocaleDateString()}.
                       </div>
                     ) : null}
+                    </div>
+                    )}
                   </div>
                 );
               })}

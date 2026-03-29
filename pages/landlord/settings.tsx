@@ -1341,28 +1341,49 @@ export default function LandlordSettingsPage() {
 
                 <div className="form-group">
                   <label className="form-label">Workspace Mode</label>
-                  <select
-                    className="form-input"
-                    value={settings?.profile.workspaceMode ?? "SOLO_LANDLORD"}
-                    onChange={(event) =>
-                      updateProfileField(
-                        "workspaceMode",
-                        event.target.value as WorkspaceMode,
-                      )
-                    }
-                  >
-                    {WORKSPACE_MODE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div style={{ marginTop: 6, fontSize: 12, color: "var(--ink3)" }}>
-                    {
-                      WORKSPACE_MODE_OPTIONS.find(
-                        (option) => option.value === settings?.profile.workspaceMode,
-                      )?.description
-                    }
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+                    {WORKSPACE_MODE_OPTIONS.map((option) => {
+                      const isSelected = (settings?.profile.workspaceMode ?? "SOLO_LANDLORD") === option.value;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => updateProfileField("workspaceMode", option.value)}
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 12,
+                            padding: "14px 16px",
+                            borderRadius: "var(--radius)",
+                            border: isSelected ? "2px solid var(--accent)" : "1.5px solid var(--border)",
+                            background: isSelected ? "var(--accent-light, #e8f4ed)" : "var(--surface)",
+                            cursor: "pointer",
+                            textAlign: "left",
+                            transition: "border-color 0.15s, background 0.15s",
+                          }}
+                        >
+                          <span style={{
+                            flexShrink: 0,
+                            marginTop: 2,
+                            width: 18,
+                            height: 18,
+                            borderRadius: "50%",
+                            border: isSelected ? "5px solid var(--accent)" : "2px solid var(--border2)",
+                            background: isSelected ? "var(--accent-light)" : "var(--surface)",
+                            display: "inline-block",
+                            transition: "border 0.15s",
+                          }} />
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 600, color: isSelected ? "var(--accent)" : "var(--ink)", marginBottom: 3 }}>
+                              {option.label}
+                            </div>
+                            <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.5 }}>
+                              {option.description}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
