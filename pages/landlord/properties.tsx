@@ -317,25 +317,34 @@ export default function LandlordPropertiesPage() {
       | "accountName",
     value: string | boolean,
   ) {
-    setCollectionForms((current) => ({
-      ...current,
-      [propertyId]: {
-        enabled: current[propertyId]?.enabled ?? false,
-        ownerName: current[propertyId]?.ownerName ?? "",
-        managementFeePercent: current[propertyId]?.managementFeePercent ?? "",
-        bankId: current[propertyId]?.bankId ?? "",
-        accountNumber: current[propertyId]?.accountNumber ?? "",
-        accountName: current[propertyId]?.accountName ?? "",
-        saving: current[propertyId]?.saving ?? false,
-        resolving: current[propertyId]?.resolving ?? false,
-        [field]: value,
-        // Clear resolved name whenever bank or account number changes
-        ...(field === "bankId" || field === "accountNumber" ? { accountName: "" } : {}),
-      },
-    }));
+    setCollectionForms((current) => {
+      const existing = current[propertyId];
+      const prevValue = existing?.[field as keyof typeof existing];
+      // Only clear the resolved account name when the user actually changes bankId or accountNumber
+      const shouldClearAccountName =
+        (field === "bankId" || field === "accountNumber") &&
+        prevValue !== undefined &&
+        prevValue !== value;
+
+      return {
+        ...current,
+        [propertyId]: {
+          enabled: existing?.enabled ?? false,
+          ownerName: existing?.ownerName ?? "",
+          managementFeePercent: existing?.managementFeePercent ?? "",
+          bankId: existing?.bankId ?? "",
+          accountNumber: existing?.accountNumber ?? "",
+          accountName: existing?.accountName ?? "",
+          saving: existing?.saving ?? false,
+          resolving: existing?.resolving ?? false,
+          [field]: value,
+          ...(shouldClearAccountName ? { accountName: "" } : {}),
+        },
+      };
+    });
   }
 
-  // Auto-resolve when both bankId and a 10-digit accountNumber are present
+  // Auto-resolve when both bankId and a 10-digit accountNumber are present and no name yet
   useEffect(() => {
     Object.entries(collectionForms).forEach(([propertyId, form]) => {
       if (
@@ -348,7 +357,7 @@ export default function LandlordPropertiesPage() {
       }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Object.entries(collectionForms).map(([id, f]) => `${id}:${f.bankId}:${f.accountNumber}`).join("|")]);
+  }, [Object.entries(collectionForms).map(([id, f]) => `${id}:${f.bankId}:${f.accountNumber}:${f.accountName}`).join("|")]);
 
   async function saveEmergencySetup(propertyId: string) {
     if (!landlordSession?.token) {
