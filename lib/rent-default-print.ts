@@ -221,7 +221,7 @@ export function printPreLegalLetter(data: PreLegalLetterData) {
 
 export interface AuditExportData {
   id: string;
-  tenant: { name: string; email: string };
+  tenant: { name: string; email: string; phone?: string; address?: string };
   property: { name: string; address: string };
   unit: string | null;
   outstandingAmount: number;
@@ -229,6 +229,16 @@ export interface AuditExportData {
   status: string;
   createdAt: string;
   resolvedAt: string | null;
+  gracePeriod: {
+    newDeadline: string;
+    agreedAmount: number;
+    initiatedAt: string;
+    workflowStatus: string | null;
+    landlordAcknowledgedAt: string | null;
+    tenantAcknowledgedAt: string | null;
+    tenantSignedAt: string | null;
+    notes: string | null;
+  } | null;
   auditLogs: Array<{
     action: string; actorType: string; actorName: string | null;
     metadata: unknown; timestamp: string;
@@ -238,61 +248,234 @@ export interface AuditExportData {
 export function printAuditExport(data: AuditExportData) {
   if (typeof window === "undefined") return;
 
+  const exportedOn = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const exportedTime = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+  const auditStyles = `
+    ${baseStyles}
+    body { font-family: 'Georgia', 'Times New Roman', serif; background: #f7f6f3; }
+    .sheet { max-width: 860px; font-size: 13.5px; line-height: 1.7; }
+    .doc-header { border-bottom: 3px solid #1a1916; padding-bottom: 20px; margin-bottom: 24px; }
+    .doc-header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+    .doc-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 4px; }
+    .doc-subtitle { font-size: 12px; color: #6b6860; text-transform: uppercase; letter-spacing: 0.08em; }
+    .doc-ref { text-align: right; }
+    .doc-ref .label { font-size: 11px; color: #6b6860; text-transform: uppercase; letter-spacing: 0.06em; }
+    .doc-ref .value { font-size: 13px; font-weight: 600; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #6b6860; border-bottom: 1px solid #e8e6df; padding-bottom: 6px; margin: 28px 0 14px; }
+    .party-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .party-box { border: 1px solid #e8e6df; border-radius: 8px; padding: 14px 16px; background: #fafaf8; }
+    .party-role { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: #9b8e7a; margin-bottom: 4px; }
+    .party-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .party-detail { font-size: 12px; color: #6b6860; line-height: 1.5; }
+    .grace-block { background: #fff8ec; border: 2px solid #e8c84a; border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+    .grace-block .grace-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: #7a5a00; display: flex; align-items: center; gap: 8px; }
+    .grace-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .grace-item .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: #9b8e7a; margin-bottom: 3px; }
+    .grace-item .value { font-size: 14px; font-weight: 700; }
+    .grace-item .value.deadline { color: #9b2a1a; font-size: 16px; }
+    .grace-status { margin-top: 14px; padding-top: 12px; border-top: 1px solid #e8c84a; display: flex; gap: 16px; flex-wrap: wrap; }
+    .grace-status-item { font-size: 12px; color: #6b6860; }
+    .grace-status-item strong { color: #1a1916; }
+    .ack-row { display: flex; gap: 0; margin-top: 12px; border: 1px solid #e8e6df; border-radius: 8px; overflow: hidden; }
+    .ack-cell { flex: 1; padding: 10px 14px; background: #fafaf8; border-right: 1px solid #e8e6df; }
+    .ack-cell:last-child { border-right: none; }
+    .ack-cell .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: #9b8e7a; margin-bottom: 3px; }
+    .ack-cell .value { font-size: 12px; font-weight: 600; }
+    .ack-cell .value.signed { color: #1a6b4a; }
+    .ack-cell .value.pending { color: #b45309; }
+    table { font-family: 'Arial', sans-serif; }
+    .log-table th { background: #1a1916; color: #fff; border-color: #1a1916; }
+    .log-table td { font-size: 12px; vertical-align: top; }
+    .log-table tr:nth-child(even) td { background: #f9f8f5; }
+    .actor-landlord { color: #1a3a6b; font-weight: 600; }
+    .actor-tenant { color: #1a6b4a; font-weight: 600; }
+    .actor-system { color: #6b6860; font-style: italic; }
+    .legal-notice { margin-top: 32px; padding: 16px 20px; border: 1px solid #e8e6df; border-radius: 8px; background: #fafaf8; font-size: 11.5px; color: #6b6860; line-height: 1.7; }
+    .legal-notice strong { color: #1a1916; }
+    .sig-footer { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; padding-top: 24px; border-top: 2px solid #1a1916; }
+    .sig-box .sig-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #6b6860; margin-bottom: 32px; }
+    .sig-box .sig-line { border-bottom: 1px solid #1a1916; margin-bottom: 6px; }
+    .sig-box .sig-name { font-size: 12px; font-weight: 600; }
+    .sig-box .sig-role { font-size: 11px; color: #6b6860; }
+    @media print {
+      body { background: #fff; }
+      .sheet { border: 0; border-radius: 0; padding: 28px 24px; }
+      .grace-block { break-inside: avoid; }
+      .sig-footer { break-inside: avoid; }
+    }
+  `;
+
   const logRows = data.auditLogs
-    .map(
-      (log) => `<tr>
-      <td>${new Date(log.timestamp).toLocaleString("en-GB")}</td>
-      <td>${escapeHtml(log.action.replace(/_/g, " "))}</td>
-      <td>${escapeHtml(log.actorType)}</td>
-      <td>${escapeHtml(log.actorName ?? "—")}</td>
-    </tr>`,
-    )
+    .map((log) => {
+      const actorClass =
+        log.actorType === "LANDLORD" ? "actor-landlord"
+        : log.actorType === "TENANT" ? "actor-tenant"
+        : "actor-system";
+      return `<tr>
+        <td style="white-space:nowrap">${new Date(log.timestamp).toLocaleString("en-GB")}</td>
+        <td>${escapeHtml(log.action.replace(/_/g, " "))}</td>
+        <td><span class="${actorClass}">${escapeHtml(log.actorName ?? log.actorType)}</span></td>
+      </tr>`;
+    })
     .join("");
+
+  const gp = data.gracePeriod;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Default Case Audit Export — DoorRent</title>
-  <style>${baseStyles}</style>
+  <title>Rent Default Audit Trail — DoorRent</title>
+  <style>${auditStyles}</style>
 </head>
 <body>
 <div class="sheet">
-  <div class="brand">
-    <div>
-      <span class="pill green">Audit Trail Export</span>
-      <h1>Rent Default Case</h1>
-      <p>DoorRent — Subsidiary of ReSuply Technologies Limited</p>
-    </div>
-    <div style="text-align:right">
-      <div class="label">Exported</div>
-      <div class="value">${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
+
+  <div class="doc-header">
+    <div class="doc-header-top">
+      <div>
+        <div class="doc-subtitle">DoorRent · Property Management Platform</div>
+        <div class="doc-title">Rent Default Audit Trail</div>
+        <div style="font-size:13px;color:#6b6860;margin-top:4px">
+          Official record of all actions, decisions and communications for this default case.
+        </div>
+      </div>
+      <div class="doc-ref">
+        <div class="label">Case Reference</div>
+        <div class="value">${escapeHtml(data.id)}</div>
+        <div style="margin-top:8px">
+          <div class="label">Exported</div>
+          <div class="value">${exportedOn} at ${exportedTime}</div>
+        </div>
+        <div style="margin-top:8px">
+          <div class="label">Case Status</div>
+          <div class="value" style="text-transform:uppercase;letter-spacing:0.05em">${escapeHtml(data.status.replace(/_/g, " "))}</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="grid">
-    <div class="box"><div class="label">Tenant</div><div class="value">${escapeHtml(data.tenant.name)}</div><div style="color:#6b6860;font-size:13px">${escapeHtml(data.tenant.email)}</div></div>
-    <div class="box"><div class="label">Property</div><div class="value">${escapeHtml(data.property.name)}</div>${data.unit ? `<div style="color:#6b6860;font-size:13px">Unit: ${escapeHtml(data.unit)}</div>` : ""}</div>
-    <div class="box"><div class="label">Outstanding Amount</div><div class="value">${money(data.outstandingAmount, data.currency)}</div></div>
-    <div class="box"><div class="label">Status</div><div class="value">${escapeHtml(data.status.replace(/_/g, " "))}</div></div>
+  <div class="section-title">Parties to this Default Case</div>
+  <div class="party-grid">
+    <div class="party-box">
+      <div class="party-role">Tenant (Defaulting Party)</div>
+      <div class="party-name">${escapeHtml(data.tenant.name)}</div>
+      <div class="party-detail">
+        ${escapeHtml(data.tenant.email)}
+        ${data.tenant.phone ? `<br/>${escapeHtml(data.tenant.phone)}` : ""}
+        ${data.tenant.address ? `<br/>${escapeHtml(data.tenant.address)}` : ""}
+      </div>
+    </div>
+    <div class="party-box">
+      <div class="party-role">Property / Unit</div>
+      <div class="party-name">${escapeHtml(data.property.name)}</div>
+      <div class="party-detail">
+        ${escapeHtml(data.property.address)}
+        ${data.unit ? `<br/>Unit: <strong>${escapeHtml(data.unit)}</strong>` : ""}
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Default Summary</div>
+  <div class="grid" style="margin-bottom:20px">
+    <div class="box"><div class="label">Outstanding Amount</div><div class="value" style="color:#9b2a1a">${money(data.outstandingAmount, data.currency)}</div></div>
     <div class="box"><div class="label">Case Opened</div><div class="value">${fmt(data.createdAt)}</div></div>
-    <div class="box"><div class="label">Resolved</div><div class="value">${data.resolvedAt ? fmt(data.resolvedAt) : "Ongoing"}</div></div>
+    <div class="box"><div class="label">Current Status</div><div class="value">${escapeHtml(data.status.replace(/_/g, " "))}</div></div>
+    <div class="box"><div class="label">Case Closed</div><div class="value">${data.resolvedAt ? fmt(data.resolvedAt) : "Still active"}</div></div>
   </div>
 
-  <h2>Full Activity Log (${data.auditLogs.length} events)</h2>
+  ${gp ? `
+  <div class="section-title">Grace Period Agreement</div>
+  <div class="grace-block">
+    <div class="grace-title">
+      ⚖ Agreed Grace Period Terms
+    </div>
+    <div class="grace-grid">
+      <div class="grace-item">
+        <div class="label">Payment Deadline</div>
+        <div class="value deadline">${fmt(gp.newDeadline)}</div>
+      </div>
+      <div class="grace-item">
+        <div class="label">Amount to be Paid</div>
+        <div class="value">${money(gp.agreedAmount, data.currency)}</div>
+      </div>
+      <div class="grace-item">
+        <div class="label">Grace Period Initiated</div>
+        <div class="value">${fmt(gp.initiatedAt)}</div>
+      </div>
+    </div>
+
+    ${gp.notes ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid #e8c84a;font-size:12.5px;color:#5a4a00"><strong>Terms &amp; Notes:</strong> ${escapeHtml(gp.notes)}</div>` : ""}
+
+    <div class="ack-row" style="margin-top:14px">
+      <div class="ack-cell">
+        <div class="label">Landlord Acknowledgement</div>
+        <div class="value ${gp.landlordAcknowledgedAt ? "signed" : "pending"}">${gp.landlordAcknowledgedAt ? `✓ ${fmt(gp.landlordAcknowledgedAt)}` : "Pending"}</div>
+      </div>
+      <div class="ack-cell">
+        <div class="label">Tenant Signature</div>
+        <div class="value ${gp.tenantSignedAt ? "signed" : "pending"}">${gp.tenantSignedAt ? `✓ ${fmt(gp.tenantSignedAt)}` : "Pending"}</div>
+      </div>
+      <div class="ack-cell">
+        <div class="label">Tenant Acknowledgement</div>
+        <div class="value ${gp.tenantAcknowledgedAt ? "signed" : "pending"}">${gp.tenantAcknowledgedAt ? `✓ ${fmt(gp.tenantAcknowledgedAt)}` : "Pending"}</div>
+      </div>
+      <div class="ack-cell">
+        <div class="label">Workflow Status</div>
+        <div class="value">${gp.workflowStatus ? escapeHtml(gp.workflowStatus.replace(/_/g, " ")) : "—"}</div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;padding:10px 14px;background:#fff3cd;border-radius:6px;font-size:12px;color:#7a5a00;border:1px solid #e8c84a">
+      <strong>Payment Deadline Notice:</strong> The tenant is required to settle the outstanding amount of
+      <strong>${money(gp.agreedAmount, data.currency)}</strong> in full by
+      <strong>${fmt(gp.newDeadline)}</strong>. Failure to pay by this date constitutes a breach of the
+      agreed grace period terms and may result in escalation to legal proceedings.
+    </div>
+  </div>
+  ` : ""}
+
+  <div class="section-title">Complete Audit Trail — ${data.auditLogs.length} Event${data.auditLogs.length !== 1 ? "s" : ""}</div>
   ${
     data.auditLogs.length
-      ? `<table>
-    <thead><tr><th>Timestamp</th><th>Action</th><th>Actor Type</th><th>Actor</th></tr></thead>
+      ? `<table class="log-table">
+    <thead>
+      <tr>
+        <th style="width:160px">Date &amp; Time</th>
+        <th>Event</th>
+        <th style="width:160px">Actioned By</th>
+      </tr>
+    </thead>
     <tbody>${logRows}</tbody>
   </table>`
-      : `<p style="color:#6b6860;font-size:13px">No audit events recorded.</p>`
+      : `<p style="color:#6b6860;font-size:13px;font-style:italic">No audit events have been recorded for this case.</p>`
   }
 
-  <div class="footer">
-    Exported from DoorRent · Case ID: ${escapeHtml(data.id)}
+  <div class="legal-notice">
+    <strong>Legal Disclaimer:</strong> This document is an auto-generated record produced by the DoorRent property management platform (a subsidiary of ReSuply Technologies Limited) and reflects the chronological history of actions taken within the platform for this default case. It is intended for use as supporting evidence in landlord-tenant dispute resolution proceedings, regulatory inquiries, or legal action. The accuracy of this record is contingent on the data entered into the platform by the respective parties. DoorRent does not accept liability for errors arising from data input by users. This document should be presented alongside any formal tenancy agreement, payment receipts, and applicable legal instruments.
   </div>
+
+  <div class="sig-footer">
+    <div class="sig-box">
+      <div class="sig-label">Landlord / Authorised Representative</div>
+      <div class="sig-line">&nbsp;</div>
+      <div class="sig-name">Signature &amp; Date</div>
+      <div class="sig-role">Landlord — DoorRent Platform</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-label">Witness / Compliance Officer</div>
+      <div class="sig-line">&nbsp;</div>
+      <div class="sig-name">Signature &amp; Date</div>
+      <div class="sig-role">Authorised Witness</div>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;text-align:center;font-size:11px;color:#9b8e7a;border-top:1px solid #e8e6df;padding-top:12px">
+    DoorRent · Subsidiary of ReSuply Technologies Limited · Case ID: ${escapeHtml(data.id)} · Exported ${exportedOn}
+  </div>
+
 </div>
 </body>
 </html>`;

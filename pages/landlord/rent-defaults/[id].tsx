@@ -212,7 +212,11 @@ export default function RentDefaultDetailPage() {
     if (!detail) return;
     printAuditExport({
       id: detail.id,
-      tenant: { name: detail.tenant.name, email: detail.tenant.email },
+      tenant: {
+        name: detail.tenant.name,
+        email: detail.tenant.email,
+        phone: detail.tenant.phone,
+      },
       property: { name: detail.property.name, address: `${detail.property.address}, ${detail.property.city}` },
       unit: detail.unit?.unitNumber ?? null,
       outstandingAmount: detail.outstandingAmount,
@@ -220,6 +224,18 @@ export default function RentDefaultDetailPage() {
       status: detail.status,
       createdAt: detail.createdAt,
       resolvedAt: detail.resolvedAt,
+      gracePeriod: detail.gracePeriod
+        ? {
+            newDeadline: detail.gracePeriod.newDeadline,
+            agreedAmount: detail.gracePeriod.agreedAmount,
+            initiatedAt: detail.gracePeriod.initiatedAt,
+            workflowStatus: detail.gracePeriod.workflowStatus,
+            landlordAcknowledgedAt: detail.gracePeriod.landlordAcknowledgedAt,
+            tenantAcknowledgedAt: detail.gracePeriod.tenantAcknowledgedAt,
+            tenantSignedAt: detail.gracePeriod.tenantSignedAt,
+            notes: detail.gracePeriod.notes,
+          }
+        : null,
       auditLogs: detail.auditLogs,
     });
   }
