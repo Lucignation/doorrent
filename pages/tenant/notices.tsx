@@ -297,120 +297,78 @@ export default function TenantNoticesPage() {
 
       {/* Detail modal */}
       {selectedNotice && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 1000,
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.45)",
-          }}
-          onClick={() => setSelectedNotice(null)}
-        >
-          <div
-            style={{
-              width: "100%",
-              maxWidth: 680,
-              background: "var(--card)",
-              borderRadius: "16px 16px 0 0",
-              padding: "28px 28px 40px",
-              maxHeight: "80vh",
-              overflowY: "auto",
-              boxShadow: "0 -8px 40px rgba(0,0,0,0.18)",
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Handle bar */}
-            <div
-              style={{
-                width: 40,
-                height: 4,
-                borderRadius: 99,
-                background: "var(--border)",
-                margin: "0 auto 20px",
-              }}
-            />
-
-            {/* Header */}
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 14, marginBottom: 20 }}>
-              <div
-                style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 12,
-                  background: "var(--bg)",
-                  border: "1px solid var(--border)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 22,
-                  flexShrink: 0,
-                }}
-              >
-                {selectedNotice.icon}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                  <span className={`badge badge-${selectedNotice.badge}`}>{selectedNotice.type}</span>
-                  {!selectedNotice.read ? (
-                    <span
-                      style={{
-                        background: "var(--accent)",
-                        color: "#fff",
-                        fontSize: 10,
-                        fontWeight: 700,
-                        padding: "2px 8px",
-                        borderRadius: 999,
-                      }}
-                    >
-                      NEW
-                    </span>
-                  ) : null}
-                  <span style={{ fontSize: 12, color: "var(--ink3)", marginLeft: "auto" }}>
-                    {selectedNotice.date}
-                  </span>
+        <div className="modal-overlay open" onClick={() => setSelectedNotice(null)}>
+          <div className="modal modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: "var(--radius)",
+                    background: "var(--bg)",
+                    border: "1px solid var(--border)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 20,
+                    flexShrink: 0,
+                  }}
+                >
+                  {selectedNotice.icon}
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 700 }}>{selectedNotice.title}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                    <span className={`badge badge-${selectedNotice.badge}`}>{selectedNotice.type}</span>
+                    {!selectedNotice.read && (
+                      <span
+                        style={{
+                          background: "var(--accent)",
+                          color: "#fff",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                        }}
+                      >
+                        NEW
+                      </span>
+                    )}
+                    <span style={{ fontSize: 11, color: "var(--ink3)", marginLeft: "auto" }}>
+                      {selectedNotice.date}
+                    </span>
+                  </div>
+                  <div className="modal-title" style={{ fontSize: 17 }}>{selectedNotice.title}</div>
+                </div>
               </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setSelectedNotice(null)}
+                aria-label="Close"
+              >
+                ×
+              </button>
             </div>
 
-            {/* Body */}
-            <div
-              style={{
-                fontSize: 14,
-                color: "var(--ink)",
-                lineHeight: 1.75,
-                whiteSpace: "pre-wrap",
-                borderTop: "1px solid var(--border)",
-                paddingTop: 16,
-              }}
-            >
-              {selectedNotice.body}
+            <div className="modal-body">
+              <p style={{ fontSize: 14, color: "var(--ink)", lineHeight: 1.8, whiteSpace: "pre-wrap" }}>
+                {selectedNotice.body}
+              </p>
             </div>
 
-            {/* Actions */}
-            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
-              {!selectedNotice.read && (
+            {!selectedNotice.read && (
+              <div className="modal-footer">
                 <button
                   type="button"
-                  className="btn btn-secondary btn-sm"
+                  className="btn btn-primary btn-sm"
                   onClick={() => markAsRead(selectedNotice.id)}
                   disabled={pendingNoticeId === selectedNotice.id}
                 >
                   {pendingNoticeId === selectedNotice.id ? "Updating..." : "Mark as read"}
                 </button>
-              )}
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => setSelectedNotice(null)}
-                style={{ marginLeft: "auto" }}
-              >
-                Close
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       )}
