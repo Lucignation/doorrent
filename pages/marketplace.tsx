@@ -175,7 +175,7 @@ function MarketplaceSiteHeader() {
     >
       <div style={{ width: "100%", padding: `18px ${MARKETPLACE_PAGE_GUTTER}` }}>
         {/* Main row */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, position: "relative" }}>
           <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
             <img src={LOGO_PATH} alt="DoorRent logo" style={{ width: 42, height: 42, objectFit: "contain" }} />
             <span style={{ fontFamily: '"DM Serif Display", Georgia, serif', fontSize: 22, letterSpacing: "-0.02em", color: BRAND.text }}>
@@ -183,15 +183,25 @@ function MarketplaceSiteHeader() {
             </span>
           </Link>
 
-          {/* Desktop nav links */}
-          <div className="mkt-desktop-links" style={{ display: "flex", alignItems: "center", gap: 4, marginLeft: "auto", marginRight: 12 }}>
+          {/* Desktop nav links — absolutely centered */}
+          <div
+            className="mkt-desktop-links"
+            style={{
+              position: "absolute",
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
             <Link href="/" style={navLinkStyle}>Home</Link>
             <Link href="/#features" style={navLinkStyle}>Features</Link>
-            <Link href="/#pricing" style={navLinkStyle}>Why it&apos;s free</Link>
+            <Link href="/#pricing" style={navLinkStyle}>Pricing</Link>
           </div>
 
           {/* Desktop CTA buttons */}
-          <div className="mkt-desktop-cta" style={{ display: "flex", gap: 10 }}>
+          <div className="mkt-desktop-cta" style={{ display: "flex", gap: 10, marginLeft: "auto" }}>
             <Link href="/portal" style={{ ...buttonStyle, background: "#ffffff", border: "1px solid rgba(255,255,255,0.12)", color: "#151712" }}>
               Sign in
             </Link>
@@ -218,7 +228,7 @@ function MarketplaceSiteHeader() {
         <div className={`mkt-mobile-menu${menuOpen ? " is-open" : ""}`} aria-hidden={!menuOpen}>
           <Link href="/" className="mkt-mitem" style={{ "--i": 0 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Home</Link>
           <Link href="/#features" className="mkt-mitem" style={{ "--i": 1 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Features</Link>
-          <Link href="/#pricing" className="mkt-mitem" style={{ "--i": 2 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Why it&apos;s free</Link>
+          <Link href="/#pricing" className="mkt-mitem" style={{ "--i": 2 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Pricing</Link>
           <div className="mkt-mdivider" />
           <Link href="/portal" className="mkt-mitem" style={{ "--i": 3 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Sign in</Link>
           <Link href="/portal" className="mkt-mitem mkt-mitem-cta" style={{ "--i": 4 } as React.CSSProperties} onClick={() => setMenuOpen(false)}>Get started →</Link>
@@ -435,7 +445,7 @@ function MarketplaceSiteFooter() {
               </li>
               <li>
                 <Link href="/#pricing" style={linkStyle}>
-                  Why it's free
+                  Pricing
                 </Link>
               </li>
               <li>

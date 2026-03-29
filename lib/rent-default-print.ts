@@ -41,6 +41,31 @@ const baseStyles = `
   @media print { body { background: #fff; padding: 0; } .sheet { border: 0; border-radius: 0; padding: 24px; } }
 `;
 
+function printViaIframe(html: string, frameId: string) {
+  if (typeof window === "undefined") return;
+
+  const existing = document.getElementById(frameId);
+  if (existing) existing.remove();
+
+  const iframe = document.createElement("iframe");
+  iframe.id = frameId;
+  iframe.style.cssText =
+    "position:fixed;top:0;left:0;width:0;height:0;border:none;opacity:0;pointer-events:none;";
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentDocument || iframe.contentWindow?.document;
+  if (!doc) return;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  iframe.onload = () => {
+    window.setTimeout(() => {
+      iframe.contentWindow?.print();
+    }, 150);
+  };
+}
+
 export interface PreLegalLetterData {
   generatedAt: string;
   landlord: { companyName: string; name: string; email: string; phone: string };
@@ -68,9 +93,6 @@ export interface PreLegalLetterData {
 export function printPreLegalLetter(data: PreLegalLetterData) {
   if (typeof window === "undefined") return;
 
-  const win = window.open("", "_blank", "noopener,noreferrer,width=960,height=800");
-  if (!win) throw new Error("Allow popups to open the document preview.");
-
   const paymentRows = data.paymentHistory
     .map(
       (p) => `<tr>
@@ -97,6 +119,7 @@ export function printPreLegalLetter(data: PreLegalLetterData) {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Pre-Legal Demand Letter — DoorRent</title>
   <style>${baseStyles}</style>
 </head>
@@ -193,11 +216,7 @@ export function printPreLegalLetter(data: PreLegalLetterData) {
 </body>
 </html>`;
 
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  window.setTimeout(() => win.print(), 200);
+  printViaIframe(html, "__pre-legal-print-frame");
 }
 
 export interface AuditExportData {
@@ -219,9 +238,6 @@ export interface AuditExportData {
 export function printAuditExport(data: AuditExportData) {
   if (typeof window === "undefined") return;
 
-  const win = window.open("", "_blank", "noopener,noreferrer,width=960,height=800");
-  if (!win) throw new Error("Allow popups to open the audit export.");
-
   const logRows = data.auditLogs
     .map(
       (log) => `<tr>
@@ -237,6 +253,7 @@ export function printAuditExport(data: AuditExportData) {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Default Case Audit Export — DoorRent</title>
   <style>${baseStyles}</style>
 </head>
@@ -264,10 +281,14 @@ export function printAuditExport(data: AuditExportData) {
   </div>
 
   <h2>Full Activity Log (${data.auditLogs.length} events)</h2>
-  <table>
+  ${
+    data.auditLogs.length
+      ? `<table>
     <thead><tr><th>Timestamp</th><th>Action</th><th>Actor Type</th><th>Actor</th></tr></thead>
     <tbody>${logRows}</tbody>
-  </table>
+  </table>`
+      : `<p style="color:#6b6860;font-size:13px">No audit events recorded.</p>`
+  }
 
   <div class="footer">
     Exported from DoorRent · Case ID: ${escapeHtml(data.id)}
@@ -276,9 +297,5 @@ export function printAuditExport(data: AuditExportData) {
 </body>
 </html>`;
 
-  win.document.open();
-  win.document.write(html);
-  win.document.close();
-  win.focus();
-  window.setTimeout(() => win.print(), 200);
+  printViaIframe(html, "__audit-export-print-frame");
 }
