@@ -470,7 +470,7 @@ function MarketplaceSiteFooter() {
                 </Link>
               </li>
               <li>
-                <a href="mailto:hello@doorrent.com" style={linkStyle}>
+                <a href="mailto:hello@usedoorrent.com" style={linkStyle}>
                   Contact
                 </a>
               </li>

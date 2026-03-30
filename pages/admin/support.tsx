@@ -23,10 +23,10 @@ export default function AdminSupportPage() {
             </div>
             <div style={{ marginTop: 20 }}>
               <a
-                href="mailto:support@doorrent.com"
+                href="mailto:support@usedoorrent.com"
                 className="btn btn-secondary btn-sm"
               >
-                Email support@doorrent.com
+                Email support@usedoorrent.com
               </a>
             </div>
           </div>

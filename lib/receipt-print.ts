@@ -288,7 +288,7 @@ function buildReceiptHtml(receipt: PrintableReceipt): string {
 
   <div class="footer">
     This is an official payment receipt issued by ${esc(receipt.companyName)} via DoorRent.<br />
-    DoorRent is a product of ReSuply Technologies Limited. For support: support@doorrent.com
+    DoorRent is a product of ReSuply Technologies Limited. For support: support@usedoorrent.com
   </div>
 
 </div>

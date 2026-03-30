@@ -5,12 +5,12 @@ export const LEGAL_PRODUCT_NAME = "DoorRent";
 export const LEGAL_EFFECTIVE_DATE = "28 March 2026";
 
 export const LEGAL_EMAILS = {
-  legal: "legal@doorrent.com",
-  privacy: "privacy@doorrent.com",
-  billing: "billing@doorrent.com",
-  security: "security@doorrent.com",
-  support: "support@doorrent.com",
-  general: "hello@doorrent.com",
+  legal: "legal@usedoorrent.com",
+  privacy: "privacy@usedoorrent.com",
+  billing: "billing@usedoorrent.com",
+  security: "security@usedoorrent.com",
+  support: "support@usedoorrent.com",
+  general: "hello@usedoorrent.com",
 } as const;
 
 export const LEGAL_LINKS = [

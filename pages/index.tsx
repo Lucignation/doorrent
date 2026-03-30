@@ -1271,7 +1271,7 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
                 <ul>
                   <li><a href="#testimonials">Testimonials</a></li>
                   <li><Link href="/portal">Live Demo</Link></li>
-                  <li><a href="mailto:hello@doorrent.com">Contact</a></li>
+                  <li><a href="mailto:hello@usedoorrent.com">Contact</a></li>
                 </ul>
               </div>
 
