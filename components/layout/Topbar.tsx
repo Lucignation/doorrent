@@ -1,3 +1,4 @@
+import { useRouter } from "next/router";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { BellIcon, MenuIcon, MessageIcon } from "../ui/Icons";
 
@@ -14,7 +15,8 @@ export default function Topbar({
   initials,
   onToggleSidebar,
 }: TopbarProps) {
-  const { openModal, showToast } = usePrototypeUI();
+  const { openModal } = usePrototypeUI();
+  const router = useRouter();
   return (
     <header className="topbar">
       <div className="topbar-left">
@@ -28,7 +30,7 @@ export default function Topbar({
       </div>
 
       <div className="topbar-right">
-        <button type="button" className="icon-btn" onClick={() => showToast("No new messages", "info")}>
+        <button type="button" className="icon-btn" onClick={() => void router.push("/tenant/community")}>
           <MessageIcon />
         </button>
         <button
@@ -44,7 +46,7 @@ export default function Topbar({
         <div
           className="user-avatar"
           style={{ cursor: "pointer" }}
-          onClick={() => showToast("Profile settings coming soon", "info")}
+          onClick={() => void router.push("/tenant/profile")}
         >
           {initials}
         </div>
