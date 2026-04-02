@@ -2,6 +2,7 @@ import {
   canRenderSignaturePreview,
   resolveSignatureDisplayUrl,
 } from "./signature-data";
+import { sanitizeHexColor } from "./frontend-security";
 
 function esc(value: string | null | undefined) {
   if (!value) return "—";
@@ -54,6 +55,23 @@ function fmtMoneyWords(amount: number | null | undefined) {
 
 function isRenderableSignatureUri(value: string | null | undefined) {
   return canRenderSignaturePreview(value);
+}
+
+function rgba(color: string, alpha: number) {
+  const normalized = color.replace("#", "");
+
+  if (!/^[0-9A-Fa-f]{6}$/.test(normalized)) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(normalized, 16);
+
+  return `rgba(${(parsed >> 16) & 255}, ${(parsed >> 8) & 255}, ${parsed & 255}, ${alpha})`;
+}
+
+function normalizeBrandLabel(value?: string | null) {
+  const normalized = value?.trim().replace(/\s+/g, " ");
+  return normalized ? normalized.slice(0, 80) : "DoorRent";
 }
 
 function leaseDurationText(startIso: string, endIso: string) {
@@ -149,6 +167,11 @@ export interface AgreementPrintData {
 
   notes?: string | null;
   templateName?: string | null;
+  brand?: {
+    displayName?: string | null;
+    primaryColor?: string | null;
+    accentColor?: string | null;
+  } | null;
 }
 
 export function buildAgreementHtml(data: AgreementPrintData): string {
@@ -156,6 +179,15 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
   const duration = leaseDurationText(data.lease.startDate, data.lease.endDate);
   const noticeDays = data.conditions?.noticePeriodDays ?? 30;
   const hasGuarantor = Boolean(data.guarantor?.name);
+  const brandDisplayName = normalizeBrandLabel(
+    data.brand?.displayName ?? data.landlord.companyName ?? "DoorRent",
+  );
+  const brandPrimary = sanitizeHexColor(data.brand?.primaryColor) ?? "#1A3A2A";
+  const brandAccent = sanitizeHexColor(data.brand?.accentColor) ?? "#C8A96E";
+  const brandPrimarySoft = rgba(brandPrimary, 0.08) ?? "#EEF4F0";
+  const brandPrimaryBorder = rgba(brandPrimary, 0.18) ?? "#DCE8E0";
+  const brandAccentSoft = rgba(brandAccent, 0.18) ?? "#F7EEDC";
+  const brandLabel = esc(brandDisplayName);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -165,6 +197,13 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
 <title>${esc(data.lease.title)}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --brand-primary: ${brandPrimary};
+    --brand-primary-soft: ${brandPrimarySoft};
+    --brand-primary-border: ${brandPrimaryBorder};
+    --brand-accent: ${brandAccent};
+    --brand-accent-soft: ${brandAccentSoft};
+  }
   body {
     font-family: "Times New Roman", Times, serif;
     font-size: 11pt;
@@ -225,8 +264,9 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     font-weight: bold;
     letter-spacing: 0.15em;
     text-transform: uppercase;
-    color: #444;
-    border: 1px solid #aaa;
+    color: var(--brand-primary);
+    border: 1px solid var(--brand-primary-border);
+    background: var(--brand-primary-soft);
     padding: 6pt 18pt;
     margin-bottom: 36pt;
   }
@@ -240,10 +280,15 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
   }
   .cover-subtitle {
     font-size: 13pt;
-    color: #333;
+    color: var(--brand-accent);
     margin-bottom: 28pt;
   }
-  .cover-rule { width: 80mm; height: 1.5px; background: #111; margin: 20pt auto; }
+  .cover-rule {
+    width: 80mm;
+    height: 1.5px;
+    background: var(--brand-primary);
+    margin: 20pt auto;
+  }
   .cover-party-label {
     font-size: 8.5pt;
     text-transform: uppercase;
@@ -264,7 +309,8 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
   .cover-premises {
     margin-top: 28pt;
     padding: 12pt 20pt;
-    border: 1px solid #bbb;
+    border: 1px solid var(--brand-primary-border);
+    background: var(--brand-primary-soft);
     font-size: 10pt;
     text-align: center;
     line-height: 1.6;
@@ -290,7 +336,8 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    border-bottom: 2px solid #111;
+    color: var(--brand-primary);
+    border-bottom: 2px solid var(--brand-primary);
     padding-bottom: 5pt;
     margin-bottom: 14pt;
     margin-top: 0;
@@ -310,7 +357,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
 
   /* ── Party blocks ── */
   .party-block {
-    border: 1px solid #ccc;
+    border: 1px solid var(--brand-primary-border);
     padding: 12pt 14pt;
     margin-bottom: 10pt;
     background: #fafafa;
@@ -347,8 +394,8 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     font-size: 10.5pt;
   }
   .fin-table th {
-    background: #f0eeea;
-    border: 1px solid #ccc;
+    background: var(--brand-primary-soft);
+    border: 1px solid var(--brand-primary-border);
     padding: 7pt 10pt;
     text-align: left;
     font-size: 8pt;
@@ -357,7 +404,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     font-family: Arial, sans-serif;
   }
   .fin-table td {
-    border: 1px solid #ccc;
+    border: 1px solid var(--brand-primary-border);
     padding: 7pt 10pt;
     vertical-align: top;
   }
@@ -365,7 +412,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
   .fin-highlight td {
     font-weight: bold;
     font-size: 11.5pt;
-    background: #f0eeea !important;
+    background: var(--brand-primary-soft) !important;
   }
 
   /* ── Obligations list ── */
@@ -432,12 +479,12 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
 
   /* ── Attestation ── */
   .attestation {
-    border: 1px solid #bbb;
+    border: 1px solid var(--brand-primary-border);
     padding: 12pt 16pt;
     font-size: 9.5pt;
     line-height: 1.75;
     margin-top: 20pt;
-    background: #fafaf8;
+    background: var(--brand-primary-soft);
     font-style: italic;
   }
 
@@ -468,7 +515,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
   }
   .print-bar button {
     padding: 8px 22px;
-    background: #1a3a2a;
+    background: var(--brand-primary);
     color: #fff;
     border: none;
     border-radius: 8px;
@@ -477,7 +524,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
     cursor: pointer;
     font-family: Arial, sans-serif;
   }
-  .print-bar button:hover { background: #1f4a35; }
+  .print-bar button:hover { background: var(--brand-primary); }
   .print-bar .ref-badge {
     font-size: 11px;
     color: #666;
@@ -497,7 +544,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
 <!-- ═══════════════════════════════════════════════════ -->
 <div class="page">
   <div class="cover">
-    <div class="cover-brand">DoorRent — Property Management Platform</div>
+    <div class="cover-brand">${brandLabel} — Agreement Workspace</div>
 
     <div class="cover-title">Residential Tenancy<br>Agreement</div>
     <div class="cover-subtitle">${esc(data.lease.title)}</div>
@@ -525,7 +572,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
       Agreement Reference: <strong>${esc(data.agreementRef)}</strong>
     </div>
 
-    <div class="cover-seal">This document was generated by DoorRent · ${esc(data.generatedAt)}</div>
+    <div class="cover-seal">This document was generated by ${brandLabel} · ${esc(data.generatedAt)}</div>
   </div>
 </div>
 
@@ -685,7 +732,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
   </table>
 
   <p>
-    <span class="inline-label">4.1 Payment Obligation.</span> The Tenant shall pay the Rent to the Landlord strictly on or before the due date for each payment cycle commencing from the Commencement Date. Rent shall be paid by bank transfer or through the DoorRent payment portal. Receipts shall be issued upon each confirmed payment.
+    <span class="inline-label">4.1 Payment Obligation.</span> The Tenant shall pay the Rent to the Landlord strictly on or before the due date for each payment cycle commencing from the Commencement Date. Rent shall be paid by bank transfer or through the ${brandLabel} payment portal. Receipts shall be issued upon each confirmed payment.
   </p>
   <p>
     <span class="inline-label">4.2 Late Payment.</span> If Rent is not received within <strong>seven (7) calendar days</strong> of the due date, the Landlord shall issue a formal payment demand notice. If the arrears remain unpaid within <strong>fourteen (14) calendar days</strong> of that demand, the Landlord shall be entitled to initiate recovery proceedings in accordance with Clause 10 of this Agreement.
@@ -876,7 +923,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
         : '<div class="sig-line"></div>'}
       <div class="sig-meta">Authorised Signature</div>
       ${data.landlord.signatureDataUrl && !isRenderableSignatureUri(data.landlord.signatureDataUrl)
-        ? '<div class="sig-meta" style="margin-top:6pt;">Signed electronically via DoorRent</div>'
+        ? '<div class="sig-meta" style="margin-top:6pt;">Signed electronically via ${brandLabel}</div>'
         : ""}
       ${data.landlord.signedDate
         ? `<div class="sig-meta" style="margin-top:6pt;">Date: <strong>${esc(data.landlord.signedDate)}</strong></div>`
@@ -896,7 +943,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
         : '<div class="sig-line"></div>'}
       <div class="sig-meta">Tenant's Signature</div>
       ${data.tenant.signatureDataUrl && !isRenderableSignatureUri(data.tenant.signatureDataUrl)
-        ? '<div class="sig-meta" style="margin-top:6pt;">Signed electronically via DoorRent</div>'
+        ? '<div class="sig-meta" style="margin-top:6pt;">Signed electronically via ${brandLabel}</div>'
         : ""}
       ${data.tenant.signedDate
         ? `<div class="sig-meta" style="margin-top:6pt;">Date: <strong>${esc(data.tenant.signedDate)}</strong></div>`
@@ -916,7 +963,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
           : '<div class="sig-line"></div>'}
         ${data.landlordWitness?.signatureDataUrl &&
         !isRenderableSignatureUri(data.landlordWitness.signatureDataUrl)
-          ? '<div class="sig-meta" style="margin-bottom:6pt;">Signed electronically via DoorRent</div>'
+          ? '<div class="sig-meta" style="margin-bottom:6pt;">Signed electronically via ${brandLabel}</div>'
           : ""}
         <div class="sig-meta">
           ${data.landlordWitness?.name
@@ -943,7 +990,7 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
           : '<div class="sig-line"></div>'}
         ${data.guarantor?.signatureDataUrl &&
         !isRenderableSignatureUri(data.guarantor.signatureDataUrl)
-          ? '<div class="sig-meta" style="margin-bottom:6pt;">Signed electronically via DoorRent</div>'
+          ? '<div class="sig-meta" style="margin-bottom:6pt;">Signed electronically via ${brandLabel}</div>'
           : ""}
         <div class="sig-meta">
           ${data.guarantor?.name
@@ -976,8 +1023,8 @@ export function buildAgreementHtml(data: AgreementPrintData): string {
   </div>
 
   <div class="doc-footer" style="margin-top:24pt;">
-    ${esc(data.lease.title)} &nbsp;·&nbsp; Ref: ${esc(data.agreementRef)} &nbsp;·&nbsp; Generated via DoorRent on ${esc(data.generatedAt)}<br>
-    This document is legally binding when signed by all parties. DoorRent does not provide legal advice.
+    ${esc(data.lease.title)} &nbsp;·&nbsp; Ref: ${esc(data.agreementRef)} &nbsp;·&nbsp; Generated via ${brandLabel} on ${esc(data.generatedAt)}<br>
+    This document is legally binding when signed by all parties. ${brandLabel} does not provide legal advice.
     For legal guidance, consult a qualified Nigerian legal practitioner.
   </div>
 </div>

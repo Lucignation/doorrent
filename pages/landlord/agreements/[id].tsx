@@ -13,6 +13,7 @@ import {
 } from "../../../lib/signature-data";
 import { usePrototypeUI } from "../../../context/PrototypeUIContext";
 import type { BadgeTone } from "../../../types/app";
+import { resolveBrandDisplayName } from "../../../lib/branding";
 
 interface AgreementDetail {
   id: string;
@@ -99,7 +100,7 @@ interface AgreementDetail {
 function statusTone(status: string): BadgeTone {
   if (status === "fully_signed") return "green";
   if (status === "awaiting_witness_signatures") return "amber";
-  if (status === "awaiting_landlord_signature") return "blue";
+  if (status === "awaiting_landlord_signature") return "accent";
   if (status === "sent") return "amber";
   if (status === "draft") return "gray";
   return "red";
@@ -114,6 +115,10 @@ export default function AgreementDetailPage() {
   const { id } = router.query;
   const { landlordSession } = useLandlordPortalSession();
   const { showToast } = usePrototypeUI();
+  const brandDisplayName = resolveBrandDisplayName(
+    landlordSession?.landlord.branding,
+    "DoorRent",
+  );
   const [detail, setDetail] = useState<AgreementDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -212,6 +217,7 @@ export default function AgreementDetailPage() {
       },
       notes: null,
       templateName: detail.template,
+      brand: landlordSession?.landlord.branding ?? undefined,
     });
   }
 
@@ -327,7 +333,7 @@ export default function AgreementDetailPage() {
 
   return (
     <>
-      <PageMeta title={`DoorRent — ${detail.title}`} urlPath={`/landlord/agreements/${detail.id}`} />
+      <PageMeta title={`${brandDisplayName} — ${detail.title}`} urlPath={`/landlord/agreements/${detail.id}`} />
       <LandlordPortalShell topbarTitle="Agreements" breadcrumb="Dashboard → Agreements → Detail">
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
           <button

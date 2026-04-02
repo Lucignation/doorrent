@@ -1657,6 +1657,7 @@ tbody tr:hover td { background: var(--surface2); cursor: pointer; }
 .badge-blue { background: var(--blue-light); color: var(--blue); }
 .badge-gray { background: var(--surface2); color: var(--ink2); }
 .badge-gold { background: var(--accent2-light); color: var(--amber); }
+.badge-accent { background: var(--accent-light); color: var(--accent); }
 
 .filters-bar {
   display: flex;

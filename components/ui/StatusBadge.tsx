@@ -17,6 +17,7 @@ export default function StatusBadge({
     blue: "blue",
     gray: "gray",
     gold: "gold",
+    accent: "accent",
   };
 
   return <span className={`badge badge-${map[tone] || "gray"}`}>{children}</span>;

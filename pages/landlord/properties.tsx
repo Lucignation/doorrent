@@ -36,6 +36,12 @@ interface LandlordPropertiesResponse {
       estateName?: string | null;
       estateSecurityPhones?: string[];
       policeEmergencyPhone?: string | null;
+      marketplacePhotoUrls: string[];
+      marketplacePhotoCount: number;
+      marketplaceMinimumPhotoCount: number;
+      marketplaceHasMinimumPhotos: boolean;
+      marketplaceGalleryPreview: string[];
+      marketplaceReadyUnits: number;
     }
   >;
 }
@@ -53,6 +59,28 @@ interface ResolvePayoutAccountResponse {
   bankName: string;
   accountNumber: string;
   accountName: string;
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+
+      if (typeof result === "string") {
+        resolve(result);
+        return;
+      }
+
+      reject(new Error("We could not read that image file."));
+    };
+    reader.onerror = () => reject(new Error("We could not read that image file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function isMarketplaceImage(value: string) {
+  return /^(https?:|data:image\/)/i.test(value);
 }
 
 export default function LandlordPropertiesPage() {
@@ -91,6 +119,9 @@ export default function LandlordPropertiesPage() {
   const [collapsedProperties, setCollapsedProperties] = useState<Record<string, boolean>>({});
   const [collapsedEmergency, setCollapsedEmergency] = useState<Record<string, boolean>>({});
   const [availableBanks, setAvailableBanks] = useState<PayoutBanksResponse["banks"]>([]);
+  const [marketplaceBusyPropertyId, setMarketplaceBusyPropertyId] = useState<string | null>(
+    null,
+  );
   const [loadingBanks, setLoadingBanks] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -589,6 +620,82 @@ export default function LandlordPropertiesPage() {
     }
   }
 
+  async function uploadMarketplacePhotos(propertyId: string, fileList: FileList | null) {
+    if (!landlordSession?.token) {
+      showToast("Landlord session missing. Please sign in again.", "error");
+      return;
+    }
+
+    const files = Array.from(fileList ?? []);
+
+    if (!files.length) {
+      return;
+    }
+
+    setMarketplaceBusyPropertyId(propertyId);
+
+    try {
+      const uploads = await Promise.all(
+        files.map(async (file) => ({
+          dataUrl: await readFileAsDataUrl(file),
+          fileName: file.name,
+          mimeType: file.type || undefined,
+        })),
+      );
+
+      await apiRequest(`/landlord/properties/${propertyId}/marketplace`, {
+        method: "PATCH",
+        token: landlordSession.token,
+        body: {
+          uploads,
+        },
+      });
+
+      refreshData();
+      showToast("Marketplace gallery updated.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not upload marketplace photos for this property.",
+        "error",
+      );
+    } finally {
+      setMarketplaceBusyPropertyId(null);
+    }
+  }
+
+  async function removeMarketplacePhoto(propertyId: string, url: string) {
+    if (!landlordSession?.token) {
+      showToast("Landlord session missing. Please sign in again.", "error");
+      return;
+    }
+
+    setMarketplaceBusyPropertyId(propertyId);
+
+    try {
+      await apiRequest(`/landlord/properties/${propertyId}/marketplace`, {
+        method: "PATCH",
+        token: landlordSession.token,
+        body: {
+          removeUrls: [url],
+        },
+      });
+
+      refreshData();
+      showToast("Marketplace photo removed.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not remove that marketplace photo.",
+        "error",
+      );
+    } finally {
+      setMarketplaceBusyPropertyId(null);
+    }
+  }
+
   return (
     <>
       <PageMeta title="DoorRent — Properties" />
@@ -615,6 +722,161 @@ export default function LandlordPropertiesPage() {
           ))}
           <PropertyCard addNew onClick={() => openModal("add-property")} />
         </div>
+
+        {(propertyData?.properties?.length ?? 0) > 0 ? (
+          <div className="card" style={{ marginTop: 24 }}>
+            <div className="card-header">
+              <div>
+                <div className="card-title">Marketplace Gallery</div>
+                <div className="card-subtitle">
+                  Add at least 3 real photos to replace branded placeholders and improve marketplace conversion.
+                </div>
+              </div>
+            </div>
+            <div className="card-body" style={{ display: "grid", gap: 18 }}>
+              {propertyData?.properties.map((property) => {
+                const propertyBusy = marketplaceBusyPropertyId === property.id;
+
+                return (
+                  <div
+                    key={`${property.id}-marketplace`}
+                    style={{
+                      border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)",
+                      background: "var(--surface2)",
+                      padding: 16,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        gap: 16,
+                        flexWrap: "wrap",
+                        marginBottom: 14,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)" }}>
+                          {property.name}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4 }}>
+                          {property.marketplacePhotoCount}/{property.marketplaceMinimumPhotoCount} real photos uploaded
+                          {property.marketplaceHasMinimumPhotos
+                            ? ` · ${property.marketplaceReadyUnits} unit(s) can flow to marketplace automatically`
+                            : ""}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4 }}>
+                          {property.marketplaceHasMinimumPhotos
+                            ? "This property has enough real photos to avoid placeholders on most marketplace cards."
+                            : `DoorRent will still publish with branded placeholders. Add ${property.marketplaceMinimumPhotoCount - property.marketplacePhotoCount} more real photo(s) to replace them.`}
+                        </div>
+                      </div>
+
+                      <label
+                        className="btn btn-secondary btn-sm"
+                        style={{
+                          cursor: propertyBusy ? "wait" : "pointer",
+                          opacity: propertyBusy ? 0.65 : 1,
+                        }}
+                      >
+                        {propertyBusy ? "Working..." : "Add Photos"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          hidden
+                          disabled={propertyBusy}
+                          onChange={(event) => {
+                            const files = event.target.files;
+                            void uploadMarketplacePhotos(property.id, files);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: 12,
+                      }}
+                    >
+                      {property.marketplaceGalleryPreview.map((item, index) => {
+                        const isRealPhoto = property.marketplacePhotoUrls.includes(item);
+
+                        return (
+                          <div
+                            key={`${item}-${index}`}
+                            style={{
+                              border: "1px solid var(--border)",
+                              borderRadius: 14,
+                              overflow: "hidden",
+                              background: "var(--surface)",
+                            }}
+                          >
+                            {isMarketplaceImage(item) ? (
+                              <img
+                                src={item}
+                                alt={`${property.name} marketplace ${index + 1}`}
+                                style={{
+                                  width: "100%",
+                                  height: 110,
+                                  objectFit: "cover",
+                                  display: "block",
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  height: 110,
+                                  background: `linear-gradient(160deg, ${item}, #102018)`,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: "rgba(255,255,255,0.88)",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Branded fallback
+                              </div>
+                            )}
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: 8,
+                                padding: "10px 12px",
+                              }}
+                            >
+                              <span style={{ fontSize: 12, color: "var(--ink2)", fontWeight: 600 }}>
+                                {isRealPhoto ? `Photo ${index + 1}` : `Fallback ${index + 1}`}
+                              </span>
+                              {isRealPhoto ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-xs"
+                                  onClick={() => void removeMarketplacePhoto(property.id, item)}
+                                  disabled={propertyBusy}
+                                >
+                                  Remove
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         {(propertyData?.properties?.length ?? 0) > 0 ? (
           <div className="card" style={{ marginTop: 24 }}>

@@ -7,6 +7,7 @@ import { useTenantPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
 import { buildAgreementHtml, printAgreementDocument } from "../../lib/agreement-print";
+import { resolveBrandDisplayName } from "../../lib/branding";
 
 interface AgreementTimelineRow {
   label: string;
@@ -106,7 +107,7 @@ interface AgreementMutationResponse {
 function agreementBadgeClass(status: string) {
   if (status === "fully_signed") return "badge-green";
   if (status === "awaiting_witness_signatures") return "badge-amber";
-  if (status === "awaiting_landlord_signature") return "badge-blue";
+  if (status === "awaiting_landlord_signature") return "badge-accent";
   if (status === "sent") return "badge-amber";
   if (status === "expired") return "badge-red";
   return "badge-gray";
@@ -292,10 +293,15 @@ export default function TenantAgreementPage() {
       },
       notes: a.notes,
       templateName: a.templateName,
+      brand: tenantSession?.tenant.branding ?? undefined,
     });
   }
 
   const agreement = agreementData?.agreement;
+  const brandDisplayName = resolveBrandDisplayName(
+    tenantSession?.tenant.branding,
+    "DoorRent",
+  );
   const description = agreement
     ? `${agreement.propertyName} · Unit ${agreement.unitNumber} · ${agreement.statusLabel}`
     : loading
@@ -304,7 +310,7 @@ export default function TenantAgreementPage() {
 
   return (
     <>
-      <PageMeta title="DoorRent — My Agreement" urlPath="/tenant/agreement" />
+      <PageMeta title={`${brandDisplayName} — My Agreement`} urlPath="/tenant/agreement" />
       <TenantPortalShell topbarTitle="My Agreement" breadcrumb="Dashboard → My Agreement">
         <PageHeader title="My Agreement" description={description} />
 
@@ -368,6 +374,7 @@ export default function TenantAgreementPage() {
                     },
                     notes: agreement.notes,
                     templateName: agreement.templateName,
+                    brand: tenantSession?.tenant.branding ?? undefined,
                   });
                   // Strip the grey screen-mode padding so the document fills
                   // the card without side gutters when embedded in the iframe.
@@ -424,9 +431,9 @@ export default function TenantAgreementPage() {
                       style={{
                         padding: 14,
                         borderRadius: "var(--radius)",
-                        background: "rgba(21, 90, 161, 0.08)",
-                        border: "1px solid rgba(21, 90, 161, 0.16)",
-                        color: "var(--blue)",
+                        background: "var(--accent-light)",
+                        border: "1px solid rgba(26, 58, 42, 0.16)",
+                        color: "var(--accent)",
                         fontSize: 13,
                         marginBottom: 16,
                       }}

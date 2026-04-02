@@ -12,6 +12,7 @@ import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import type { BadgeTone, LandlordAgreementRow, TableColumn } from "../../types/app";
 import { printAgreementDocument } from "../../lib/agreement-print";
+import { resolveBrandDisplayName } from "../../lib/branding";
 
 interface AgreementSummary {
   total: number;
@@ -111,7 +112,7 @@ function statusTone(status: LandlordAgreementRow["status"]): BadgeTone {
   }
 
   if (status === "awaiting_landlord_signature") {
-    return "blue";
+    return "accent";
   }
 
   if (status === "sent") {
@@ -139,6 +140,10 @@ export default function LandlordAgreementsPage() {
   const router = useRouter();
   const { dataRefreshVersion, showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
+  const brandDisplayName = resolveBrandDisplayName(
+    landlordSession?.landlord.branding,
+    "DoorRent",
+  );
   const [agreementData, setAgreementData] = useState<AgreementsResponse | null>(null);
   const [templateData, setTemplateData] = useState<TemplatesResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -296,6 +301,7 @@ export default function LandlordAgreementsPage() {
       },
       notes: row.notes,
       templateName: row.template,
+      brand: landlordSession?.landlord.branding ?? undefined,
     });
   }
 
@@ -418,7 +424,7 @@ export default function LandlordAgreementsPage() {
 
   return (
     <>
-      <PageMeta title="DoorRent — Agreements" />
+      <PageMeta title={`${brandDisplayName} — Agreements`} />
       <LandlordPortalShell
         topbarTitle="Agreements"
         breadcrumb="Dashboard → Agreements"

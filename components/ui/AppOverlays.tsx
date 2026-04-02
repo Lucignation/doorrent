@@ -1080,6 +1080,7 @@ export default function AppOverlays() {
             conditions: createdAgreement.conditions as AgreementPrintData["conditions"] ?? null,
             notes: createdAgreement.notes as string ?? null,
             templateName: createdAgreement.template as string ?? null,
+            brand: landlordSession.landlord.branding ?? undefined,
           });
         }, 400);
       }

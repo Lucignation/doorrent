@@ -25,7 +25,16 @@ interface UnitDetail {
   status: string;
   statusLabel: string;
   meterNumber?: string | null;
-  property: { id: string; name: string; address: string };
+  property: {
+    id: string;
+    name: string;
+    address: string;
+    marketplacePhotoUrls: string[];
+    marketplacePhotoCount: number;
+    marketplaceMinimumPhotoCount: number;
+    marketplaceHasMinimumPhotos: boolean;
+    marketplaceGalleryPreview: string[];
+  };
   rent: {
     annualRent: number;
     annualRentFormatted: string;
@@ -49,6 +58,19 @@ interface UnitDetail {
   } | null;
   agreement: { id: string; status: string; title: string } | null;
   recentPayments: RecentPaymentRow[];
+  marketplace: {
+    readyForListing: boolean;
+    readyForListingAt: string | null;
+    readyForListingAtIso: string | null;
+    eligibleNow: boolean;
+    canMarkReady: boolean;
+    canClearReady: boolean;
+    statusLabel: string;
+    blocker: string | null;
+    photoCount: number;
+    minimumPhotoCount: number;
+    hasMinimumPhotos: boolean;
+  };
 }
 
 function statusTone(status: string): BadgeTone {
@@ -69,10 +91,11 @@ export default function UnitDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { landlordSession } = useLandlordPortalSession();
-  const { openModal } = usePrototypeUI();
+  const { openModal, showToast } = usePrototypeUI();
   const [detail, setDetail] = useState<UnitDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [savingMarketplace, setSavingMarketplace] = useState(false);
 
   useEffect(() => {
     const token = landlordSession?.token;
@@ -117,6 +140,45 @@ export default function UnitDetailPage() {
     },
     { key: "paidAt", label: "Date" },
   ];
+
+  async function updateMarketplaceReadiness(readyForListing: boolean) {
+    if (!landlordSession?.token || !detail || savingMarketplace) {
+      return;
+    }
+
+    setSavingMarketplace(true);
+
+    try {
+      const response = await apiRequest<UnitDetail>(
+        `/landlord/units/${detail.id}/marketplace-readiness`,
+        {
+          method: "PATCH",
+          token: landlordSession.token,
+          body: {
+            readyForListing,
+          },
+        },
+      );
+
+      setDetail(response.data);
+      setError("");
+      showToast(
+        readyForListing
+          ? "Unit marked as vacated and ready for marketplace return."
+          : "Marketplace readiness cleared.",
+        "success",
+      );
+    } catch (requestError) {
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not update marketplace readiness.";
+      setError(message);
+      showToast(message, "error");
+    } finally {
+      setSavingMarketplace(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -349,6 +411,41 @@ export default function UnitDetailPage() {
             </div>
           </div>
         ) : null}
+
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title">Marketplace Readiness</div>
+          </div>
+          <div className="card-body">
+            <div style={{ fontWeight: 600, fontSize: 16 }}>{detail.marketplace.statusLabel}</div>
+            <div className="td-muted" style={{ marginTop: 8, lineHeight: 1.6 }}>
+              {detail.marketplace.hasMinimumPhotos
+                ? `${detail.marketplace.photoCount} property photos are available for marketplace use.`
+                : `${detail.marketplace.photoCount} real property photo(s) uploaded. DoorRent will use branded placeholders until more are added.`}
+            </div>
+            {detail.marketplace.blocker ? (
+              <div
+                style={{
+                  marginTop: 12,
+                  padding: "10px 12px",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--surface2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--ink2)",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                }}
+              >
+                {detail.marketplace.blocker}
+              </div>
+            ) : null}
+            {detail.status === "overdue" ? (
+              <div className="td-muted" style={{ marginTop: 12 }}>
+                Expired units now return to marketplace automatically unless maintenance is active.
+              </div>
+            ) : null}
+          </div>
+        </div>
 
         <div className="card">
           <div className="card-header">

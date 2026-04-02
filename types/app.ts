@@ -32,7 +32,14 @@ export type ModalId =
 export type ToastTone = "default" | "success" | "error" | "info";
 
 export type AccentTone = "green" | "amber" | "red" | "blue" | "gold";
-export type BadgeTone = "green" | "amber" | "red" | "blue" | "gray" | "gold";
+export type BadgeTone =
+  | "green"
+  | "amber"
+  | "red"
+  | "blue"
+  | "gray"
+  | "gold"
+  | "accent";
 export type HighlightTone = "green" | "amber" | "red" | "blue";
 
 export interface AppUser {

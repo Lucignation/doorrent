@@ -132,6 +132,26 @@ const BED_FILTERS: BedFilter[] = ["any", "1", "2", "3", "4+"];
 const fmt = (value: number) => `₦${value.toLocaleString("en-NG")}`;
 const MARKETPLACE_PAGE_GUTTER = "clamp(20px, 2vw, 32px)";
 
+function isListingPhotoAsset(value: string) {
+  return /^(https?:|data:image\/)/i.test(value);
+}
+
+function buildListingPhotoSurface(photo: string, fallbackColor: string): React.CSSProperties {
+  if (isListingPhotoAsset(photo)) {
+    return {
+      backgroundImage: `linear-gradient(180deg, rgba(8, 17, 13, 0.08) 0%, rgba(8, 17, 13, 0.58) 100%), url(${photo})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundRepeat: "no-repeat",
+      backgroundColor: fallbackColor,
+    };
+  }
+
+  return {
+    background: `linear-gradient(160deg, ${photo}, ${fallbackColor})`,
+  };
+}
+
 function MarketplaceSiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
@@ -749,11 +769,11 @@ function DetailModal({
             <div
               style={{
                 height: "100%",
-                background: `linear-gradient(160deg, ${listing.photos[photoIdx]}, ${BRAND.modal})`,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
                 padding: 16,
+                ...buildListingPhotoSurface(listing.photos[photoIdx], BRAND.modal),
               }}
             >
               <div
@@ -1410,12 +1430,12 @@ function ListingCard({
       <div
         style={{
           height: 140,
-          background: `linear-gradient(160deg, ${listing.photos[0]}, ${BRAND.panel})`,
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
           padding: 12,
           position: "relative",
+          ...buildListingPhotoSurface(listing.photos[0], BRAND.panel),
         }}
       >
         <span
