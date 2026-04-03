@@ -70,7 +70,7 @@ export default function SignaturePad({ onChange }: SignaturePadProps) {
       const activeTouchId = activeTouchIdRef.current;
 
       if (activeTouchId === null) {
-        return touches[0] ?? null;
+        return null;
       }
 
       for (let index = 0; index < touches.length; index += 1) {
@@ -196,7 +196,7 @@ export default function SignaturePad({ onChange }: SignaturePadProps) {
     }
 
     function onTouchMove(event: TouchEvent) {
-      if (!drawingRef.current) {
+      if (!drawingRef.current || activeTouchIdRef.current === null) {
         return;
       }
 
@@ -213,11 +213,19 @@ export default function SignaturePad({ onChange }: SignaturePadProps) {
     }
 
     function stopTouchDrawing(event?: TouchEvent) {
-      if (event) {
-        const touch =
-          findTrackedTouch(event.changedTouches) ?? findTrackedTouch(event.touches);
+      if (!drawingRef.current || activeTouchIdRef.current === null) {
+        return;
+      }
 
-        if (!touch && activeTouchIdRef.current !== null) {
+      if (event) {
+        const completedTouch = findTrackedTouch(event.changedTouches);
+        const ongoingTouch = findTrackedTouch(event.touches);
+
+        if (!completedTouch && ongoingTouch) {
+          return;
+        }
+
+        if (!completedTouch && !ongoingTouch) {
           return;
         }
 
