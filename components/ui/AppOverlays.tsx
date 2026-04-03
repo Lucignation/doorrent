@@ -1917,7 +1917,7 @@ export default function AppOverlays() {
                   ) : null}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Deposit Amount (₦)</label>
+                  <label className="form-label">Caution Fee (Security Deposit) (₦)</label>
                   <input
                     className="form-input"
                     type="number"
@@ -1930,6 +1930,9 @@ export default function AppOverlays() {
                       }))
                     }
                   />
+                  <div className="td-muted" style={{ marginTop: 4, fontSize: 11 }}>
+                    Optional. Record the refundable caution fee collected for this unit before move-in.
+                  </div>
                 </div>
               </div>
             </div>
@@ -2166,11 +2169,13 @@ export default function AppOverlays() {
                 </div>
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Security Deposit (₦)</label>
+                    <label className="form-label">Caution Fee (Security Deposit) (₦)</label>
                     <input className="form-input" type="number" placeholder="e.g. 1200000"
                       value={agreementForm.depositAmount}
                       onChange={(event) => setAgreementForm((current) => ({ ...current, depositAmount: event.target.value }))} />
-                    <div className="td-muted" style={{ marginTop: 4, fontSize: 11 }}>Held as security. Refunded within 30 days of vacation less deductions.</div>
+                    <div className="td-muted" style={{ marginTop: 4, fontSize: 11 }}>
+                      Optional. Held as the unit&apos;s caution fee and later marked as refunded, partially refunded, or forfeited after move-out inspection.
+                    </div>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Annual Service Charge (₦)</label>

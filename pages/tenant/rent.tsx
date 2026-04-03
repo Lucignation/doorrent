@@ -53,6 +53,17 @@ interface TenantRentResponse {
     currentDueFormatted: string;
     totalPaidThisLeaseFormatted: string;
     depositAmountFormatted: string;
+    cautionFee?: {
+      status: "HELD" | "PARTIALLY_REFUNDED" | "REFUNDED" | "FORFEITED";
+      statusLabel: string;
+      depositAmount: number;
+      refundAmount: number;
+      deductionAmount: number;
+      heldAmount: number;
+      notes?: string | null;
+      settledAt?: string | null;
+      summary: string;
+    } | null;
     leaseStartLabel: string;
     leaseEndLabel: string;
     paymentStatus: "paid" | "part_paid" | "unpaid";
@@ -511,8 +522,16 @@ export default function TenantRentPage() {
                     {rentData?.landlord.email ?? "—"}
                   </div>
                   <div style={{ fontSize: 13, color: "var(--ink3)", marginTop: 8 }}>
-                    Deposit held: {rentData?.rent.depositAmountFormatted ?? "—"}
+                    Caution fee: {rentData?.rent.depositAmountFormatted ?? "—"}
+                    {rentData?.rent.cautionFee?.statusLabel
+                      ? ` · ${rentData.rent.cautionFee.statusLabel}`
+                      : ""}
                   </div>
+                  {rentData?.rent.cautionFee?.summary ? (
+                    <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 6 }}>
+                      {rentData.rent.cautionFee.summary}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div

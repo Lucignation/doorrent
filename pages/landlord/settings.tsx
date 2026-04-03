@@ -11,6 +11,7 @@ import { validateSubscriptionUpgradeTarget } from "../../lib/contracts/critical-
 import { sanitizeRemoteAssetUrl } from "../../lib/frontend-security";
 import AccountDeletionConsentModal from "../../components/ui/AccountDeletionConsentModal";
 import PageHeader from "../../components/ui/PageHeader";
+import StatusBadge from "../../components/ui/StatusBadge";
 import type { LandlordCapabilities } from "../../lib/landlord-access";
 
 interface LandlordSettingsResponse {
@@ -75,6 +76,20 @@ interface LandlordSettingsResponse {
       requiresCheckout: boolean;
       checkoutUrl?: string | null;
       requestedAt?: string | null;
+    } | null;
+    foundingBeta?: {
+      enabled: boolean;
+      isActive: boolean;
+      isEnded: boolean;
+      status: "inactive" | "active" | "ended";
+      statusLabel: string;
+      startsAt: string | null;
+      endsAt: string | null;
+      endedAt: string | null;
+      billingResumesAt: string | null;
+      note: string | null;
+      daysRemaining: number | null;
+      durationDays: number | null;
     } | null;
   };
   payout: {
@@ -269,6 +284,20 @@ function formatSubscriptionDate(value?: string | null) {
     month: "short",
     year: "numeric",
   });
+}
+
+function betaBadgeTone(
+  beta?: LandlordSettingsResponse["subscription"]["foundingBeta"],
+): "gray" | "blue" | "amber" {
+  if (beta?.isActive) {
+    return "blue";
+  }
+
+  if (beta?.isEnded) {
+    return "amber";
+  }
+
+  return "gray";
 }
 
 function getWorkspaceModeCopy(mode?: WorkspaceMode) {
@@ -1740,6 +1769,60 @@ export default function LandlordSettingsPage() {
                     </span>
                   )}
                 </div>
+                {settings?.subscription.foundingBeta ? (
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: 12,
+                      borderRadius: "var(--radius-sm)",
+                      border: "1px solid rgba(26, 115, 232, 0.18)",
+                      background: "rgba(26, 115, 232, 0.06)",
+                      display: "grid",
+                      gap: 10,
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                      <StatusBadge tone={betaBadgeTone(settings.subscription.foundingBeta)}>
+                        {settings.subscription.foundingBeta.statusLabel}
+                      </StatusBadge>
+                      {settings.subscription.foundingBeta.isActive &&
+                      settings.subscription.foundingBeta.daysRemaining !== null ? (
+                        <div style={{ fontSize: 12, color: "var(--blue)", fontWeight: 600 }}>
+                          {settings.subscription.foundingBeta.daysRemaining} day(s) left
+                        </div>
+                      ) : null}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--ink2)", lineHeight: 1.7 }}>
+                      {settings.subscription.foundingBeta.isActive
+                        ? `Your founding beta started on ${formatSubscriptionDate(
+                            settings.subscription.foundingBeta.startsAt,
+                          )} and ends on ${formatSubscriptionDate(
+                            settings.subscription.foundingBeta.endsAt,
+                          )}.`
+                        : settings.subscription.foundingBeta.isEnded
+                          ? `Your founding beta ended on ${formatSubscriptionDate(
+                              settings.subscription.foundingBeta.endedAt,
+                            )}.`
+                          : "DoorRent has not activated a founding beta window on this workspace."}
+                    </div>
+                    {settings.subscription.foundingBeta.billingResumesAt ? (
+                      <div style={{ fontSize: 12, color: "var(--ink2)" }}>
+                        Billing resumes on{" "}
+                        <strong>
+                          {formatSubscriptionDate(
+                            settings.subscription.foundingBeta.billingResumesAt,
+                          )}
+                        </strong>
+                        .
+                      </div>
+                    ) : null}
+                    {settings.subscription.foundingBeta.note ? (
+                      <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.7 }}>
+                        {settings.subscription.foundingBeta.note}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 {settings?.subscription.pendingPlanChange ? (
                   <div
                     style={{

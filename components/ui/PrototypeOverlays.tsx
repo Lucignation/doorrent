@@ -220,7 +220,7 @@ export default function PrototypeOverlays() {
               <input className="form-input" type="number" placeholder="180000" />
             </div>
             <div className="form-group">
-              <label className="form-label">Deposit Amount (₦)</label>
+              <label className="form-label">Caution Fee (Security Deposit) (₦)</label>
               <input className="form-input" type="number" placeholder="360000" />
             </div>
           </div>

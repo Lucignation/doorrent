@@ -43,6 +43,18 @@ interface AgreementDetail {
   };
   depositAmount: number | null;
   depositFormatted: string | null;
+  cautionFee?: {
+    status: "HELD" | "PARTIALLY_REFUNDED" | "REFUNDED" | "FORFEITED";
+    statusLabel: string;
+    depositAmount: number;
+    refundAmount: number;
+    deductionAmount: number;
+    heldAmount: number;
+    notes: string | null;
+    settledAtIso: string | null;
+    settledAt: string | null;
+    summary: string;
+  } | null;
   serviceCharge: number | null;
   serviceChargeFormatted: string | null;
   leaseStart: string;
@@ -97,12 +109,25 @@ interface AgreementDetail {
   landlordPhone: string | null;
 }
 
+type CautionFeeStatus =
+  | "HELD"
+  | "PARTIALLY_REFUNDED"
+  | "REFUNDED"
+  | "FORFEITED";
+
 function statusTone(status: string): BadgeTone {
   if (status === "fully_signed") return "green";
   if (status === "awaiting_witness_signatures") return "amber";
   if (status === "awaiting_landlord_signature") return "accent";
   if (status === "sent") return "amber";
   if (status === "draft") return "gray";
+  return "red";
+}
+
+function cautionFeeTone(status: CautionFeeStatus): BadgeTone {
+  if (status === "REFUNDED") return "green";
+  if (status === "PARTIALLY_REFUNDED") return "amber";
+  if (status === "HELD") return "accent";
   return "red";
 }
 
@@ -157,6 +182,21 @@ export default function AgreementDetailPage() {
   const [landlordWitnessAddress, setLandlordWitnessAddress] = useState("");
   const [signingAgreement, setSigningAgreement] = useState(false);
   const [signingWitness, setSigningWitness] = useState(false);
+  const [savingCautionFee, setSavingCautionFee] = useState(false);
+  const [cautionFeeStatus, setCautionFeeStatus] = useState<CautionFeeStatus>("HELD");
+  const [cautionFeeRefundAmount, setCautionFeeRefundAmount] = useState("");
+  const [cautionFeeNotes, setCautionFeeNotes] = useState("");
+
+  const syncCautionFeeForm = useCallback((nextDetail: AgreementDetail) => {
+    const cautionFee = nextDetail.cautionFee;
+    setCautionFeeStatus(cautionFee?.status ?? "HELD");
+    setCautionFeeRefundAmount(
+      cautionFee?.status === "PARTIALLY_REFUNDED" && cautionFee.refundAmount > 0
+        ? String(cautionFee.refundAmount)
+        : "",
+    );
+    setCautionFeeNotes(cautionFee?.notes ?? "");
+  }, []);
 
   const loadAgreement = useCallback(async () => {
     const token = landlordSession?.token;
@@ -171,12 +211,13 @@ export default function AgreementDetailPage() {
       setDetail(res.data);
       setLandlordWitnessName(res.data.landlordWitnessName ?? "");
       setLandlordWitnessAddress(res.data.landlordWitnessAddress ?? "");
+      syncCautionFeeForm(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load agreement.");
     } finally {
       setLoading(false);
     }
-  }, [id, landlordSession?.token]);
+  }, [id, landlordSession?.token, syncCautionFeeForm]);
 
   useEffect(() => {
     void loadAgreement();
@@ -321,6 +362,54 @@ export default function AgreementDetailPage() {
       );
     } finally {
       setSigningWitness(false);
+    }
+  }
+
+  async function handleSaveCautionFee() {
+    if (!landlordSession?.token || !detail) {
+      return;
+    }
+
+    const payload: {
+      status: CautionFeeStatus;
+      refundAmount?: number;
+      notes?: string;
+    } = {
+      status: cautionFeeStatus,
+      notes: cautionFeeNotes.trim() || undefined,
+    };
+
+    if (cautionFeeStatus === "PARTIALLY_REFUNDED") {
+      const refundAmount = Number(cautionFeeRefundAmount);
+
+      if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+        showToast("Enter the amount returned to the tenant.", "error");
+        return;
+      }
+
+      payload.refundAmount = Math.round(refundAmount);
+    }
+
+    setSavingCautionFee(true);
+    try {
+      const res = await apiRequest<AgreementDetail>(
+        `/landlord/agreements/${detail.id}/caution-fee`,
+        {
+          method: "PATCH",
+          token: landlordSession.token,
+          body: payload,
+        },
+      );
+      setDetail(res.data);
+      syncCautionFeeForm(res.data);
+      showToast("Caution fee updated successfully.", "success");
+    } catch (err) {
+      showToast(
+        err instanceof Error ? err.message : "Could not update caution fee.",
+        "error",
+      );
+    } finally {
+      setSavingCautionFee(false);
     }
   }
 
@@ -684,7 +773,7 @@ export default function AgreementDetailPage() {
               </div>
               {detail.depositFormatted ? (
                 <div>
-                  <div className="td-muted" style={{ fontSize: 12 }}>Deposit</div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Caution Fee</div>
                   <div style={{ fontWeight: 500 }}>{detail.depositFormatted}</div>
                 </div>
               ) : null}
@@ -713,6 +802,153 @@ export default function AgreementDetailPage() {
             </div>
           </div>
         </div>
+
+        {detail.depositAmount && detail.depositAmount > 0 ? (
+          <div className="card" style={{ marginBottom: 16 }}>
+            <div className="card-header">
+              <div>
+                <div className="card-title">Caution Fee</div>
+                <div className="card-subtitle">
+                  Record how the refundable unit caution fee ended after move-out inspection.
+                </div>
+              </div>
+              <StatusBadge
+                tone={cautionFeeTone(detail.cautionFee?.status ?? "HELD")}
+              >
+                {detail.cautionFee?.statusLabel ?? "Held"}
+              </StatusBadge>
+            </div>
+            <div className="card-body">
+              <div className="form-row">
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Collected</div>
+                  <div style={{ fontWeight: 600 }}>{detail.depositFormatted ?? "—"}</div>
+                </div>
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Refunded</div>
+                  <div style={{ fontWeight: 600 }}>
+                    {detail.cautionFee
+                      ? `₦${detail.cautionFee.refundAmount.toLocaleString("en-NG")}`
+                      : "₦0"}
+                  </div>
+                </div>
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Deducted</div>
+                  <div style={{ fontWeight: 600 }}>
+                    {detail.cautionFee
+                      ? `₦${detail.cautionFee.deductionAmount.toLocaleString("en-NG")}`
+                      : "₦0"}
+                  </div>
+                </div>
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Updated</div>
+                  <div style={{ fontWeight: 600 }}>
+                    {detail.cautionFee?.settledAt ?? "Still held"}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 16,
+                  padding: 14,
+                  borderRadius: "var(--radius)",
+                  border: "1px solid var(--border)",
+                  background: "var(--surface2)",
+                  color: "var(--ink2)",
+                  fontSize: 13,
+                  lineHeight: 1.7,
+                }}
+              >
+                {detail.cautionFee?.summary ??
+                  "Held as refundable caution fee pending move-out inspection."}
+                {detail.cautionFee?.notes ? (
+                  <div style={{ marginTop: 8 }}>
+                    <strong style={{ color: "var(--ink)" }}>Inspection note:</strong>{" "}
+                    {detail.cautionFee.notes}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="form-row" style={{ marginTop: 16 }}>
+                <div className="form-group">
+                  <label className="form-label">Settlement Status</label>
+                  <select
+                    className="form-input"
+                    value={cautionFeeStatus}
+                    onChange={(event) => {
+                      const nextStatus = event.target.value as CautionFeeStatus;
+                      setCautionFeeStatus(nextStatus);
+                      if (nextStatus === "REFUNDED" && detail.depositAmount) {
+                        setCautionFeeRefundAmount(String(detail.depositAmount));
+                      } else if (nextStatus === "FORFEITED") {
+                        setCautionFeeRefundAmount("0");
+                      } else if (nextStatus === "HELD") {
+                        setCautionFeeRefundAmount("");
+                      }
+                    }}
+                  >
+                    <option value="HELD">Held</option>
+                    <option value="PARTIALLY_REFUNDED">Partially Refunded</option>
+                    <option value="REFUNDED">Refunded in Full</option>
+                    <option value="FORFEITED">Forfeited</option>
+                  </select>
+                </div>
+                {cautionFeeStatus === "PARTIALLY_REFUNDED" ? (
+                  <div className="form-group">
+                    <label className="form-label">Amount Returned To Tenant (₦)</label>
+                    <input
+                      className="form-input"
+                      type="number"
+                      placeholder="Enter refund amount"
+                      value={cautionFeeRefundAmount}
+                      onChange={(event) => setCautionFeeRefundAmount(event.target.value)}
+                    />
+                    <div className="td-muted" style={{ marginTop: 4, fontSize: 11 }}>
+                      DoorRent will treat the remaining balance as the deduction amount.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="form-label">Recorded Outcome</label>
+                    <input
+                      className="form-input"
+                      value={
+                        cautionFeeStatus === "REFUNDED"
+                          ? "Full caution fee will be marked as refunded."
+                          : cautionFeeStatus === "FORFEITED"
+                            ? "Full caution fee will be marked as deducted."
+                            : "Caution fee remains held until inspection is complete."
+                      }
+                      readOnly
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group" style={{ marginTop: 8 }}>
+                <label className="form-label">Inspection / Deduction Note</label>
+                <textarea
+                  className="form-input"
+                  value={cautionFeeNotes}
+                  onChange={(event) => setCautionFeeNotes(event.target.value)}
+                  placeholder="Optional. Record damage, cleaning, keys returned, or refund context."
+                  style={{ minHeight: 92, resize: "vertical" }}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ marginTop: 12 }}
+                onClick={() => void handleSaveCautionFee()}
+                disabled={savingCautionFee}
+              >
+                {savingCautionFee ? "Saving..." : "Save Caution Fee Update"}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {detail.guarantor ? (
           <div className="card" style={{ marginBottom: 16 }}>

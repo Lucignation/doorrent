@@ -234,35 +234,29 @@ const steps = [
 
 const BASIC_MONTHLY_PRICE = 8500;
 const basicPlanFeatures = [
-  "Dashboard, payout settings, and notification preferences",
-  "Up to 5 units with tenant invitations, tenant records, and lease dates",
-  "Billing frequencies and basic occupancy summary",
-  "Agreement creation, resend, tenant signature, and PDF export",
-  "Paystack rent payments, offline payment recording, and receipts",
-  "In-app notifications, payment-success SMS, and basic reminders",
-  "Tenant login, rent dashboard, payment flow, agreement signing, receipts, and profile",
-  "Biometric unlock, account deletion, and offline support across mobile and web",
+  "Portfolio essentials: dashboard, properties, units, tenants, and receipts",
+  "Scale: up to 5 units with invitations, lease tracking, and occupancy visibility",
+  "Collections: Paystack payments, offline records, and landlord reminders",
+  "Documents: agreement creation, signatures, PDF export, and tenant portal access",
+  "Control: owner audit log plus web and mobile access for landlord and tenant",
 ];
 
 const proPlanFeatures = [
   "Everything in Basic",
-  "Unlimited units, meter numbers, and portfolio summary",
-  "Agreement templates, signed-copy viewing, and witness visibility",
-  "Workspace branding, workspace mode, slug/subdomain, and branded tenant experience",
-  "Payment detail view, push notifications, SMS payment alerts, and SMS notices",
-  "Notices, meetings, automations, rent-default cases, and grace-period workflow",
-  "Caretaker login, scoped caretaker assignments, property-scoped access, and reports",
-  "Community, emergency tools, and SMS escalation",
+  "Operations: unlimited units, meter numbers, reports, and deeper portfolio visibility",
+  "Collections: notices, grace-period workflow, rent-default tracking, and payment detail",
+  "Branding: workspace colors, branded tenant experience, and subdomain presence",
+  "People: caretaker access, meetings, community tools, and emergency escalation",
+  "Control: deeper owner audit history with push and SMS workflows",
 ];
 
 const enterprisePlanFeatures = [
   "Everything in Pro",
-  "Company-owned Paystack collections direct to the client's own Paystack account",
-  "Multiple staff logins with role-based permissions",
-  "Branded subdomains, branded public pages, and branded login pages",
-  "Full white-label and advanced workspace branding",
-  "Enterprise collections, guided onboarding, and company legal pages on client subdomain",
-  "Dedicated account manager and priority support",
+  "Team operations: multiple staff logins with role-based permissions",
+  "Collections at source: client-owned Paystack collections into the company account",
+  "Governance: company audit log showing what every staff member did",
+  "Branding: branded public pages, branded login, and advanced white-label setup",
+  "Support: guided onboarding, legal-page setup, account manager, and priority service",
 ];
 
 const pricingMatrixRows = [
@@ -328,6 +322,13 @@ const pricingMatrixRows = [
     basic: "Basic reminders only",
     pro: "Included",
     enterprise: "Included",
+  },
+  {
+    feature: "Audit log",
+    description: "See who did what across the workspace, with company-grade staff visibility for enterprise teams.",
+    basic: "Owner activity history",
+    pro: "Owner activity history",
+    enterprise: "Owner + staff activity log",
   },
   {
     feature: "Tenant experience",
@@ -1051,14 +1052,12 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
             <div className="marketing-section-head centered reveal">
               <p>Choose your model</p>
               <h2>
-                Basic, Pro, or Enterprise.
+                Pick the model that matches
                 <br />
-                <em>Built around your maturity level.</em>
+                <em>how you operate.</em>
               </h2>
               <span>
-                Start with Basic when you just need to manage property, move to Pro when
-                you want collections and automation, and use Enterprise when you run your
-                operations like a real estate business.
+                Basic is for individual landlords, Pro is for growing operations, and Enterprise is for property companies with teams, controls, and branded rollout.
               </span>
             </div>
 
@@ -1069,9 +1068,9 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
                 </div>
                 <div className="plan-price">{basicPriceLabel}</div>
                 <div className="plan-sub">{basicBillingNote}</div>
+                <div className="plan-fit">Best for solo landlords and small portfolios.</div>
                 <p className="plan-description">
-                  Entry-level access for individual landlords with small portfolios who need the essentials
-                  and a clear upgrade path to Pro.
+                  Start here when you need professional rent operations without team complexity.
                 </p>
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
@@ -1092,9 +1091,9 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
                 <p className="plan-name">Pro</p>
                 <div className="plan-price">3%</div>
                 <div className="plan-sub">of rent collected</div>
+                <div className="plan-fit">Best for active landlords scaling collections and operations.</div>
                 <p className="plan-description">
-                  The serious-landlord tier for automation, professionalism, branding, and operational control
-                  without moving into full enterprise rollout.
+                  Built for landlords who want automation, branding, and day-to-day operating tools.
                 </p>
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
@@ -1116,9 +1115,9 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
                 </div>
                 <div className="plan-price">₦200,000</div>
                 <div className="plan-sub">per month · guided setup</div>
+                <div className="plan-fit">Best for property companies, estates, and managed portfolios.</div>
                 <p className="plan-description">
-                  Built for large property companies and estate developers that want staff access,
-                  white-label presentation, and rent flowing directly into their own Paystack.
+                  Built for organizations that need staff visibility, governance, branding, and guided rollout.
                 </p>
                 <div className="plan-divider" />
                 <div className="marketing-pricing-rows">
@@ -1151,10 +1150,9 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
             <div className="marketing-pricing-matrix reveal">
               <div className="marketing-pricing-matrix-head">
                 <p>Plan comparison</p>
-                <h3>See exactly what sits in each plan.</h3>
+                <h3>Compare plans at a glance.</h3>
                 <span>
-                  Use this matrix to decide which features stay basic, which unlock
-                  professional operations, and which are reserved for business-grade teams.
+                  Focus on what changes at each stage: scale, collections, branding, teams, and control.
                 </span>
               </div>
 
@@ -2690,6 +2688,7 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
 
         .marketing-pricing-card.is-featured .plan-name,
         .marketing-pricing-card.is-featured .plan-sub,
+        .marketing-pricing-card.is-featured .plan-fit,
         .marketing-pricing-card.is-featured .plan-description,
         .marketing-pricing-card.is-featured .marketing-pricing-row,
         .marketing-pricing-card.is-featured .marketing-pricing-total span,
@@ -2711,8 +2710,24 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
 
         .marketing-pricing-card .plan-sub {
           color: var(--ink3);
-          margin-bottom: 24px;
+          margin-bottom: 12px;
           line-height: 1.5;
+        }
+
+        .marketing-pricing-card .plan-fit {
+          display: inline-flex;
+          margin-bottom: 14px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          background: var(--surface2);
+          color: var(--ink2);
+          font-size: 12px;
+          font-weight: 600;
+          line-height: 1.5;
+        }
+
+        .marketing-pricing-card.is-featured .plan-fit {
+          background: rgba(255, 255, 255, 0.12);
         }
 
         .marketing-pricing-card .plan-description {

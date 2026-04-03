@@ -904,7 +904,7 @@ export default function TenantOnboardingPage({
                       </div>
                     </div>
                     <div>
-                      <div style={{ fontSize: 11, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Deposit</div>
+                      <div style={{ fontSize: 11, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Caution Fee</div>
                       <div style={{ fontSize: 14, fontWeight: 600 }}>
                         {invitationData?.lease.depositAmount ?? "—"}
                       </div>

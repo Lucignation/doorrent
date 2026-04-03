@@ -26,6 +26,21 @@ interface PropertySummaryRow {
   occupied: number;
 }
 
+interface FoundingBetaSummary {
+  enabled: boolean;
+  isActive: boolean;
+  isEnded: boolean;
+  status: "inactive" | "active" | "ended";
+  statusLabel: string;
+  startsAt: string | null;
+  endsAt: string | null;
+  endedAt: string | null;
+  billingResumesAt: string | null;
+  note: string | null;
+  daysRemaining: number | null;
+  durationDays: number | null;
+}
+
 interface LandlordDetail {
   id: string;
   name: string;
@@ -45,6 +60,7 @@ interface LandlordDetail {
   occupiedUnits: number;
   mrr: string;
   mrrRaw: number;
+  foundingBeta?: FoundingBetaSummary | null;
   recentPayments: RecentPaymentRow[];
   properties: PropertySummaryRow[];
 }
@@ -67,6 +83,29 @@ function paymentTone(status: string): BadgeTone {
   return "red";
 }
 
+function formatDateTimeInput(value?: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const pad = (num: number) => String(num).padStart(2, "0");
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
+
+function betaTone(beta?: FoundingBetaSummary | null): BadgeTone {
+  if (beta?.isActive) return "blue";
+  if (beta?.isEnded) return "amber";
+  return "gray";
+}
+
 export default function AdminLandlordDetailPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -75,6 +114,9 @@ export default function AdminLandlordDetailPage() {
   const [detail, setDetail] = useState<LandlordDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [betaEndsAt, setBetaEndsAt] = useState("");
+  const [betaNotes, setBetaNotes] = useState("");
+  const [savingBeta, setSavingBeta] = useState(false);
 
   useEffect(() => {
     const token = adminSession?.token;
@@ -97,6 +139,69 @@ export default function AdminLandlordDetailPage() {
     void load();
     return () => { cancelled = true; };
   }, [id, adminSession?.token]);
+
+  useEffect(() => {
+    setBetaEndsAt(formatDateTimeInput(detail?.foundingBeta?.endsAt));
+    setBetaNotes(detail?.foundingBeta?.note ?? "");
+  }, [detail?.foundingBeta?.endsAt, detail?.foundingBeta?.note]);
+
+  async function handleSaveFoundingBeta() {
+    const token = adminSession?.token;
+    if (!token || !id || Array.isArray(id)) return;
+    if (!betaEndsAt) {
+      showToast("Choose when the founding beta should end.", "error");
+      return;
+    }
+
+    setSavingBeta(true);
+    try {
+      const response = await apiRequest<LandlordDetail>(`/admin/landlords/${id}/founding-beta`, {
+        token,
+        method: "PATCH",
+        body: {
+          endsAt: new Date(betaEndsAt).toISOString(),
+          notes: betaNotes.trim() || undefined,
+        },
+      });
+      setDetail(response.data);
+      showToast(
+        detail?.foundingBeta?.isActive
+          ? "Founding beta updated."
+          : "Founding beta activated.",
+        "success",
+      );
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error ? requestError.message : "Could not update founding beta.",
+        "error",
+      );
+    } finally {
+      setSavingBeta(false);
+    }
+  }
+
+  async function handleEndFoundingBetaNow() {
+    const token = adminSession?.token;
+    if (!token || !id || Array.isArray(id)) return;
+
+    setSavingBeta(true);
+    try {
+      const response = await apiRequest<LandlordDetail>(`/admin/landlords/${id}/founding-beta`, {
+        token,
+        method: "PATCH",
+        body: { endNow: true },
+      });
+      setDetail(response.data);
+      showToast("Founding beta ended.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error ? requestError.message : "Could not end founding beta.",
+        "error",
+      );
+    } finally {
+      setSavingBeta(false);
+    }
+  }
 
   const paymentColumns: TableColumn<RecentPaymentRow>[] = [
     {
@@ -245,6 +350,109 @@ export default function AdminLandlordDetailPage() {
                   <div className="td-muted" style={{ fontSize: 12 }}>Billing Model</div>
                   <div style={{ fontWeight: 500 }}>{detail.subscriptionModel}</div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">Founding Beta</div>
+            </div>
+            <div className="card-body">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Status</div>
+                  <div style={{ marginTop: 6 }}>
+                    <StatusBadge tone={betaTone(detail.foundingBeta)}>
+                      {detail.foundingBeta?.statusLabel ?? "No founding beta"}
+                    </StatusBadge>
+                  </div>
+                </div>
+                {detail.foundingBeta?.isActive && detail.foundingBeta.daysRemaining !== null ? (
+                  <div style={{ textAlign: "right" }}>
+                    <div className="td-muted" style={{ fontSize: 12 }}>Days left</div>
+                    <div style={{ fontWeight: 700, fontSize: 22 }}>
+                      {detail.foundingBeta.daysRemaining}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="form-row" style={{ marginTop: 16 }}>
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Started</div>
+                  <div style={{ fontWeight: 500 }}>
+                    {detail.foundingBeta?.startsAt
+                      ? new Date(detail.foundingBeta.startsAt).toLocaleString("en-NG")
+                      : "Starts when activated"}
+                  </div>
+                </div>
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Ends</div>
+                  <div style={{ fontWeight: 500 }}>
+                    {detail.foundingBeta?.endsAt
+                      ? new Date(detail.foundingBeta.endsAt).toLocaleString("en-NG")
+                      : "Not scheduled"}
+                  </div>
+                </div>
+              </div>
+
+              {detail.foundingBeta?.billingResumesAt ? (
+                <div style={{ marginTop: 16 }}>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Billing resumes</div>
+                  <div style={{ fontWeight: 500 }}>
+                    {new Date(detail.foundingBeta.billingResumesAt).toLocaleString("en-NG")}
+                  </div>
+                </div>
+              ) : null}
+
+              <div style={{ marginTop: 16 }}>
+                <label className="form-label">End Beta At</label>
+                <input
+                  className="form-input"
+                  type="datetime-local"
+                  value={betaEndsAt}
+                  onChange={(event) => setBetaEndsAt(event.target.value)}
+                />
+                <div className="form-help">
+                  The beta clock starts the moment you activate it here and runs until this date.
+                </div>
+              </div>
+
+              <div style={{ marginTop: 16 }}>
+                <label className="form-label">Admin Note</label>
+                <textarea
+                  className="form-input"
+                  rows={4}
+                  value={betaNotes}
+                  onChange={(event) => setBetaNotes(event.target.value)}
+                  placeholder="Optional note about the pilot terms, testimonial agreement, or onboarding context."
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => void handleSaveFoundingBeta()}
+                  disabled={savingBeta}
+                >
+                  {savingBeta
+                    ? "Saving..."
+                    : detail.foundingBeta?.isActive
+                      ? "Update Beta Window"
+                      : "Activate Founding Beta"}
+                </button>
+                {detail.foundingBeta?.isActive ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => void handleEndFoundingBetaNow()}
+                    disabled={savingBeta}
+                  >
+                    End Beta Now
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>
