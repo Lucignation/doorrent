@@ -54,6 +54,44 @@ interface UnitsResponse {
   units: LandlordUnitRecord[];
 }
 
+interface MarketplacePropertyRecord {
+  id: string;
+  name: string;
+  marketplacePhotoUrls: string[];
+  marketplaceDisplayPhotoUrls: string[];
+  marketplacePhotoSource: "unit" | "property" | "none";
+  marketplacePhotoCount: number;
+  marketplaceMinimumPhotoCount: number;
+  marketplaceHasMinimumPhotos: boolean;
+  marketplaceGalleryPreview: string[];
+}
+
+interface UnitMarketplaceDetailResponse {
+  property: MarketplacePropertyRecord;
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+
+      if (typeof result === "string") {
+        resolve(result);
+        return;
+      }
+
+      reject(new Error("We could not read that image file."));
+    };
+    reader.onerror = () => reject(new Error("We could not read that image file."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function isMarketplaceImage(value: string) {
+  return /^(https?:|data:image\/)/i.test(value);
+}
+
 function pricingHelperText(value: string, frequency: BillingFrequency) {
   const billingCyclePrice = Number(value);
 
@@ -115,6 +153,10 @@ export default function LandlordUnitsPage() {
   const [editAnnualEquivalent, setEditAnnualEquivalent] = useState<number | null>(null);
   const [editError, setEditError] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [editingPropertyMarketplace, setEditingPropertyMarketplace] =
+    useState<MarketplacePropertyRecord | null>(null);
+  const [loadingMarketplaceGallery, setLoadingMarketplaceGallery] = useState(false);
+  const [updatingMarketplaceGallery, setUpdatingMarketplaceGallery] = useState(false);
 
   function deriveAnnualEquivalent(value: string, frequency: BillingFrequency) {
     const parsed = Number(value);
@@ -124,6 +166,35 @@ export default function LandlordUnitsPage() {
     }
 
     return annualEquivalentFromBilling(parsed, frequency);
+  }
+
+  async function loadEditingPropertyMarketplace(unitId: string) {
+    if (!landlordSession?.token) {
+      return;
+    }
+
+    setLoadingMarketplaceGallery(true);
+
+    try {
+      const { data } = await apiRequest<UnitMarketplaceDetailResponse>(
+        `/landlord/units/${unitId}`,
+        {
+          token: landlordSession.token,
+        },
+      );
+
+      setEditingPropertyMarketplace(data.property ?? null);
+    } catch (requestError) {
+      setEditingPropertyMarketplace(null);
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not load marketplace photos for this property.",
+        "error",
+      );
+    } finally {
+      setLoadingMarketplaceGallery(false);
+    }
   }
 
   useEffect(() => {
@@ -207,6 +278,8 @@ export default function LandlordUnitsPage() {
       leaseEnd: unit.leaseEndIso ? unit.leaseEndIso.slice(0, 10) : "",
       meterNumber: unit.meterNumber ?? "",
     });
+    setEditingPropertyMarketplace(null);
+    void loadEditingPropertyMarketplace(unit.id);
   }
 
   function closeEditUnit() {
@@ -217,6 +290,7 @@ export default function LandlordUnitsPage() {
     setEditingUnit(null);
     setEditError("");
     setEditAnnualEquivalent(null);
+    setEditingPropertyMarketplace(null);
   }
 
   function handleEditBillingFrequencyChange(nextFrequency: BillingFrequency) {
@@ -260,12 +334,12 @@ export default function LandlordUnitsPage() {
         method: "PATCH",
         token: landlordSession.token,
         body: {
-          unitNumber: editForm.unitNumber,
-          type: editForm.type,
+          unitNumber: editForm.unitNumber.trim(),
+          type: editForm.type.trim(),
           billingFrequency: editForm.billingFrequency.toUpperCase(),
           billingCyclePrice: Number(editForm.billingCyclePrice),
           leaseEnd: editForm.leaseEnd || null,
-          meterNumber: editForm.meterNumber.trim() || null,
+          meterNumber: editForm.meterNumber.trim(),
         },
       });
 
@@ -281,6 +355,81 @@ export default function LandlordUnitsPage() {
       );
     } finally {
       setSavingEdit(false);
+    }
+  }
+
+  async function uploadMarketplacePhotos(files: FileList | null) {
+    if (!landlordSession?.token || !editingUnit || updatingMarketplaceGallery || !files?.length) {
+      return;
+    }
+
+    setUpdatingMarketplaceGallery(true);
+
+    try {
+      const uploads = await Promise.all(
+        Array.from(files).map(async (file, index) => ({
+          dataUrl: await readFileAsDataUrl(file),
+          fileName:
+            file.name ||
+            `${editingUnit.property
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-+|-+$/g, "")}-marketplace-${Date.now()}-${index + 1}.jpg`,
+          mimeType: file.type || "image/jpeg",
+        })),
+      );
+
+      await apiRequest(`/landlord/units/${editingUnit.id}/marketplace`, {
+        method: "PATCH",
+        token: landlordSession.token,
+        body: { uploads },
+      });
+
+      await loadEditingPropertyMarketplace(editingUnit.id);
+      setRefreshNonce((current) => current + 1);
+      refreshData();
+      showToast("Marketplace photos updated successfully.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not upload marketplace photos.",
+        "error",
+      );
+    } finally {
+      setUpdatingMarketplaceGallery(false);
+    }
+  }
+
+  async function removeMarketplacePhoto(url: string) {
+    if (!landlordSession?.token || !editingUnit || updatingMarketplaceGallery) {
+      return;
+    }
+
+    setUpdatingMarketplaceGallery(true);
+
+    try {
+      await apiRequest(`/landlord/units/${editingUnit.id}/marketplace`, {
+        method: "PATCH",
+        token: landlordSession.token,
+        body: {
+          removeUrls: [url],
+        },
+      });
+
+      await loadEditingPropertyMarketplace(editingUnit.id);
+      setRefreshNonce((current) => current + 1);
+      refreshData();
+      showToast("Marketplace photo removed.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not remove that marketplace photo.",
+        "error",
+      );
+    } finally {
+      setUpdatingMarketplaceGallery(false);
     }
   }
 
@@ -446,6 +595,8 @@ export default function LandlordUnitsPage() {
                 <DataTable
                   columns={unitColumns}
                   rows={pageRows}
+                  loading={loading}
+                  loadingMessage="Updating units..."
                   emptyMessage={loading ? "Loading units..." : "No units found."}
                 />
                 <div className="pagination">
@@ -506,7 +657,7 @@ export default function LandlordUnitsPage() {
               }
             }}
           >
-            <div className="modal">
+            <div className="modal" style={{ width: "min(1080px, 96vw)", maxWidth: 1080 }}>
               <div className="modal-header">
                 <div className="modal-title">Edit Unit</div>
                 <button type="button" className="modal-close" onClick={closeEditUnit}>
@@ -645,20 +796,162 @@ export default function LandlordUnitsPage() {
                 </div>
                 <div
                   style={{
-                    padding: 14,
-                    borderRadius: "var(--radius-sm)",
-                    border: "1px solid var(--border)",
-                    background: "var(--surface2)",
-                    fontSize: 12,
-                    color: "var(--ink2)",
-                    lineHeight: 1.7,
+                    marginTop: 12,
+                    paddingTop: 18,
+                    borderTop: "1px solid var(--border)",
                   }}
                 >
-                  Current system status:{" "}
-                  <strong>{editingUnit.statusLabel ?? editingUnit.status}</strong>.
-                  Landlords can choose the initial status only when creating a unit. After
-                  setup, DoorRent updates the status automatically from lease dates and
-                  payment activity.
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div>
+                      <div className="form-label" style={{ marginBottom: 4 }}>
+                        Marketplace Photos
+                      </div>
+                      <div className="helper-text" style={{ maxWidth: 640 }}>
+                        Upload and update this unit's marketplace photos directly from this edit
+                        screen.
+                      </div>
+                    </div>
+                    <label
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        cursor: updatingMarketplaceGallery ? "wait" : "pointer",
+                        opacity: updatingMarketplaceGallery ? 0.7 : 1,
+                      }}
+                    >
+                      {updatingMarketplaceGallery ? "Working..." : "Add Photos Here"}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        hidden
+                        disabled={updatingMarketplaceGallery}
+                        onChange={(event) => {
+                          void uploadMarketplacePhotos(event.target.files);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="helper-text" style={{ marginTop: 10 }}>
+                    {editingPropertyMarketplace
+                      ? editingPropertyMarketplace.marketplacePhotoCount > 0
+                        ? `${editingPropertyMarketplace.marketplacePhotoCount} uploaded marketplace photo(s) for this unit.`
+                        : editingPropertyMarketplace.marketplacePhotoSource === "property" &&
+                            editingPropertyMarketplace.marketplaceDisplayPhotoUrls.length > 0
+                          ? "Marketplace is currently using property photos for this unit."
+                        : "No uploaded marketplace photos yet for this unit."
+                      : loadingMarketplaceGallery
+                        ? "Loading marketplace photos..."
+                        : "Marketplace photos are not available yet for this unit."}
+                  </div>
+                  {editingPropertyMarketplace?.marketplacePhotoSource === "property" &&
+                  editingPropertyMarketplace.marketplaceDisplayPhotoUrls.length > 0 ? (
+                    <div style={{ marginTop: 10 }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => {
+                          closeEditUnit();
+                          void router.push(
+                            `/landlord/properties#marketplace-gallery-${editingPropertyMarketplace.id}`,
+                          );
+                        }}
+                      >
+                        Manage Property Photos
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {editingPropertyMarketplace &&
+                  editingPropertyMarketplace.marketplaceDisplayPhotoUrls.length > 0 ? (
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+                        gap: 12,
+                        marginTop: 14,
+                      }}
+                    >
+                      {editingPropertyMarketplace.marketplaceDisplayPhotoUrls.map((item, index) => {
+                        return (
+                          <div
+                            key={`${item}-${index}`}
+                            style={{
+                              border: "1px solid var(--border)",
+                              borderRadius: 14,
+                              overflow: "hidden",
+                              background: "var(--surface)",
+                            }}
+                          >
+                            {isMarketplaceImage(item) ? (
+                              <img
+                                src={item}
+                                alt={`${editingPropertyMarketplace.name} marketplace ${index + 1}`}
+                                style={{
+                                  width: "100%",
+                                  height: 112,
+                                  objectFit: "cover",
+                                  display: "block",
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  height: 112,
+                                  background: `linear-gradient(160deg, ${item}, #102018)`,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  color: "rgba(255,255,255,0.88)",
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                }}
+                              >
+                                Photo unavailable
+                              </div>
+                            )}
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent:
+                                  editingPropertyMarketplace.marketplacePhotoSource === "unit"
+                                    ? "space-between"
+                                    : "flex-start",
+                                gap: 8,
+                                padding: "10px 12px",
+                              }}
+                            >
+                              <span style={{ fontSize: 12, color: "var(--ink2)", fontWeight: 600 }}>
+                                {editingPropertyMarketplace.marketplacePhotoSource === "property"
+                                  ? `Property Photo ${index + 1}`
+                                  : `Photo ${index + 1}`}
+                              </span>
+                              {editingPropertyMarketplace.marketplacePhotoSource === "unit" ? (
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-xs"
+                                  onClick={() => void removeMarketplacePhoto(item)}
+                                  disabled={updatingMarketplaceGallery}
+                                >
+                                  Remove
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               </div>
               <div className="modal-footer">

@@ -279,6 +279,8 @@ export default function AdminLandlordsPage() {
           <DataTable
             columns={landlordColumns}
             rows={landlordData?.landlords ?? []}
+            loading={loading}
+            loadingMessage="Refreshing landlord accounts..."
             emptyMessage={loading ? "Loading landlords..." : "No landlords found."}
           />
           <div className="pagination">

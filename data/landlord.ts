@@ -70,7 +70,10 @@ const landlordNavSections: NavSection[] = [
   },
   {
     section: "Analytics",
-    items: [{ label: "Reports", href: "/landlord/reports", icon: "chart" }],
+    items: [
+      { label: "Reports", href: "/landlord/reports", icon: "chart" },
+      { label: "Audit Log", href: "/landlord/audit", icon: "log" },
+    ],
   },
   {
     section: "Account",

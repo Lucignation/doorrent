@@ -9,6 +9,7 @@ import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import { printReceipt } from "../../lib/receipt-print";
+import { matchesSearchFields } from "../../lib/search";
 import type { TableColumn } from "../../types/app";
 
 interface ReceiptRow {
@@ -143,27 +144,28 @@ export default function LandlordReceiptsPage() {
   }
 
   const filteredReceipts = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart = new Date(now.getFullYear(), 0, 1);
+    const selectedPropertyName =
+      receiptData?.filters.properties.find((property) => property.id === propertyFilter)?.name ?? "";
 
     return (receiptData?.receipts ?? []).filter((receipt) => {
       const matchesQuery =
-        !normalizedQuery ||
-        (receipt.receiptNumber ?? "").toLowerCase().includes(normalizedQuery) ||
-        receipt.reference.toLowerCase().includes(normalizedQuery) ||
-        receipt.tenant.toLowerCase().includes(normalizedQuery) ||
-        receipt.propertyUnit.toLowerCase().includes(normalizedQuery) ||
-        receipt.periodLabel.toLowerCase().includes(normalizedQuery);
+        !query.trim() ||
+        matchesSearchFields(
+          [
+            receipt.receiptNumber ?? "",
+            receipt.reference,
+            receipt.tenant,
+            receipt.propertyUnit,
+            receipt.periodLabel,
+          ],
+          query,
+        );
       const matchesProperty =
         propertyFilter === "all" ||
-        receipt.propertyUnit.toLowerCase().includes(
-          (
-            receiptData?.filters.properties.find((property) => property.id === propertyFilter)
-              ?.name ?? ""
-          ).toLowerCase(),
-        );
+        matchesSearchFields([receipt.propertyUnit], selectedPropertyName);
       const receiptDate = new Date(receipt.dateIso);
       const matchesDate =
         dateFilter === "all" ||
@@ -323,6 +325,8 @@ export default function LandlordReceiptsPage() {
               <DataTable
                 columns={receiptColumns}
                 rows={filteredReceipts}
+                loading={loading}
+                loadingMessage="Refreshing receipts..."
                 emptyMessage={loading ? "Loading receipts..." : "No receipts found."}
               />
             </div>

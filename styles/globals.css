@@ -1610,7 +1610,51 @@ button, input, select, textarea { font: inherit; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 
-.table-wrap { overflow-x: auto; }
+.table-wrap {
+  position: relative;
+  overflow-x: auto;
+  border-radius: var(--radius);
+}
+.table-wrap-loading table {
+  opacity: 0.24;
+  transition: opacity 0.18s ease;
+}
+.table-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 32px 24px;
+  background:
+    linear-gradient(180deg, rgba(246, 244, 239, 0.9), rgba(246, 244, 239, 0.96));
+  backdrop-filter: blur(2px);
+  z-index: 2;
+}
+.table-loading-spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  border: 5px solid rgba(26, 58, 42, 0.14);
+  border-top-color: var(--accent);
+  animation: table-spinner 0.8s linear infinite;
+  box-shadow: 0 10px 24px rgba(26, 58, 42, 0.12);
+}
+.table-loading-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.table-loading-message {
+  font-size: 13px;
+  color: var(--ink2);
+  max-width: 340px;
+}
+@keyframes table-spinner {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 table { width: 100%; border-collapse: collapse; }
 thead tr { border-bottom: 1px solid var(--border); }
 

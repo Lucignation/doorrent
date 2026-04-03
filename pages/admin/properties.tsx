@@ -197,6 +197,8 @@ export default function AdminPropertiesPage() {
           <DataTable
             columns={propertyColumns}
             rows={propertyRows}
+            loading={loading}
+            loadingMessage="Refreshing properties..."
             emptyMessage={loading ? "Loading properties..." : "No properties found."}
           />
         </div>

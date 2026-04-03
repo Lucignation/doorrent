@@ -20,12 +20,18 @@ function normalizeBaseUrl(value: string) {
   return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
 }
 
+const defaultApiOrigin =
+  process.env.NODE_ENV === "production"
+    ? "https://api.usedoorrent.com"
+    : "http://localhost:4000";
+
 const configuredBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.usedoorrent.com";
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? defaultApiOrigin;
 
 export const API_BASE_URL = normalizeBaseUrl(configuredBaseUrl);
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1$/, "");
-export const BROWSER_API_BASE_PATH = "/api/v1";
+export const BROWSER_API_BASE_PATH =
+  process.env.NODE_ENV === "production" ? "/api/v1" : API_BASE_URL;
 export const SWAGGER_URL = `${API_ORIGIN}/docs`;
 
 export function getApiRequestBaseUrl() {

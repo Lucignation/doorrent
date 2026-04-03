@@ -277,6 +277,7 @@ export default function AppOverlays() {
     status: "VACANT",
     meterNumber: "",
   });
+  const [unitPhotoFiles, setUnitPhotoFiles] = useState<File[]>([]);
   const [unitAnnualEquivalent, setUnitAnnualEquivalent] = useState<number | null>(null);
   const [savingUnit, setSavingUnit] = useState(false);
 
@@ -636,7 +637,41 @@ export default function AppOverlays() {
       status: "VACANT",
       meterNumber: "",
     });
+    setUnitPhotoFiles([]);
     setUnitAnnualEquivalent(null);
+  }
+
+  function appendUnitPhotoFiles(fileList: FileList | null) {
+    const nextFiles = Array.from(fileList ?? []);
+
+    if (!nextFiles.length) {
+      return;
+    }
+
+    setUnitPhotoFiles((current) => {
+      const existingKeys = new Set(
+        current.map((file) => `${file.name}-${file.size}-${file.lastModified}`),
+      );
+
+      const merged = [...current];
+
+      nextFiles.forEach((file) => {
+        const key = `${file.name}-${file.size}-${file.lastModified}`;
+
+        if (!existingKeys.has(key)) {
+          merged.push(file);
+          existingKeys.add(key);
+        }
+      });
+
+      return merged;
+    });
+  }
+
+  function removePendingUnitPhoto(indexToRemove: number) {
+    setUnitPhotoFiles((current) =>
+      current.filter((_, index) => index !== indexToRemove),
+    );
   }
 
   function resetInvitationForm() {
@@ -874,7 +909,7 @@ export default function AppOverlays() {
     setModalError("");
 
     try {
-      await apiRequest("/landlord/units", {
+      const { data: createdUnit } = await apiRequest<{ id: string }>("/landlord/units", {
         method: "POST",
         token: landlordSession.token,
         body: {
@@ -888,6 +923,37 @@ export default function AppOverlays() {
           meterNumber: unitForm.meterNumber.trim() || undefined,
         },
       });
+
+      if (createdUnit?.id && unitPhotoFiles.length > 0) {
+        try {
+          const uploads = await Promise.all(
+            unitPhotoFiles.map(async (file, index) => ({
+              dataUrl: await readFileAsDataUrl(file),
+              fileName:
+                file.name ||
+                `${unitForm.unitNumber.trim() || "unit"}-marketplace-${Date.now()}-${index + 1}.jpg`,
+              mimeType: file.type || "image/jpeg",
+            })),
+          );
+
+          await apiRequest(`/landlord/units/${createdUnit.id}/marketplace`, {
+            method: "PATCH",
+            token: landlordSession.token,
+            body: { uploads },
+          });
+        } catch (uploadError) {
+          closeModal();
+          resetUnitForm();
+          refreshData();
+          showToast(
+            uploadError instanceof Error
+              ? `Unit created, but photo upload failed: ${uploadError.message}`
+              : "Unit created, but photo upload failed.",
+            "error",
+          );
+          return;
+        }
+      }
 
       closeModal();
       resetUnitForm();
@@ -1519,6 +1585,109 @@ export default function AppOverlays() {
               <div className="td-muted" style={{ marginTop: 6 }}>
                 Tenants will be able to see this meter number from their portal when they need to buy prepaid electricity.
               </div>
+            </div>
+            <div
+              style={{
+                marginTop: 12,
+                paddingTop: 18,
+                borderTop: "1px solid var(--border)",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  flexWrap: "wrap",
+                }}
+              >
+                <div>
+                  <div className="form-label" style={{ marginBottom: 4 }}>
+                    Marketplace Photos <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(optional)</span>
+                  </div>
+                  <div className="td-muted" style={{ maxWidth: 640 }}>
+                    Optional. Add unit photos now and DoorRent will attach them immediately after
+                    this unit is created, or add them later from the unit screen.
+                  </div>
+                </div>
+                <label
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    cursor: savingUnit ? "wait" : "pointer",
+                    opacity: savingUnit ? 0.7 : 1,
+                  }}
+                >
+                  Add Photos Here
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    hidden
+                    disabled={savingUnit}
+                    onChange={(event) => {
+                      appendUnitPhotoFiles(event.target.files);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+              </div>
+              <div className="td-muted" style={{ marginTop: 10 }}>
+                {unitPhotoFiles.length > 0
+                  ? `${unitPhotoFiles.length} photo(s) queued for this unit.`
+                  : "No photos queued yet for this unit."}
+              </div>
+              {unitPhotoFiles.length > 0 ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gap: 8,
+                    marginTop: 12,
+                  }}
+                >
+                  {unitPhotoFiles.map((file, index) => (
+                    <div
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        padding: "10px 12px",
+                        border: "1px solid var(--border)",
+                        borderRadius: 12,
+                        background: "var(--surface2)",
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: "var(--ink2)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {file.name}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 4 }}>
+                          {(file.size / (1024 * 1024)).toFixed(2)} MB
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-xs"
+                        onClick={() => removePendingUnitPhoto(index)}
+                        disabled={savingUnit}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </>
         )}

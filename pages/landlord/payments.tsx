@@ -11,6 +11,7 @@ import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import { printReceipt } from "../../lib/receipt-print";
+import { matchesSearchFields } from "../../lib/search";
 import type { BadgeTone, TableColumn } from "../../types/app";
 
 interface PaymentRow {
@@ -202,22 +203,22 @@ export default function LandlordPaymentsPage() {
   }, [offlineForm.tenantId, paymentData?.formOptions.offlineCollectionTenants]);
 
   const filteredPayments = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const yearStart = new Date(now.getFullYear(), 0, 1);
+    const selectedPropertyName =
+      paymentData?.filters.properties.find((property) => property.id === propertyFilter)?.name ?? "";
 
     return (paymentData?.payments ?? []).filter((payment) => {
       const matchesQuery =
-        !normalizedQuery ||
-        payment.reference.toLowerCase().includes(normalizedQuery) ||
-        payment.tenant.toLowerCase().includes(normalizedQuery) ||
-        payment.propertyUnit.toLowerCase().includes(normalizedQuery) ||
-        payment.periodLabel.toLowerCase().includes(normalizedQuery);
+        !query.trim() ||
+        matchesSearchFields(
+          [payment.reference, payment.tenant, payment.propertyUnit, payment.periodLabel],
+          query,
+        );
       const matchesProperty =
         propertyFilter === "all" ||
-        paymentData?.filters.properties.find((property) => property.id === propertyFilter)
-          ?.name === payment.property;
+        matchesSearchFields([payment.property], selectedPropertyName);
       const paymentDate = new Date(payment.dateIso);
       const matchesDate =
         dateFilter === "all" ||
@@ -233,22 +234,16 @@ export default function LandlordPaymentsPage() {
   }, [query, propertyFilter, dateFilter]);
 
   const filteredArrears = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const selectedPropertyName =
+      paymentData?.filters.properties.find((property) => property.id === propertyFilter)?.name ?? "";
 
     return (paymentData?.arrears ?? []).filter((row) => {
       const matchesQuery =
-        !normalizedQuery ||
-        row.tenant.toLowerCase().includes(normalizedQuery) ||
-        row.tenantEmail.toLowerCase().includes(normalizedQuery) ||
-        row.unit.toLowerCase().includes(normalizedQuery);
+        !query.trim() ||
+        matchesSearchFields([row.tenant, row.tenantEmail, row.unit], query);
       const matchesProperty =
         propertyFilter === "all" ||
-        row.unit.toLowerCase().includes(
-          (
-            paymentData?.filters.properties.find((property) => property.id === propertyFilter)
-              ?.name ?? ""
-          ).toLowerCase(),
-        );
+        matchesSearchFields([row.unit], selectedPropertyName);
 
       return matchesQuery && matchesProperty;
     });
@@ -775,6 +770,8 @@ export default function LandlordPaymentsPage() {
           <DataTable
             columns={arrearsColumns}
             rows={filteredArrears}
+            loading={loading}
+            loadingMessage="Refreshing arrears..."
             emptyMessage={loading ? "Loading arrears..." : "No outstanding balances."}
           />
         </div>
@@ -792,6 +789,8 @@ export default function LandlordPaymentsPage() {
             <DataTable
               columns={paymentColumns}
               rows={paginatedPayments}
+              loading={loading}
+              loadingMessage="Refreshing payments..."
               emptyMessage={loading ? "Loading payments..." : "No payments found."}
             />
             <div className="pagination">

@@ -1,5 +1,8 @@
 const DEFAULT_APP_ORIGIN = "https://usedoorrent.com";
-const DEFAULT_API_ORIGIN = "https://api.usedoorrent.com";
+const DEFAULT_API_ORIGIN =
+  process.env.NODE_ENV === "production"
+    ? "https://api.usedoorrent.com"
+    : "http://localhost:4000";
 
 function normalizeOrigin(value, fallback) {
   try {

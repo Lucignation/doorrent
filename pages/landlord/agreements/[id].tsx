@@ -110,6 +110,33 @@ function isRenderableSignatureUrl(value?: string | null) {
   return canRenderSignaturePreview(value);
 }
 
+function renderStoredSignaturePanel(
+  label: string,
+  signatureDataUrl?: string | null,
+  alt?: string,
+) {
+  if (!signatureDataUrl) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="td-muted" style={{ fontSize: 12, marginBottom: 8 }}>
+        {label}
+      </div>
+      {isRenderableSignatureUrl(signatureDataUrl) ? (
+        <img
+          src={resolveSignatureDisplayUrl(signatureDataUrl) ?? ""}
+          alt={alt ?? label}
+          style={{ maxWidth: 220, height: 80, objectFit: "contain", display: "block" }}
+        />
+      ) : (
+        <div className="td-muted">Signed electronically via DoorRent</div>
+      )}
+    </>
+  );
+}
+
 export default function AgreementDetailPage() {
   const router = useRouter();
   const { id } = router.query;
@@ -331,6 +358,10 @@ export default function AgreementDetailPage() {
     );
   }
 
+  const tenantWitnessSignatureDataUrl =
+    detail.witnessSignatureDataUrl ?? detail.guarantor?.signatureDataUrl ?? null;
+  const tenantWitnessSignedDate = detail.witnessDate ?? null;
+
   return (
     <>
       <PageMeta title={`${brandDisplayName} — ${detail.title}`} urlPath={`/landlord/agreements/${detail.id}`} />
@@ -455,6 +486,16 @@ export default function AgreementDetailPage() {
                 </div>
               </div>
               <div>
+                <div className="td-muted" style={{ fontSize: 12 }}>Tenant witness</div>
+                <div style={{ fontWeight: 600 }}>
+                  {detail.signing.tenantWitnessSigned
+                    ? `Signed${tenantWitnessSignedDate ? ` · ${tenantWitnessSignedDate}` : ""}`
+                    : detail.signing.tenantSigned
+                      ? "Awaiting witness signature"
+                      : "Locked"}
+                </div>
+              </div>
+              <div>
                 <div className="td-muted" style={{ fontSize: 12 }}>Landlord</div>
                 <div style={{ fontWeight: 600 }}>
                   {detail.signing.landlordSigned
@@ -478,34 +519,30 @@ export default function AgreementDetailPage() {
 
             {detail.tenantSignatureDataUrl ? (
               <div style={{ marginBottom: 16, padding: "12px 14px", background: "var(--surface2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
-                <div className="td-muted" style={{ fontSize: 12, marginBottom: 8 }}>
-                  Tenant signature on file{detail.tenantSignedDate ? ` · ${detail.tenantSignedDate}` : ""}
-                </div>
-                {isRenderableSignatureUrl(detail.tenantSignatureDataUrl) ? (
-                  <img
-                    src={resolveSignatureDisplayUrl(detail.tenantSignatureDataUrl) ?? ""}
-                    alt="Tenant signature"
-                    style={{ maxWidth: 220, height: 80, objectFit: "contain", display: "block" }}
-                  />
-                ) : (
-                  <div className="td-muted">Signed electronically via DoorRent</div>
+                {renderStoredSignaturePanel(
+                  `Tenant signature on file${detail.tenantSignedDate ? ` · ${detail.tenantSignedDate}` : ""}`,
+                  detail.tenantSignatureDataUrl,
+                  "Tenant signature",
+                )}
+              </div>
+            ) : null}
+
+            {tenantWitnessSignatureDataUrl ? (
+              <div style={{ marginBottom: 16, padding: "12px 14px", background: "var(--surface2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
+                {renderStoredSignaturePanel(
+                  `Tenant witness signature on file${tenantWitnessSignedDate ? ` · ${tenantWitnessSignedDate}` : ""}`,
+                  tenantWitnessSignatureDataUrl,
+                  "Tenant witness signature",
                 )}
               </div>
             ) : null}
 
             {detail.landlordSignatureDataUrl ? (
               <div style={{ marginBottom: 16, padding: "12px 14px", background: "var(--surface2)", borderRadius: "var(--radius)", border: "1px solid var(--border)" }}>
-                <div className="td-muted" style={{ fontSize: 12, marginBottom: 8 }}>
-                  Landlord signature on file{detail.landlordSignedDate ? ` · ${detail.landlordSignedDate}` : ""}
-                </div>
-                {isRenderableSignatureUrl(detail.landlordSignatureDataUrl) ? (
-                  <img
-                    src={resolveSignatureDisplayUrl(detail.landlordSignatureDataUrl) ?? ""}
-                    alt="Landlord signature"
-                    style={{ maxWidth: 220, height: 80, objectFit: "contain", display: "block" }}
-                  />
-                ) : (
-                  <div className="td-muted">Signed electronically via DoorRent</div>
+                {renderStoredSignaturePanel(
+                  `Landlord signature on file${detail.landlordSignedDate ? ` · ${detail.landlordSignedDate}` : ""}`,
+                  detail.landlordSignatureDataUrl,
+                  "Landlord signature",
                 )}
               </div>
             ) : null}
@@ -573,21 +610,10 @@ export default function AgreementDetailPage() {
 
             {detail.landlordWitnessSignatureDataUrl ? (
               <div style={{ marginBottom: 16 }}>
-                <div className="td-muted" style={{ fontSize: 12, marginBottom: 8 }}>
-                  Landlord witness signature on file
-                </div>
-                {isRenderableSignatureUrl(detail.landlordWitnessSignatureDataUrl) ? (
-                  <img
-                    src={
-                      resolveSignatureDisplayUrl(
-                        detail.landlordWitnessSignatureDataUrl,
-                      ) ?? ""
-                    }
-                    alt="Landlord witness signature"
-                    style={{ maxWidth: 220, height: 80, objectFit: "contain" }}
-                  />
-                ) : (
-                  <div className="td-muted">Signed electronically via DoorRent</div>
+                {renderStoredSignaturePanel(
+                  `Landlord witness signature on file${detail.landlordWitnessDate ? ` · ${detail.landlordWitnessDate}` : ""}`,
+                  detail.landlordWitnessSignatureDataUrl,
+                  "Landlord witness signature",
                 )}
               </div>
             ) : null}

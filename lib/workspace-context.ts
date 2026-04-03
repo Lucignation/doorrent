@@ -6,11 +6,17 @@ function normalizeApiBaseUrl(value: string) {
   return trimmed.endsWith("/api/v1") ? trimmed : `${trimmed}/api/v1`;
 }
 
+const defaultApiOrigin =
+  process.env.NODE_ENV === "production"
+    ? "https://api.usedoorrent.com"
+    : "http://localhost:4000";
+
 const configuredApiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api.usedoorrent.com";
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? defaultApiOrigin;
 
 export const WORKSPACE_API_BASE_URL = normalizeApiBaseUrl(configuredApiBaseUrl);
-const WORKSPACE_BROWSER_API_BASE_PATH = "/api/v1";
+const WORKSPACE_BROWSER_API_BASE_PATH =
+  process.env.NODE_ENV === "production" ? "/api/v1" : WORKSPACE_API_BASE_URL;
 
 function getWorkspaceApiBaseUrl() {
   return typeof window === "undefined"

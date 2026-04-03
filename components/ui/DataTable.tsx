@@ -5,6 +5,8 @@ interface DataTableProps<T extends object> {
   columns: TableColumn<T>[];
   rows: T[];
   emptyMessage?: string;
+  loading?: boolean;
+  loadingMessage?: string;
 }
 
 type KeyableRow = {
@@ -17,10 +19,14 @@ export default function DataTable<T extends object>({
   columns,
   rows,
   emptyMessage = "No records.",
+  loading = false,
+  loadingMessage = "Refreshing records...",
 }: DataTableProps<T>) {
+  const isLoading = loading || /^loading\b/i.test(emptyMessage);
+
   return (
-    <div className="table-wrap">
-      <table>
+    <div className={`table-wrap${isLoading ? " table-wrap-loading" : ""}`}>
+      <table aria-busy={isLoading}>
         <thead>
           <tr>
             {columns.map((column) => (
@@ -57,6 +63,13 @@ export default function DataTable<T extends object>({
           )}
         </tbody>
       </table>
+      {isLoading ? (
+        <div className="table-loading-overlay" role="status" aria-live="polite">
+          <div className="table-loading-spinner" />
+          <div className="table-loading-title">Loading table data</div>
+          <div className="table-loading-message">{loading ? loadingMessage : emptyMessage}</div>
+        </div>
+      ) : null}
     </div>
   );
 }

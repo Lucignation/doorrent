@@ -313,6 +313,8 @@ export default function LandlordTenantsPage() {
             <DataTable
               columns={inviteColumns}
               rows={inviteRows}
+              loading={loading}
+              loadingMessage="Refreshing tenant invites..."
               emptyMessage={loading ? "Loading invites..." : "No pending invites."}
             />
           </div>
@@ -358,6 +360,8 @@ export default function LandlordTenantsPage() {
           <DataTable
             columns={tenantColumns}
             rows={tenantData?.tenants ?? []}
+            loading={loading}
+            loadingMessage="Refreshing tenant records..."
             emptyMessage={loading ? "Loading tenants..." : "No tenants found."}
           />
           <div className="pagination">

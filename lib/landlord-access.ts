@@ -189,6 +189,16 @@ export function canAccessLandlordPath(
     return capabilities.canViewReports;
   }
 
+  if (path.startsWith("/landlord/audit")) {
+    return (
+      capabilities.canManageTeamMembers === true ||
+      (
+        capabilities.canDeleteAccount === true &&
+        capabilities.canManageAccountUpdates === true
+      )
+    );
+  }
+
   if (path.startsWith("/landlord/caretakers")) {
     return capabilities.canManageCaretakers;
   }
