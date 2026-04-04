@@ -36,11 +36,17 @@ interface CommunityGroupRecord {
   latestMessagePreview: string;
 }
 
+interface CommunityAccess {
+  allowed: boolean;
+  reason?: string | null;
+}
+
 interface CommunityGroupsResponse {
   property: {
     id: string;
     name: string;
   };
+  access?: CommunityAccess;
   summary: {
     total: number;
     joined: number;
@@ -163,6 +169,10 @@ export default function TenantCommunityPage() {
     () => groupData?.groups.find((group) => group.id === selectedGroupId) ?? null,
     [groupData?.groups, selectedGroupId],
   );
+  const communityAccess = groupData?.access ?? {
+    allowed: true,
+    reason: null,
+  };
 
   const filteredContacts = useMemo(() => {
     const query = contactSearch.trim().toLowerCase();
@@ -202,6 +212,10 @@ export default function TenantCommunityPage() {
         if (!cancelled) {
           setGroupData(data);
           setSelectedGroupId((current) => {
+            if (data.access?.allowed === false) {
+              return "";
+            }
+
             if (current && data.groups.some((group) => group.id === current)) {
               return current;
             }
@@ -358,6 +372,11 @@ export default function TenantCommunityPage() {
     });
 
     setGroupData(data);
+
+    if (data.access?.allowed === false) {
+      setSelectedGroupId("");
+      return;
+    }
 
     if (selectedGroupId && !data.groups.some((group) => group.id === selectedGroupId)) {
       setSelectedGroupId(data.groups.find((group) => group.joined)?.id ?? data.groups[0]?.id ?? "");
@@ -643,7 +662,9 @@ export default function TenantCommunityPage() {
   }
 
   const description = groupData
-    ? `${groupData.summary.joined} joined group(s) in ${groupData.property.name} · Share updates, images, and neighbour feedback`
+    ? communityAccess.allowed
+      ? `${groupData.summary.joined} joined group(s) in ${groupData.property.name} · Share updates, images, and neighbour feedback`
+      : communityAccess.reason || "Community access is only available while your tenancy is active."
     : loadingGroups
       ? "Loading your community groups..."
       : error || "No groups available.";
@@ -657,6 +678,32 @@ export default function TenantCommunityPage() {
           description={description}
         />
 
+        {!communityAccess.allowed ? (
+          <div className="card">
+            <div className="card-body" style={{ display: "grid", gap: 10 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: "var(--accent)" }}>
+                Community access unavailable
+              </div>
+              <div style={{ color: "var(--ink2)", lineHeight: 1.7 }}>
+                {communityAccess.reason ||
+                  "Community access is only available while your tenancy is active on this property."}
+              </div>
+              <div
+                style={{
+                  padding: 14,
+                  borderRadius: "var(--radius)",
+                  border: "1px solid var(--accent-light)",
+                  background: "var(--accent-light)",
+                  color: "var(--accent)",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                Once a tenancy ends and the unit becomes vacant, the tenant is removed from compound community participation.
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="grid-2" style={{ alignItems: "start" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div className="card">
@@ -1036,6 +1083,7 @@ export default function TenantCommunityPage() {
             </div>
           </div>
         </div>
+        )}
       </TenantPortalShell>
     </>
   );

@@ -246,7 +246,7 @@ const proPlanFeatures = [
   "Operations: unlimited units, meter numbers, reports, and deeper portfolio visibility",
   "Collections: notices, grace-period workflow, rent-default tracking, and payment detail",
   "Branding: workspace colors, branded tenant experience, and subdomain presence",
-  "People: caretaker access, meetings, community tools, and emergency escalation",
+  "Operations: meetings, community tools, risk workflows, and emergency escalation",
   "Control: deeper owner audit history with push and SMS workflows",
 ];
 

@@ -382,6 +382,10 @@ export default function LandlordSettingsPage() {
   const [teamInviteForm, setTeamInviteForm] = useState<TeamInviteForm>(
     initialTeamInviteForm,
   );
+  const [editingTeamMemberId, setEditingTeamMemberId] = useState<string | null>(null);
+  const [editingTeamMemberRoleKey, setEditingTeamMemberRoleKey] = useState("");
+  const [savingTeamMemberId, setSavingTeamMemberId] = useState<string | null>(null);
+  const [removingTeamMemberId, setRemovingTeamMemberId] = useState<string | null>(null);
   const [googleStatus, setGoogleStatus] = useState<{ connected: boolean; email: string | null } | null>(null);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
   const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
@@ -394,6 +398,12 @@ export default function LandlordSettingsPage() {
       settings?.teamRoleOptions.find((option) => option.key === teamInviteForm.roleKey) ??
       null,
     [settings?.teamRoleOptions, teamInviteForm.roleKey],
+  );
+  const selectedEditingTeamRole = useMemo(
+    () =>
+      settings?.teamRoleOptions.find((option) => option.key === editingTeamMemberRoleKey) ??
+      null,
+    [editingTeamMemberRoleKey, settings?.teamRoleOptions],
   );
 
   useEffect(() => {
@@ -1291,6 +1301,120 @@ export default function LandlordSettingsPage() {
       );
     } finally {
       setInvitingMember(false);
+    }
+  }
+
+  function beginEditMember(member: LandlordSettingsResponse["teamMembers"][number]) {
+    setEditingTeamMemberId(member.id);
+    setEditingTeamMemberRoleKey(
+      member.roleKey ?? settings?.teamRoleOptions[0]?.key ?? "",
+    );
+  }
+
+  async function saveMemberAccess(teamMemberId: string) {
+    if (!landlordSession?.token || !editingTeamMemberRoleKey.trim()) {
+      return;
+    }
+
+    setSavingTeamMemberId(teamMemberId);
+
+    try {
+      const { data } = await apiRequest<LandlordSettingsResponse["teamMembers"][number]>(
+        `/landlord/settings/team-members/${teamMemberId}`,
+        {
+          method: "PATCH",
+          token: landlordSession.token,
+          body: {
+            roleKey: editingTeamMemberRoleKey.trim(),
+          },
+        },
+      );
+
+      setSettings((current) =>
+        current
+          ? {
+              ...current,
+              teamMembers: current.teamMembers.map((member) =>
+                member.id === teamMemberId ? data : member,
+              ),
+            }
+          : current,
+      );
+      setEditingTeamMemberId(null);
+      setEditingTeamMemberRoleKey("");
+      refreshData();
+      showToast("Team member access updated.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not update this team member.",
+        "error",
+      );
+    } finally {
+      setSavingTeamMemberId(null);
+    }
+  }
+
+  async function removeMember(
+    teamMemberId: string,
+    label?: string | null,
+  ) {
+    if (!landlordSession?.token) {
+      return;
+    }
+
+    const confirmed =
+      typeof window === "undefined"
+        ? true
+        : window.confirm(
+            `${label ?? "This team member"} will lose workspace access immediately. Remove this member?`,
+          );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setRemovingTeamMemberId(teamMemberId);
+
+    try {
+      const response = await apiRequest<{ id: string; removed: boolean }>(
+        `/landlord/settings/team-members/${teamMemberId}`,
+        {
+          method: "DELETE",
+          token: landlordSession.token,
+        },
+      );
+
+      if (response.data?.removed) {
+        setSettings((current) =>
+          current
+            ? {
+                ...current,
+                teamMembers: current.teamMembers.filter(
+                  (member) => member.id !== teamMemberId,
+                ),
+              }
+            : current,
+        );
+      }
+
+      if (editingTeamMemberId === teamMemberId) {
+        setEditingTeamMemberId(null);
+        setEditingTeamMemberRoleKey("");
+      }
+
+      refreshData();
+      showToast("Team member removed.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "We could not remove this team member.",
+        "error",
+      );
+    } finally {
+      setRemovingTeamMemberId(null);
     }
   }
 
@@ -2525,38 +2649,122 @@ export default function LandlordSettingsPage() {
                       key={member.id}
                       style={{
                         display: "flex",
-                        alignItems: "center",
+                        flexDirection: "column",
                         gap: 10,
-                        padding: "8px 0",
+                        padding: "10px 0",
                         borderBottom: "1px solid var(--border)",
                       }}
                     >
-                      <div className="tenant-avatar">{member.initials}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{member.name}</div>
-                        <div style={{ fontSize: 11, color: "var(--ink3)" }}>{member.email}</div>
-                        {member.permissions.length ? (
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 6,
-                              marginTop: 8,
-                            }}
-                          >
-                            {member.permissions.map((permission) => (
-                              <span
-                                key={`${member.id}-${permission.key}`}
-                                className="tag"
-                                style={{ fontSize: 10 }}
-                              >
-                                {permission.label}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div className="tenant-avatar">{member.initials}</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{member.name}</div>
+                          <div style={{ fontSize: 11, color: "var(--ink3)" }}>{member.email}</div>
+                          {member.permissions.length ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 6,
+                                marginTop: 8,
+                              }}
+                            >
+                              {member.permissions.map((permission) => (
+                                <span
+                                  key={`${member.id}-${permission.key}`}
+                                  className="tag"
+                                  style={{ fontSize: 10 }}
+                                >
+                                  {permission.label}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                        </div>
+                        <span className="tag">{member.role}</span>
                       </div>
-                      <span className="tag">{member.role}</span>
+
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => beginEditMember(member)}
+                        >
+                          Edit Access
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger btn-sm"
+                          disabled={removingTeamMemberId === member.id}
+                          onClick={() => void removeMember(member.id, member.name)}
+                        >
+                          {removingTeamMemberId === member.id ? "Removing..." : "Remove"}
+                        </button>
+                      </div>
+
+                      {editingTeamMemberId === member.id ? (
+                        <div
+                          style={{
+                            padding: 14,
+                            borderRadius: "var(--radius-sm)",
+                            border: "1px solid var(--border)",
+                            background: "var(--surface2)",
+                          }}
+                        >
+                          <div className="form-group" style={{ marginBottom: 12 }}>
+                            <label className="form-label">Role</label>
+                            <select
+                              className="form-input"
+                              value={editingTeamMemberRoleKey}
+                              onChange={(event) =>
+                                setEditingTeamMemberRoleKey(event.target.value)
+                              }
+                            >
+                              {settings?.teamRoleOptions.map((option) => (
+                                <option key={`edit-${option.key}`} value={option.key}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          {selectedEditingTeamRole ? (
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 6,
+                                marginBottom: 12,
+                              }}
+                            >
+                              {selectedEditingTeamRole.permissions.map((permission) => (
+                                <span key={`edit-${member.id}-${permission.key}`} className="tag">
+                                  {permission.label}
+                                </span>
+                              ))}
+                            </div>
+                          ) : null}
+                          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => {
+                                setEditingTeamMemberId(null);
+                                setEditingTeamMemberRoleKey("");
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              disabled={savingTeamMemberId === member.id}
+                              onClick={() => void saveMemberAccess(member.id)}
+                            >
+                              {savingTeamMemberId === member.id ? "Saving..." : "Save Access"}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   ))}
 

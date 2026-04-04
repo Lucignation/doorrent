@@ -56,6 +56,10 @@ interface TenantMeetingsResponse {
   formOptions: {
     audience: Array<{ value: string; label: string }>;
   };
+  requestAccess?: {
+    allowed: boolean;
+    reason?: string | null;
+  };
 }
 
 interface MeetingCreateResponse {
@@ -86,7 +90,7 @@ function statusTone(status: TenantMeetingRecord["status"]): BadgeTone {
   return "red";
 }
 
-function createDefaultMeetingTime() {
+function createDefaultMeetingDateTime() {
   const value = new Date();
   value.setDate(value.getDate() + 1);
   value.setHours(10, 0, 0, 0);
@@ -94,7 +98,10 @@ function createDefaultMeetingTime() {
   const offset = value.getTimezoneOffset();
   const local = new Date(value.getTime() - offset * 60_000);
 
-  return local.toISOString().slice(0, 16);
+  return {
+    date: local.toISOString().slice(0, 10),
+    time: local.toISOString().slice(11, 16),
+  };
 }
 
 export default function TenantMeetingsPage() {
@@ -110,7 +117,8 @@ export default function TenantMeetingsPage() {
     title: "",
     agenda: "",
     audience: "SOLO",
-    scheduledFor: createDefaultMeetingTime(),
+    scheduledDate: createDefaultMeetingDateTime().date,
+    scheduledTime: createDefaultMeetingDateTime().time,
     durationMinutes: "30",
   });
 
@@ -174,7 +182,9 @@ export default function TenantMeetingsPage() {
           title: form.title,
           agenda: form.agenda || undefined,
           audience: form.audience,
-          scheduledFor: new Date(form.scheduledFor).toISOString(),
+          scheduledFor: new Date(
+            `${form.scheduledDate}T${form.scheduledTime}:00`,
+          ).toISOString(),
           durationMinutes: Number(form.durationMinutes),
           provider: "GOOGLE_MEET",
         },
@@ -204,7 +214,8 @@ export default function TenantMeetingsPage() {
         title: "",
         agenda: "",
         audience: "SOLO",
-        scheduledFor: createDefaultMeetingTime(),
+        scheduledDate: createDefaultMeetingDateTime().date,
+        scheduledTime: createDefaultMeetingDateTime().time,
         durationMinutes: "30",
       });
       refreshData();
@@ -326,94 +337,134 @@ export default function TenantMeetingsPage() {
                 </div>
               </div>
             </div>
-            <form className="card-body" onSubmit={submitMeeting}>
-              <div className="form-group">
-                <label className="form-label">Topic *</label>
-                <input
-                  className="form-input"
-                  value={form.title}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, title: event.target.value }))
-                  }
-                  placeholder="Discuss compound maintenance"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Agenda</label>
-                <textarea
-                  className="form-input"
-                  style={{ minHeight: 110 }}
-                  value={form.agenda}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, agenda: event.target.value }))
-                  }
-                  placeholder="Share the issue you want to discuss with your landlord."
-                />
-              </div>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Audience *</label>
-                  <select
-                    className="form-input"
-                    value={form.audience}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, audience: event.target.value }))
-                    }
-                  >
-                    {(meetingData?.formOptions.audience ?? [
-                      { value: "SOLO", label: "Private meeting with landlord" },
-                      { value: "COMPOUND", label: "All tenants in the compound" },
-                    ]).map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Duration (minutes)</label>
-                  <select
-                    className="form-input"
-                    value={form.durationMinutes}
-                    onChange={(event) =>
-                      setForm((current) => ({
-                        ...current,
-                        durationMinutes: event.target.value,
-                      }))
-                    }
-                  >
-                    {["30", "45", "60"].map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
+            {meetingData?.requestAccess?.allowed === false ? (
+              <div className="card-body">
+                <div
+                  style={{
+                    padding: 16,
+                    borderRadius: "var(--radius)",
+                    background: "var(--red-light, #fff0ef)",
+                    border: "1px solid rgba(179, 49, 33, 0.15)",
+                    color: "var(--ink2)",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  <div style={{ fontWeight: 700, color: "var(--ink)", marginBottom: 6 }}>
+                    Meeting requests unavailable
+                  </div>
+                  <div>
+                    {meetingData.requestAccess.reason ||
+                      "This tenancy can no longer request new meetings."}
+                  </div>
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Preferred Time *</label>
-                <input
-                  className="form-input"
-                  type="datetime-local"
-                  value={form.scheduledFor}
-                  onChange={(event) =>
-                    setForm((current) => ({
-                      ...current,
-                      scheduledFor: event.target.value,
-                    }))
-                  }
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                className="btn btn-primary btn-full"
-                disabled={submitting}
-              >
-                {submitting ? "Sending request..." : "Request Google Meet"}
-              </button>
-            </form>
+            ) : (
+              <form className="card-body" onSubmit={submitMeeting}>
+                <div className="form-group">
+                  <label className="form-label">Topic *</label>
+                  <input
+                    className="form-input"
+                    value={form.title}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, title: event.target.value }))
+                    }
+                    placeholder="Discuss compound maintenance"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Agenda</label>
+                  <textarea
+                    className="form-input"
+                    style={{ minHeight: 110 }}
+                    value={form.agenda}
+                    onChange={(event) =>
+                      setForm((current) => ({ ...current, agenda: event.target.value }))
+                    }
+                    placeholder="Share the issue you want to discuss with your landlord."
+                  />
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Audience *</label>
+                    <select
+                      className="form-input"
+                      value={form.audience}
+                      onChange={(event) =>
+                        setForm((current) => ({ ...current, audience: event.target.value }))
+                      }
+                    >
+                      {(meetingData?.formOptions.audience ?? [
+                        { value: "SOLO", label: "Private meeting with landlord" },
+                        { value: "COMPOUND", label: "All tenants in the compound" },
+                      ]).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Duration (minutes)</label>
+                    <select
+                      className="form-input"
+                      value={form.durationMinutes}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          durationMinutes: event.target.value,
+                        }))
+                      }
+                    >
+                      {["30", "45", "60"].map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Preferred Date *</label>
+                    <input
+                      className="form-input"
+                      type="date"
+                      value={form.scheduledDate}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          scheduledDate: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Preferred Time *</label>
+                    <input
+                      className="form-input"
+                      type="time"
+                      value={form.scheduledTime}
+                      onChange={(event) =>
+                        setForm((current) => ({
+                          ...current,
+                          scheduledTime: event.target.value,
+                        }))
+                      }
+                      required
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-full"
+                  disabled={submitting}
+                >
+                  {submitting ? "Sending request..." : "Request Google Meet"}
+                </button>
+              </form>
+            )}
           </div>
 
           <div className="card">

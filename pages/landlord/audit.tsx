@@ -219,24 +219,56 @@ export default function LandlordAuditPage() {
         ) : null}
 
         <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
-          <div className="stat-card accent-blue">
-            <div className="stat-label">Recorded Events</div>
-            <div className="stat-value">{auditData?.pagination.total ?? 0}</div>
-            <div className="stat-sub">Workspace actions by landlord, staff, and automation</div>
+          <div
+            className="stat-card"
+            style={{
+              background: "linear-gradient(135deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 82%, #000 18%) 100%)",
+              borderTop: "3px solid var(--accent)",
+              color: "#fff",
+            }}
+          >
+            <div className="stat-label" style={{ color: "rgba(255,255,255,0.72)" }}>Recorded Events</div>
+            <div className="stat-value" style={{ color: "#fff" }}>{auditData?.pagination.total ?? 0}</div>
+            <div className="stat-sub" style={{ color: "rgba(255,255,255,0.84)" }}>
+              Workspace actions by landlord, staff, and automation
+            </div>
           </div>
-          <div className="stat-card accent-gold">
-            <div className="stat-label">Visible Modules</div>
-            <div className="stat-value">{auditData?.summary.modules.length ?? 0}</div>
+          <div
+            className="stat-card"
+            style={{
+              borderTop: "3px solid var(--accent)",
+              background: "var(--accent-light)",
+            }}
+          >
+            <div className="stat-label" style={{ color: "var(--accent)" }}>Visible Modules</div>
+            <div className="stat-value" style={{ color: "var(--accent)" }}>
+              {auditData?.summary.modules.length ?? 0}
+            </div>
             <div className="stat-sub">Properties, units, payments, settings, and more</div>
           </div>
-          <div className="stat-card accent-green">
-            <div className="stat-label">Visible Actors</div>
-            <div className="stat-value">{auditData?.summary.actorTypes.length ?? 0}</div>
+          <div
+            className="stat-card"
+            style={{
+              borderTop: "3px solid var(--accent2)",
+              background: "var(--accent2-light)",
+            }}
+          >
+            <div className="stat-label" style={{ color: "var(--accent2)" }}>Visible Actors</div>
+            <div className="stat-value" style={{ color: "var(--accent2)" }}>
+              {auditData?.summary.actorTypes.length ?? 0}
+            </div>
             <div className="stat-sub">Landlord, team members, and DoorRent automation</div>
           </div>
         </div>
 
-        <div className="card" style={{ marginBottom: 16 }}>
+        <div
+          className="card"
+          style={{
+            marginBottom: 16,
+            borderColor: "var(--accent-light)",
+            boxShadow: "0 18px 40px rgba(15, 61, 46, 0.06)",
+          }}
+        >
           <div className="card-body" style={{ display: "grid", gap: 12 }}>
             <div
               style={{
@@ -250,11 +282,13 @@ export default function LandlordAuditPage() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search actor, action, target, or summary"
+                style={{ borderColor: "var(--accent-light)", background: "var(--accent-light)" }}
               />
               <select
                 className="form-input"
                 value={moduleFilter}
                 onChange={(event) => setModuleFilter(event.target.value)}
+                style={{ borderColor: "var(--accent-light)" }}
               >
                 <option value="">All modules</option>
                 {(auditData?.summary.modules ?? []).map((module) => (
@@ -267,6 +301,7 @@ export default function LandlordAuditPage() {
                 className="form-input"
                 value={actorTypeFilter}
                 onChange={(event) => setActorTypeFilter(event.target.value)}
+                style={{ borderColor: "var(--accent-light)" }}
               >
                 <option value="">All actors</option>
                 {(auditData?.summary.actorTypes ?? []).map((actorType) => (
@@ -276,7 +311,7 @@ export default function LandlordAuditPage() {
                 ))}
               </select>
             </div>
-            <div className="td-muted" style={{ fontSize: 12 }}>
+            <div className="td-muted" style={{ fontSize: 12, color: "var(--accent)" }}>
               Only landlord/company-side users can see this audit history.
             </div>
           </div>

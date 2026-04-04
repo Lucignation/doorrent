@@ -1310,7 +1310,7 @@ export function PortalExperience({
                   ) : (
                     <>
                       <span className="plan-detail-price">3% of rent collected</span>
-                      <span className="plan-detail-features">Everything in Basic · Branding · Notices · Meetings · SMS · Caretakers · Emergency</span>
+                      <span className="plan-detail-features">Everything in Basic · Branding · Notices · Meetings · SMS · Risk workflows · Emergency</span>
                     </>
                   )}
                 </div>
