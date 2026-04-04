@@ -78,7 +78,7 @@ const landlordNavSections: NavSection[] = [
   {
     section: "Account",
     items: [
-      { label: "Caretakers", href: "/landlord/caretakers", icon: "users" },
+      // { label: "Caretakers", href: "/landlord/caretakers", icon: "users" },
       { label: "Settings", href: "/landlord/settings", icon: "settings" },
     ],
   },

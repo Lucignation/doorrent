@@ -67,7 +67,7 @@ export default function AccountDeletionPage({
         <ul>
           <li><Link href="/portal">Landlord portal</Link></li>
           <li><Link href="/tenant/login">Tenant portal</Link></li>
-          <li><Link href="/caretaker/login">Caretaker portal</Link></li>
+          {/* <li><Link href="/caretaker/login">Caretaker portal</Link></li> */}
         </ul>
       </section>
 

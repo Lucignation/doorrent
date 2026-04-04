@@ -1894,9 +1894,9 @@ export function PortalExperience({
                 <Link href="/tenant/login" style={{ color: "var(--accent)", fontWeight: 600, marginRight: 16 }}>
                   Tenant Login
                 </Link>
-                <Link href="/caretaker/login" style={{ color: "var(--accent)", fontWeight: 600 }}>
+                {/* <Link href="/caretaker/login" style={{ color: "var(--accent)", fontWeight: 600 }}>
                   Caretaker Login
-                </Link>
+                </Link> */}
               </div>
             )}
           </div>
