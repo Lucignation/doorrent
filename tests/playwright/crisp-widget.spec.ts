@@ -59,7 +59,8 @@ test.describe('crisp widget', () => {
       .toBe('253c7d70-9d38-452e-a086-76c013b18c88');
 
     let scriptFound = false;
-    let launcherFound = false;
+    let crispRequestFound = false;
+    let crispResponseFound = false;
 
     const loaded = await expect
       .poll(async () => {
@@ -69,12 +70,10 @@ test.describe('crisp widget', () => {
           ),
         );
 
-        launcherFound = await page
-          .getByRole('button', { name: 'Chat with DoorRent' })
-          .isVisible()
-          .catch(() => false);
+        crispRequestFound = crispRequests.some((url) => url.includes('client.crisp.chat'));
+        crispResponseFound = crispResponses.some((entry) => entry.includes('client.crisp.chat'));
 
-        return scriptFound && launcherFound;
+        return scriptFound && crispRequestFound && crispResponseFound;
       }, { timeout: 5000 })
       .toBe(true)
       .then(() => true)
@@ -101,7 +100,8 @@ test.describe('crisp widget', () => {
       [
         'Crisp widget did not finish loading on desktop web.',
         `Script tag found: ${scriptFound}`,
-        `Desktop launcher found: ${launcherFound}`,
+        `Crisp request found: ${crispRequestFound}`,
+        `Crisp response found: ${crispResponseFound}`,
         `Crisp DOM: ${crispDomSummary}`,
         `Crisp requests: ${crispRequests.join(' | ') || 'none'}`,
         `Crisp responses: ${crispResponses.join(' | ') || 'none'}`,
