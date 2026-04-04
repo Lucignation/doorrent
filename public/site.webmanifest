@@ -1,0 +1,18 @@
+{
+  "name": "DoorRent",
+  "short_name": "DoorRent",
+  "description": "Property management software for Nigerian landlords and property companies.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0d3a2b",
+  "theme_color": "#1A3A2A",
+  "icons": [
+    {
+      "src": "/doorrent-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

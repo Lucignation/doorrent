@@ -11,7 +11,9 @@ export default function Document() {
         <meta name="format-detection" content="telephone=no, email=no, address=no" />
         <link rel="icon" href={FAVICON_PATH} sizes="any" />
         <link rel="shortcut icon" href={FAVICON_PATH} />
-        <link rel="apple-touch-icon" href={LOGO_PATH} />
+        <link rel="apple-touch-icon" href={LOGO_PATH} sizes="512x512" />
+        <link rel="manifest" href="/site.webmanifest" />
+        <meta name="msapplication-TileColor" content="#1A3A2A" />
       </Head>
       <body>
         <Main />

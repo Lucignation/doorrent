@@ -44,7 +44,7 @@ export default function LegalDocument({
 
   return (
     <>
-      <PageMeta title={`${brandName} - ${title}`} urlPath={urlPath} />
+      <PageMeta title={`${brandName} - ${title}`} description={summary} urlPath={urlPath} />
 
       <div className="legal-page" style={brandStyle}>
         <header className="legal-header">

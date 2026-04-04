@@ -1787,6 +1787,7 @@ export function PortalExperience({
               ? "Internal DoorRent super admin access."
               : "Landlord sign-in and registration for DoorRent."
         }
+        robots="noindex, nofollow, noarchive"
       />
 
       <div id="auth-screen" style={buildBrandShellStyle(tenantBranding)}>

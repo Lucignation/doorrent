@@ -4,10 +4,18 @@ import { Fragment, type FormEvent, useEffect, useRef, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
 import { apiRequest, getApiRequestBaseUrl } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
+import {
+  buildOrganizationStructuredData,
+  buildSoftwareApplicationStructuredData,
+  buildWebPageStructuredData,
+  buildWebsiteStructuredData,
+} from "../lib/seo";
 import { fetchWorkspaceContextByHost } from "../lib/workspace-context";
 
 type RoleKey = "landlord" | "tenant";
 const PUBLIC_PORTAL_URL = "https://usedoorrent.com/portal";
+const HOME_DESCRIPTION =
+  "DoorRent is property management software for Nigerian landlords and property companies to collect rent, manage tenants, send agreements, issue receipts, and track portfolio operations in one place.";
 
 function isWorkspaceSubdomainHost(host?: string | null) {
   const normalizedHost = host?.trim().toLowerCase().replace(/^www\./, "").replace(/:\d+$/, "");
@@ -659,8 +667,18 @@ export default function LandingPage({ marketingOverview }: LandingPageProps) {
   return (
     <>
       <PageMeta
-        title="DoorRent — Property Management, Reimagined"
-        description="Collect rent, manage tenants, send agreements, and track every property workflow in one elegant platform built for Nigerian landlords."
+        title="DoorRent — Property Management Software for Nigerian Landlords"
+        description={HOME_DESCRIPTION}
+        structuredData={[
+          buildOrganizationStructuredData(),
+          buildWebsiteStructuredData(),
+          buildSoftwareApplicationStructuredData(),
+          buildWebPageStructuredData({
+            path: "/",
+            name: "DoorRent Homepage",
+            description: HOME_DESCRIPTION,
+          }),
+        ]}
       />
 
       <div className="marketing-home">

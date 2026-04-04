@@ -2,6 +2,7 @@ import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
 import PageMeta from "../components/layout/PageMeta";
 import { apiRequest } from "../lib/api";
+import { buildWebPageStructuredData } from "../lib/seo";
 import { LOGO_PATH } from "../lib/site";
 
 type ListingStatus = "vacant" | "in_process" | "occupied";
@@ -1814,8 +1815,14 @@ export default function MarketplacePage() {
     <>
       <PageMeta
         title="DoorRent — Marketplace"
-        description="Browse available and reserved property listings on DoorRent."
+        description="Browse available rental listings, unit details, and verified reservation status on the DoorRent marketplace."
         urlPath="/marketplace"
+        structuredData={buildWebPageStructuredData({
+          path: "/marketplace",
+          name: "DoorRent Marketplace",
+          description:
+            "Browse available rental listings, unit details, and verified reservation status on the DoorRent marketplace.",
+        })}
       />
 
       <div
