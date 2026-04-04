@@ -21,7 +21,9 @@ const rootDomain =
 const apiOrigin = normalizeOrigin(process.env.NEXT_PUBLIC_API_BASE_URL, DEFAULT_API_ORIGIN);
 
 const connectSrc = ["'self'", apiOrigin];
-const scriptSrc = ["'self'", "'unsafe-inline'"];
+const scriptSrc = ["'self'", "'unsafe-inline'", "https://client.crisp.chat"];
+const frameSrc = ["'self'", "https://*.crisp.chat"];
+const childSrc = ["'self'", "https://*.crisp.chat"];
 
 if (isProduction) {
   connectSrc.push(`https://${rootDomain}`, `https://*.${rootDomain}`);
@@ -36,6 +38,8 @@ if (isProduction) {
   scriptSrc.push("'unsafe-eval'");
 }
 
+connectSrc.push("https://*.crisp.chat", "wss://*.crisp.chat");
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -49,8 +53,8 @@ const contentSecurityPolicy = [
   "font-src 'self' https: data:",
   "media-src 'self' blob: data:",
   "worker-src 'self' blob:",
-  "child-src 'self'",
-  "frame-src 'none'",
+  `child-src ${childSrc.join(" ")}`,
+  `frame-src ${frameSrc.join(" ")}`,
   "manifest-src 'self'",
   isProduction ? "upgrade-insecure-requests" : "",
 ]
