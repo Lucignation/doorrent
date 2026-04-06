@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import EstatePortalShell from "../../../components/auth/EstatePortalShell";
 import PageMeta from "../../../components/layout/PageMeta";
 import DataTable from "../../../components/ui/DataTable";
@@ -8,8 +8,16 @@ import StatusBadge from "../../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../../context/TenantSessionContext";
 import { apiRequest } from "../../../lib/api";
-import { formatEstateCurrency, type EstateDashboardData } from "../../../lib/estate-preview";
+import { convertRowsToCsv, parseCsvText, formatEstateCurrency, type EstateDashboardData } from "../../../lib/estate-preview";
 import type { TableColumn } from "../../../types/app";
+
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 type ResidenceRow = EstateDashboardData["residences"][number];
 type ResidentRow = EstateDashboardData["residents"][number];
@@ -30,12 +38,15 @@ export default function EstateHousesPage() {
   const { showToast, dataRefreshVersion } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const token = landlordSession?.token;
+  const houseFileRef = useRef<HTMLInputElement>(null);
+  const residentFileRef = useRef<HTMLInputElement>(null);
 
   const [residences, setResidences] = useState<ResidenceRow[]>([]);
   const [residents, setResidents] = useState<ResidentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   async function loadData() {
     if (!token) return;
@@ -86,6 +97,71 @@ export default function EstateHousesPage() {
       showToast(err instanceof Error ? err.message : "Failed to save house.", "error");
     } finally {
       setSaving(false);
+    }
+  }
+
+  function handleExportHouses() {
+    if (!residences.length) { showToast("No houses to export.", "error"); return; }
+    const csv = convertRowsToCsv(residences.map((r) => ({ houseNumber: r.houseNumber, block: r.block ?? "", label: r.label ?? "", ownerName: r.ownerName ?? "", ownerPhone: r.ownerPhone ?? "", billingBasis: r.billingBasis, status: r.status, notes: r.notes ?? "" })));
+    downloadCsv(csv, "houses.csv");
+  }
+
+  function handleExportResidents() {
+    if (!residents.length) { showToast("No residents to export.", "error"); return; }
+    const csv = convertRowsToCsv(residents.map((r) => ({ fullName: r.fullName, email: r.email ?? "", phone: r.phone ?? "", houseNumber: r.houseNumber ?? "", residentType: r.residentType, status: r.status })));
+    downloadCsv(csv, "residents.csv");
+  }
+
+  async function handleImportHouses(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !token) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const { headers, rows } = parseCsvText(text);
+      const idx = (col: string) => headers.findIndex((h) => h.toLowerCase() === col.toLowerCase());
+      let created = 0;
+      for (const row of rows) {
+        const houseNumber = row[idx("houseNumber")] ?? row[idx("house_number")] ?? "";
+        if (!houseNumber) continue;
+        await apiRequest("/estate/residences", { method: "POST", token, body: { houseNumber, block: row[idx("block")] || undefined, label: row[idx("label")] || undefined, ownerName: row[idx("ownerName")] || undefined, ownerPhone: row[idx("ownerPhone")] || undefined, billingBasis: row[idx("billingBasis")] || "UNIT_BASED", status: row[idx("status")] || "ACTIVE", notes: row[idx("notes")] || undefined } });
+        created++;
+      }
+      showToast(`Imported ${created} house(s).`, "success");
+      void loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Import failed.", "error");
+    } finally {
+      setImporting(false);
+      if (houseFileRef.current) houseFileRef.current.value = "";
+    }
+  }
+
+  async function handleImportResidents(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !token) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const { headers, rows } = parseCsvText(text);
+      const idx = (col: string) => headers.findIndex((h) => h.toLowerCase() === col.toLowerCase());
+      let created = 0;
+      for (const row of rows) {
+        const fullName = row[idx("fullName")] ?? row[idx("full_name")] ?? "";
+        const houseNumber = row[idx("houseNumber")] ?? row[idx("house_number")] ?? "";
+        if (!fullName) continue;
+        // Find residence by houseNumber
+        const residence = residences.find((r) => r.houseNumber === houseNumber);
+        await apiRequest("/estate/residents", { method: "POST", token, body: { fullName, email: row[idx("email")] || undefined, phone: row[idx("phone")] || undefined, residenceId: residence?.id || undefined, residentType: row[idx("residentType")] || "TENANT", status: row[idx("status")] || "ACTIVE" } });
+        created++;
+      }
+      showToast(`Imported ${created} resident(s).`, "success");
+      void loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Import failed.", "error");
+    } finally {
+      setImporting(false);
+      if (residentFileRef.current) residentFileRef.current.value = "";
     }
   }
 
@@ -183,6 +259,21 @@ export default function EstateHousesPage() {
         <div className="stat-card"><div className="stat-label">Active Houses</div><div className="stat-value">{activeHouses}</div></div>
         <div className="stat-card"><div className="stat-label">Total Occupants</div><div className="stat-value">{totalOccupants}</div></div>
         <div className="stat-card"><div className="stat-label">Residents</div><div className="stat-value">{residents.length}</div></div>
+      </div>
+
+      {/* CSV actions */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-body" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleExportHouses}>Export Houses CSV</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => houseFileRef.current?.click()} disabled={importing}>{importing ? "Importing…" : "Import Houses CSV"}</button>
+          <input ref={houseFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportHouses} />
+          <span style={{ borderLeft: "1px solid var(--border)", paddingLeft: 12 }}>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleExportResidents}>Export Residents CSV</button>
+          </span>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => residentFileRef.current?.click()} disabled={importing}>{importing ? "Importing…" : "Import Residents CSV"}</button>
+          <input ref={residentFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportResidents} />
+          <span className="td-muted" style={{ fontSize: 12 }}>Houses CSV: houseNumber, block, label, ownerName, ownerPhone, billingBasis, status · Residents CSV: fullName, email, phone, houseNumber, residentType, status</span>
+        </div>
       </div>
 
       {/* House form */}

@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import EstatePortalShell from "../../components/auth/EstatePortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
@@ -7,8 +7,16 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
-import { formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
+import { convertRowsToCsv, parseCsvText, formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
 import type { TableColumn } from "../../types/app";
+
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 type CauseRow = EstateDashboardData["causes"][number];
 type ContributionRow = EstateDashboardData["contributions"][number];
@@ -20,6 +28,7 @@ export default function EstateContributionsPage() {
   const { showToast, dataRefreshVersion } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const token = landlordSession?.token;
+  const contribFileRef = useRef<HTMLInputElement>(null);
 
   const [causes, setCauses] = useState<CauseRow[]>([]);
   const [contributions, setContributions] = useState<ContributionRow[]>([]);
@@ -28,6 +37,7 @@ export default function EstateContributionsPage() {
   const [contribForm, setContribForm] = useState(initialContribForm);
   const [savingCause, setSavingCause] = useState(false);
   const [savingContrib, setSavingContrib] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   async function loadData() {
     if (!token) return;
@@ -89,6 +99,46 @@ export default function EstateContributionsPage() {
     }
   }
 
+  function handleExportContributions() {
+    if (!contributions.length) { showToast("No contributions to export.", "error"); return; }
+    const csv = convertRowsToCsv(contributions.map((c) => {
+      const cause = causes.find((ca) => ca.id === c.causeId);
+      return { causeTitle: cause?.title ?? c.causeId, contributorName: c.contributorName, amount: c.amount, status: c.status, paidAt: c.paidAt ?? "", note: c.note ?? "" };
+    }));
+    downloadCsv(csv, "contributions.csv");
+  }
+
+  async function handleImportContributions(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !token) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const { headers, rows } = parseCsvText(text);
+      const idx = (col: string) => headers.findIndex((h) => h.toLowerCase() === col.toLowerCase());
+      let created = 0;
+      for (const row of rows) {
+        const contributorName = row[idx("contributorName")] ?? row[idx("contributor_name")] ?? "";
+        const amount = Number(row[idx("amount")] ?? 0);
+        if (!contributorName || !amount) continue;
+        // Match cause by title if provided
+        const causeTitle = row[idx("causeTitle")] ?? row[idx("cause_title")] ?? "";
+        const matchedCause = causes.find((c) => c.title.toLowerCase() === causeTitle.toLowerCase());
+        const causeId = row[idx("causeId")] ?? row[idx("cause_id")] ?? matchedCause?.id ?? "";
+        if (!causeId) continue;
+        await apiRequest("/estate/contributions", { method: "POST", token, body: { causeId, contributorName, amount, status: row[idx("status")] || "PENDING", paidAt: row[idx("paidAt")] || undefined, note: row[idx("note")] || undefined } });
+        created++;
+      }
+      showToast(`Imported ${created} contribution(s).`, "success");
+      void loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Import failed.", "error");
+    } finally {
+      setImporting(false);
+      if (contribFileRef.current) contribFileRef.current.value = "";
+    }
+  }
+
   async function handleDeleteCause(id: string, title: string) {
     if (!token || !confirm(`Delete cause "${title}"?`)) return;
     try {
@@ -141,6 +191,16 @@ export default function EstateContributionsPage() {
         <div className="stat-card"><div className="stat-label">Active Causes</div><div className="stat-value">{causes.filter((c) => c.status === "ACTIVE").length}</div></div>
         <div className="stat-card"><div className="stat-label">Total Raised</div><div className="stat-value">{formatEstateCurrency(totalRaised)}</div></div>
         <div className="stat-card"><div className="stat-label">Contributors</div><div className="stat-value">{contributions.length}</div></div>
+      </div>
+
+      {/* CSV actions */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleExportContributions}>Export Contributions CSV</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => contribFileRef.current?.click()} disabled={importing}>{importing ? "Importing…" : "Import Contributions CSV"}</button>
+          <input ref={contribFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportContributions} />
+          <span className="td-muted" style={{ fontSize: 12 }}>CSV columns: causeTitle (or causeId), contributorName, amount, status, paidAt, note</span>
+        </div>
       </div>
 
       {/* Cause form */}
