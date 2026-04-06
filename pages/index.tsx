@@ -468,6 +468,15 @@ export const getServerSideProps: GetServerSideProps<LandingPageProps> = async (
   const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
 
   if (workspaceContext?.workspace?.workspaceSlug) {
+    // Estate workspaces serve a public landing page at the root URL
+    if (workspaceContext.workspace.workspaceMode === "ESTATE_ADMIN") {
+      return {
+        redirect: {
+          destination: "/estate-public",
+          permanent: false,
+        },
+      };
+    }
     return {
       redirect: {
         destination: "/portal",

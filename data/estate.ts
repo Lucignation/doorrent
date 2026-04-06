@@ -9,21 +9,21 @@ const estateNavSections: NavSection[] = [
     section: "Estate",
     items: [
       { label: "Overview", href: "/estate", icon: "grid" },
-      { label: "Houses & Residents", href: "/estate?module=dues", icon: "home" },
-      { label: "Estate Dues", href: "/estate?module=dues", icon: "card" },
-      { label: "Treasury", href: "/estate?module=treasury", icon: "receipt" },
-      { label: "Contributions", href: "/estate?module=contributions", icon: "chart" },
-      { label: "Workers", href: "/estate?module=workforce", icon: "users" },
-      { label: "Pass Centre", href: "/estate?module=passes", icon: "doc" },
-      { label: "Governance", href: "/estate?module=governance", icon: "log" },
-      { label: "Landing Page", href: "/estate?module=landing", icon: "settings" },
+      { label: "Houses & Residents", href: "/estate/houses", icon: "home" },
+      { label: "Estate Dues", href: "/estate/dues", icon: "card" },
+      { label: "Treasury", href: "/estate/treasury", icon: "receipt" },
+      { label: "Contributions", href: "/estate/contributions", icon: "chart" },
+      { label: "Workers", href: "/estate/workforce", icon: "users" },
+      { label: "Pass Centre", href: "/estate/passes", icon: "doc" },
+      { label: "Governance", href: "/estate/governance", icon: "log" },
+      { label: "Landing Page", href: "/estate/landing", icon: "settings" },
     ],
   },
   {
     section: "Account",
     items: [
-      { label: "Audit Log", href: "/landlord/audit", icon: "log" },
-      { label: "Settings", href: "/landlord/settings", icon: "settings" },
+      { label: "Audit Log", href: "/estate/audit", icon: "log" },
+      { label: "Settings", href: "/estate/settings", icon: "settings" },
     ],
   },
 ];
@@ -37,7 +37,7 @@ export function buildEstateNav(
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
-        if (item.href === "/landlord/audit") {
+        if (item.href === "/estate/audit") {
           return (
             resolved.canManageTeamMembers === true ||
             (
@@ -47,7 +47,7 @@ export function buildEstateNav(
           );
         }
 
-        if (item.href === "/landlord/settings") {
+        if (item.href === "/estate/settings") {
           return (
             resolved.canManageAccountUpdates ||
             resolved.canManageTeamMembers ||
