@@ -116,9 +116,8 @@ export default function EstateLandingPage() {
 
     try {
       const record = await publishLandingDraft({
+        token,
         workspaceSlug,
-        workspaceType: "estate",
-        profile: settings.profile,
         draft,
       });
 
