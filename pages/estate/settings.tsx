@@ -71,6 +71,12 @@ export default function EstateSettingsPage() {
   const [newEmail, setNewEmail] = useState("");
   const [savingEmail, setSavingEmail] = useState(false);
 
+  // Password change
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
   // Team invite
   const [teamInviteName, setTeamInviteName] = useState("");
   const [teamInviteEmail, setTeamInviteEmail] = useState("");
@@ -151,6 +157,35 @@ export default function EstateSettingsPage() {
     }
   }
 
+  async function handleChangePassword(event: FormEvent) {
+    event.preventDefault();
+    if (!token) return;
+    if (newPassword !== confirmPassword) {
+      showToast("New passwords do not match.", "error");
+      return;
+    }
+    if (newPassword.length < 8) {
+      showToast("New password must be at least 8 characters.", "error");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await apiRequest("/landlord/settings/password", {
+        method: "PATCH",
+        token,
+        body: { currentPassword, newPassword },
+      });
+      showToast("Password updated successfully.", "success");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Failed to update password.", "error");
+    } finally {
+      setSavingPassword(false);
+    }
+  }
+
   async function handleInviteTeamMember(event: FormEvent) {
     event.preventDefault();
     if (!token) return;
@@ -207,6 +242,57 @@ export default function EstateSettingsPage() {
               <span className="settings-label">Workspace</span>
               <span className="settings-value">{settings?.profile.workspaceSlug ?? "—"}</span>
             </div>
+          </section>
+
+          {/* Change password */}
+          <section className="settings-card">
+            <h2 className="settings-card-title">Change Password</h2>
+            <p className="settings-card-copy">Update the password for this estate admin account.</p>
+            <form onSubmit={handleChangePassword} style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Current password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">New password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Confirm new password</label>
+                <input
+                  className="form-input"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                />
+              </div>
+              <div>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={savingPassword || !currentPassword || !newPassword || !confirmPassword}
+                >
+                  {savingPassword ? "Updating…" : "Update Password"}
+                </button>
+              </div>
+            </form>
           </section>
 
           {/* Update email */}
