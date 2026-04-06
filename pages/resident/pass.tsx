@@ -130,7 +130,7 @@ export default function ResidentPassPage() {
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: 3, background: "var(--bg)", padding: "6px 14px", borderRadius: 8 }}>{p.passCode}</code>
-                <StatusBadge tone={p.status === "ACTIVE" ? "green" : p.status === "USED" ? "gray" : "amber"} label={p.status} />
+                <StatusBadge tone={p.status === "ACTIVE" ? "green" : p.status === "USED" ? "gray" : "amber"}>{p.status}</StatusBadge>
               </div>
             </div>
           ))

@@ -146,7 +146,7 @@ export default function EstateHousesPage() {
     {
       key: "status",
       label: "Status",
-      render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : "gray"} label={r.status} />,
+      render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : "gray"}>{r.status}</StatusBadge>,
     },
     {
       key: "actions",
@@ -164,10 +164,10 @@ export default function EstateHousesPage() {
   const residentColumns = useMemo<TableColumn<ResidentRow>[]>(() => [
     { key: "fullName", label: "Resident", render: (r) => <strong>{r.fullName}</strong> },
     { key: "houseNumber", label: "House", render: (r) => <span>{r.houseNumber ?? "—"}</span> },
-    { key: "residentType", label: "Type", render: (r) => <StatusBadge tone="blue" label={r.residentType} /> },
+    { key: "residentType", label: "Type", render: (r) => <StatusBadge tone="blue">{r.residentType}</StatusBadge> },
     { key: "phone", label: "Phone", render: (r) => <span className="td-muted">{r.phone ?? "—"}</span> },
     { key: "email", label: "Email", render: (r) => <span className="td-muted">{r.email ?? "—"}</span> },
-    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : "gray"} label={r.status} /> },
+    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : "gray"}>{r.status}</StatusBadge> },
   ], []);
 
   const activeHouses = residences.filter((r) => r.status === "ACTIVE").length;

@@ -110,7 +110,7 @@ export default function EstateContributionsPage() {
       </div>
     )},
     { key: "deadline", label: "Deadline", render: (r) => <span className="td-muted">{r.deadline ? new Date(r.deadline).toLocaleDateString("en-NG") : "—"}</span> },
-    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : r.status === "COMPLETED" ? "blue" : "gray"} label={r.status} /> },
+    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : r.status === "COMPLETED" ? "blue" : "gray"}>{r.status}</StatusBadge> },
     {
       key: "actions", label: "",
       render: (r) => (
@@ -127,7 +127,7 @@ export default function EstateContributionsPage() {
     { key: "causeId", label: "Cause", render: (r) => { const cause = causes.find((c) => c.id === r.causeId); return <span className="td-muted">{cause?.title ?? r.causeId}</span>; } },
     { key: "amount", label: "Amount", render: (r) => <strong>{formatEstateCurrency(r.amount)}</strong> },
     { key: "paidAt", label: "Paid at", render: (r) => <span className="td-muted">{r.paidAt ? new Date(r.paidAt).toLocaleDateString("en-NG") : "—"}</span> },
-    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "PAID" ? "green" : "amber"} label={r.status} /> },
+    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "PAID" ? "green" : "amber"}>{r.status}</StatusBadge> },
   ], [causes]);
 
   const totalRaised = contributions.reduce((s, c) => s + c.amount, 0);
