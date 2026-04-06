@@ -117,12 +117,38 @@ export interface CaretakerPortalSession {
   caretaker: CaretakerPortalIdentity;
 }
 
+export interface ResidentPortalIdentity {
+  id: string;
+  role: "resident";
+  fullName: string;
+  email: string;
+  phone?: string | null;
+  residentType: string;
+  status: string;
+  houseNumber: string;
+  block?: string | null;
+  residenceId: string;
+  accessCode: string;
+  exitCode: string;
+  profileQrToken: string;
+  workspaceSlug?: string | null;
+  estateName?: string | null;
+  branding?: WorkspaceBranding;
+}
+
+export interface ResidentPortalSession {
+  token: string;
+  expiresAt: string;
+  resident: ResidentPortalIdentity;
+}
+
 interface TenantSessionValue {
   isHydrated: boolean;
   tenantSession: TenantPortalSession | null;
   landlordSession: LandlordPortalSession | null;
   adminSession: AdminPortalSession | null;
   caretakerSession: CaretakerPortalSession | null;
+  residentSession: ResidentPortalSession | null;
   saveTenantSession: (session: TenantPortalSession, options?: { persist?: boolean }) => void;
   saveLandlordSession: (
     session: LandlordPortalSession,
@@ -133,10 +159,12 @@ interface TenantSessionValue {
     session: CaretakerPortalSession,
     options?: { persist?: boolean },
   ) => void;
+  saveResidentSession: (session: ResidentPortalSession, options?: { persist?: boolean }) => void;
   clearTenantSession: () => void;
   clearLandlordSession: () => void;
   clearAdminSession: () => void;
   clearCaretakerSession: () => void;
+  clearResidentSession: () => void;
   clearAllSessions: () => void;
 }
 
@@ -144,6 +172,7 @@ const TENANT_SESSION_STORAGE_KEY = "doorrent.tenant.session";
 const LANDLORD_SESSION_STORAGE_KEY = "doorrent.landlord.session";
 const ADMIN_SESSION_STORAGE_KEY = "doorrent.admin.session";
 const CARETAKER_SESSION_STORAGE_KEY = "doorrent.caretaker.session";
+const RESIDENT_SESSION_STORAGE_KEY = "doorrent.resident.session";
 export const TENANT_LAST_EMAIL_STORAGE_KEY = "doorrent.tenant.last-email";
 
 const TenantSessionContext = createContext<TenantSessionValue | null>(null);
@@ -198,7 +227,7 @@ function persistSession<T>(key: string, session: T, persist: boolean) {
 
 function loadStoredSession<T extends { token: string; expiresAt: string }>(
   key: string,
-  identityKey: "tenant" | "landlord" | "superAdmin" | "caretaker",
+  identityKey: "tenant" | "landlord" | "superAdmin" | "caretaker" | "resident",
 ): LoadedSessionResult<T> | null {
   if (typeof window === "undefined") {
     return null;
@@ -254,10 +283,12 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
   const [adminSession, setAdminSession] = useState<AdminPortalSession | null>(null);
   const [caretakerSession, setCaretakerSession] =
     useState<CaretakerPortalSession | null>(null);
+  const [residentSession, setResidentSession] = useState<ResidentPortalSession | null>(null);
   const [tenantSessionPersistent, setTenantSessionPersistent] = useState(true);
   const [landlordSessionPersistent, setLandlordSessionPersistent] = useState(true);
   const [adminSessionPersistent, setAdminSessionPersistent] = useState(true);
   const [caretakerSessionPersistent, setCaretakerSessionPersistent] = useState(true);
+  const [residentSessionPersistent, setResidentSessionPersistent] = useState(true);
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -274,6 +305,10 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
       CARETAKER_SESSION_STORAGE_KEY,
       "caretaker",
     );
+    const storedResident = loadStoredSession<ResidentPortalSession>(
+      RESIDENT_SESSION_STORAGE_KEY,
+      "resident",
+    );
 
     setTenantSession(storedTenant?.session ?? null);
     setTenantSessionPersistent(storedTenant?.persist ?? true);
@@ -283,6 +318,8 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
     setAdminSessionPersistent(storedAdmin?.persist ?? true);
     setCaretakerSession(storedCaretaker?.session ?? null);
     setCaretakerSessionPersistent(storedCaretaker?.persist ?? true);
+    setResidentSession(storedResident?.session ?? null);
+    setResidentSessionPersistent(storedResident?.persist ?? true);
     setIsHydrated(true);
   }, []);
 
@@ -364,15 +401,34 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
     void clearOfflineMutationQueue();
   }, []);
 
+  const saveResidentSession = useCallback(
+    (session: ResidentPortalSession, options?: { persist?: boolean }) => {
+      const persist = options?.persist ?? residentSessionPersistent;
+      setResidentSession(session);
+      setResidentSessionPersistent(persist);
+      persistSession(RESIDENT_SESSION_STORAGE_KEY, session, persist);
+    },
+    [residentSessionPersistent],
+  );
+
+  const clearResidentSession = useCallback(() => {
+    setResidentSession(null);
+    setResidentSessionPersistent(true);
+    removeStoredKeyEverywhere(RESIDENT_SESSION_STORAGE_KEY);
+    void clearOfflineMutationQueue();
+  }, []);
+
   const clearAllSessions = useCallback(() => {
     clearTenantSession();
     clearLandlordSession();
     clearAdminSession();
     clearCaretakerSession();
+    clearResidentSession();
   }, [
     clearAdminSession,
     clearCaretakerSession,
     clearLandlordSession,
+    clearResidentSession,
     clearTenantSession,
   ]);
 
@@ -383,14 +439,17 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
       landlordSession,
       adminSession,
       caretakerSession,
+      residentSession,
       saveTenantSession,
       saveLandlordSession,
       saveAdminSession,
       saveCaretakerSession,
+      saveResidentSession,
       clearTenantSession,
       clearLandlordSession,
       clearAdminSession,
       clearCaretakerSession,
+      clearResidentSession,
       clearAllSessions,
     }),
     [
@@ -400,12 +459,15 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
       clearAllSessions,
       clearCaretakerSession,
       clearLandlordSession,
+      clearResidentSession,
       clearTenantSession,
       isHydrated,
       landlordSession,
+      residentSession,
       saveAdminSession,
       saveCaretakerSession,
       saveLandlordSession,
+      saveResidentSession,
       saveTenantSession,
       tenantSession,
     ],
@@ -453,6 +515,16 @@ export function useCaretakerPortalSession() {
 
   if (!context) {
     throw new Error("useCaretakerPortalSession must be used within TenantSessionProvider");
+  }
+
+  return context;
+}
+
+export function useResidentPortalSession() {
+  const context = useContext(TenantSessionContext);
+
+  if (!context) {
+    throw new Error("useResidentPortalSession must be used within TenantSessionProvider");
   }
 
   return context;
