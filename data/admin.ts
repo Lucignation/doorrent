@@ -25,6 +25,7 @@ export const adminNav: NavSection[] = [
     items: [
       { label: "Overview", href: "/admin", icon: "grid" },
       { label: "Landlords", href: "/admin/landlords", icon: "users" },
+      { label: "Estates", href: "/admin/estates", icon: "building" },
       { label: "Properties", href: "/admin/properties", icon: "home" },
       { label: "Transactions", href: "/admin/transactions", icon: "card" },
       { label: "Subscriptions", href: "/admin/subscriptions", icon: "star" },

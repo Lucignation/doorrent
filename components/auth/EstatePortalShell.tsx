@@ -1,17 +1,19 @@
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import { buildLandlordNav } from "../../data/landlord";
-import { canAccessLandlordPath } from "../../lib/landlord-access";
+import { buildEstateNav } from "../../data/estate";
 import {
   useLandlordPortalSession,
 } from "../../context/TenantSessionContext";
 import type { WorkspaceBranding } from "../../lib/branding";
 import AppShell from "../layout/AppShell";
 import { resolveLandlordCapabilities } from "../../lib/landlord-access";
-import { getSafeWorkspaceHostFromWindow, isWorkspaceSubdomainHost } from "../../lib/frontend-security";
+import {
+  getSafeWorkspaceHostFromWindow,
+  isWorkspaceSubdomainHost,
+} from "../../lib/frontend-security";
 import { fetchWorkspaceContextByHost } from "../../lib/workspace-context";
 
-interface LandlordPortalShellProps {
+interface EstatePortalShellProps {
   topbarTitle: string;
   breadcrumb: string;
   children: React.ReactNode;
@@ -26,11 +28,11 @@ function initialsFromName(name: string) {
     .toUpperCase();
 }
 
-export default function LandlordPortalShell({
+export default function EstatePortalShell({
   topbarTitle,
   breadcrumb,
   children,
-}: LandlordPortalShellProps) {
+}: EstatePortalShellProps) {
   const router = useRouter();
   const { isHydrated, landlordSession } = useLandlordPortalSession();
   const [resolvedBranding, setResolvedBranding] = useState<WorkspaceBranding | null>(
@@ -40,6 +42,16 @@ export default function LandlordPortalShell({
   useEffect(() => {
     if (isHydrated && !landlordSession) {
       void router.replace("/portal");
+    }
+  }, [isHydrated, landlordSession, router]);
+
+  useEffect(() => {
+    if (
+      isHydrated &&
+      landlordSession &&
+      landlordSession.landlord.workspaceMode !== "ESTATE_ADMIN"
+    ) {
+      void router.replace("/landlord");
     }
   }, [isHydrated, landlordSession, router]);
 
@@ -78,37 +90,21 @@ export default function LandlordPortalShell({
   if (!isHydrated) {
     return (
       <div className="empty-state" style={{ minHeight: "100vh" }}>
-        <h3>Loading your workspace.</h3>
+        <h3>Loading your estate workspace.</h3>
         <p>Checking your DoorRent session.</p>
       </div>
     );
   }
 
-  if (!landlordSession) {
+  if (!landlordSession || landlordSession.landlord.workspaceMode !== "ESTATE_ADMIN") {
     return null;
   }
 
-  const isEstateWorkspace = landlordSession.landlord.workspaceMode === "ESTATE_ADMIN";
-  const isSharedEstateUtilityPath =
-    router.pathname.startsWith("/landlord/settings") ||
-    router.pathname.startsWith("/landlord/audit") ||
-    router.pathname.startsWith("/landlord/integrations");
-
-  if (isEstateWorkspace && !isSharedEstateUtilityPath) {
-    void router.replace("/estate");
-    return null;
-  }
-
-  const landlordCapabilities = resolveLandlordCapabilities({
+  const capabilities = resolveLandlordCapabilities({
     capabilities: landlordSession.landlord.capabilities,
     subscriptionModel: landlordSession.landlord.subscriptionModel,
     plan: landlordSession.landlord.planKey ?? landlordSession.landlord.plan,
   });
-
-  if (!canAccessLandlordPath(router.pathname, landlordCapabilities)) {
-    void router.replace("/landlord");
-    return null;
-  }
 
   return (
     <AppShell
@@ -116,17 +112,13 @@ export default function LandlordPortalShell({
         name: landlordSession.landlord.fullName,
         role:
           landlordSession.landlord.role === "team_member"
-            ? (landlordSession.landlord.teamRole ?? "Workspace staff")
-            : landlordSession.landlord.workspaceMode === "ESTATE_ADMIN"
-              ? "Estate admin"
-            : landlordSession.landlord.workspaceMode === "PROPERTY_MANAGER_COMPANY"
-              ? "Workspace admin"
-              : "Workspace owner",
+            ? (landlordSession.landlord.teamRole ?? "Estate staff")
+            : "Estate admin",
         initials: initialsFromName(landlordSession.landlord.fullName),
       }}
       topbarTitle={topbarTitle}
       breadcrumb={breadcrumb}
-      navSections={buildLandlordNav(landlordCapabilities)}
+      navSections={buildEstateNav(capabilities)}
       branding={resolvedBranding ?? landlordSession.landlord.branding}
     >
       {children}

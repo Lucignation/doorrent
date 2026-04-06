@@ -28,7 +28,7 @@ export type PublicWorkspaceContext = {
   workspace: null | {
     id: string;
     companyName: string;
-    workspaceMode: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY";
+    workspaceMode: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY" | "ESTATE_ADMIN";
     workspaceSlug: string | null;
     publicSupportEmail?: string | null;
     publicSupportPhone?: string | null;

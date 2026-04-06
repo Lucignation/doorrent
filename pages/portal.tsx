@@ -16,7 +16,10 @@ import {
   resolveBrandLogoUrl,
   type WorkspaceBranding,
 } from "../lib/branding";
-import { fetchWorkspaceContextByHost } from "../lib/workspace-context";
+import {
+  fetchWorkspaceContextByHost,
+  type PublicWorkspaceContext,
+} from "../lib/workspace-context";
 import {
   TENANT_LAST_EMAIL_STORAGE_KEY,
   type AdminPortalIdentity,
@@ -57,6 +60,16 @@ type LandlordAuthResult = {
   };
 };
 
+type LandlordPasswordChangeRequiredResult = {
+  flow: "password_change_required";
+  landlord: LandlordPortalIdentity;
+  passwordChange: {
+    email: string;
+    workspaceIdentifier?: string | null;
+    expiresAt?: string | null;
+  };
+};
+
 type LandlordOnboardingResult = {
   flow: "onboarding_required";
   landlord: LandlordPortalIdentity;
@@ -83,6 +96,16 @@ type LandlordOnboardingResult = {
 };
 
 type LandlordRegisterResult = LandlordAuthResult | LandlordOnboardingResult;
+type LandlordLoginResult =
+  | LandlordAuthResult
+  | LandlordPasswordChangeRequiredResult;
+
+type LandlordPasswordChallengeState = {
+  email: string;
+  workspaceIdentifier?: string | null;
+  expiresAt?: string | null;
+  landlord: LandlordPortalIdentity;
+};
 
 type LandlordOnboardingState = {
   landlordId: string;
@@ -189,6 +212,7 @@ function persistLandlordOnboarding(value: LandlordOnboardingState | null) {
 type PortalExperienceProps = {
   forcedRole: RoleKey;
   workspaceBranding?: WorkspaceBranding | null;
+  initialWorkspace?: PublicWorkspaceContext["workspace"] | null;
   isWorkspaceHost?: boolean;
   marketingOverview?: {
     authStats?: Array<{ label: string; value: string }>;
@@ -236,9 +260,24 @@ function getWorkspaceLoginPath(role: RoleKey) {
   return role === "admin" ? "/admin/login" : "/portal";
 }
 
+function getWorkspaceModeLabel(
+  mode?: NonNullable<PublicWorkspaceContext["workspace"]>["workspaceMode"] | null,
+) {
+  if (mode === "ESTATE_ADMIN") {
+    return "Estate workspace";
+  }
+
+  if (mode === "PROPERTY_MANAGER_COMPANY") {
+    return "Company workspace";
+  }
+
+  return "Landlord workspace";
+}
+
 export function PortalExperience({
   forcedRole,
   workspaceBranding = null,
+  initialWorkspace = null,
   isWorkspaceHost = false,
   marketingOverview = null,
 }: PortalExperienceProps) {
@@ -258,7 +297,7 @@ export function PortalExperience({
   const [role, setRole] = useState<RoleKey>(forcedRole);
   const [landlordMode, setLandlordMode] = useState<"login" | "register">("login");
   const [workspaceAuthView, setWorkspaceAuthView] = useState<
-    "auth" | "forgot" | "reset" | "activate_team_member"
+    "auth" | "forgot" | "reset" | "activate_team_member" | "change_temporary_password"
   >("auth");
   const [tenantAppWorkspaceLink, setTenantAppWorkspaceLink] = useState<string | null>(null);
   const [authBusy, setAuthBusy] = useState(false);
@@ -274,6 +313,13 @@ export function PortalExperience({
   const [landlordPlanSelection, setLandlordPlanSelection] =
     useState<LandlordPlanChoice>("STARTER");
   const [landlordPromoCode, setLandlordPromoCode] = useState("");
+  const [workspaceIdentifier, setWorkspaceIdentifier] = useState(
+    initialWorkspace?.workspaceSlug ?? initialWorkspace?.companyName ?? "",
+  );
+  const [resolvedWorkspace, setResolvedWorkspace] =
+    useState<PublicWorkspaceContext["workspace"] | null>(initialWorkspace);
+  const [resolvingWorkspace, setResolvingWorkspace] = useState(false);
+  const [workspaceResolveError, setWorkspaceResolveError] = useState("");
   const [tenantEmail, setTenantEmail] = useState("");
   const [tenantCode, setTenantCode] = useState("");
   const [tenantRememberMe, setTenantRememberMe] = useState(false);
@@ -329,6 +375,12 @@ export function PortalExperience({
   const [teamMemberPasswordConfirm, setTeamMemberPasswordConfirm] = useState("");
   const [teamMemberActivationBusy, setTeamMemberActivationBusy] = useState(false);
   const [teamMemberActivationFeedback, setTeamMemberActivationFeedback] = useState("");
+  const [passwordChallenge, setPasswordChallenge] =
+    useState<LandlordPasswordChallengeState | null>(null);
+  const [temporaryPasswordNext, setTemporaryPasswordNext] = useState("");
+  const [temporaryPasswordConfirm, setTemporaryPasswordConfirm] = useState("");
+  const [temporaryPasswordBusy, setTemporaryPasswordBusy] = useState(false);
+  const [temporaryPasswordFeedback, setTemporaryPasswordFeedback] = useState("");
   const [landlordOnboarding, setLandlordOnboarding] =
     useState<LandlordOnboardingState | null>(null);
   const [landlordOnboardingOtp, setLandlordOnboardingOtp] = useState("");
@@ -407,6 +459,14 @@ export function PortalExperience({
     router.query.role,
     router.query.token,
   ]);
+
+  useEffect(() => {
+    setResolvedWorkspace(initialWorkspace);
+    setWorkspaceIdentifier(
+      initialWorkspace?.workspaceSlug ?? initialWorkspace?.companyName ?? "",
+    );
+    setWorkspaceResolveError("");
+  }, [initialWorkspace]);
 
   useEffect(() => {
     if (role === "admin") {
@@ -589,6 +649,11 @@ export function PortalExperience({
 
     try {
       if (role === "landlord") {
+        if (landlordMode !== "register" && !isWorkspaceHost && !resolvedWorkspace) {
+          setAuthFeedback("Select your estate, company, or landlord workspace first.");
+          return;
+        }
+
         if (landlordMode === "register") {
           const { data } = await apiRequest<LandlordRegisterResult>("/auth/register", {
             method: "POST",
@@ -644,22 +709,45 @@ export function PortalExperience({
           return;
         }
 
-        const { data } = await apiRequest<LandlordAuthResult>("/auth/login", {
+        const { data } = await apiRequest<LandlordLoginResult>("/auth/login", {
           method: "POST",
           body: {
             email: authEmail,
             password: authPassword,
+            workspaceIdentifier: resolvedWorkspace?.workspaceSlug ?? undefined,
           },
         });
 
-        saveLandlordSession({
-          token: data.session.token,
-          expiresAt: data.session.expiresAt,
-          landlord: data.landlord,
-        }, { persist: workspaceRememberMe });
-        clearLandlordOnboardingState();
-        showToast("Workspace login successful", "success");
-        await router.replace(data.dashboardPath);
+        if ("flow" in data && data.flow === "password_change_required") {
+          setPasswordChallenge({
+            email: data.passwordChange.email,
+            workspaceIdentifier: data.passwordChange.workspaceIdentifier,
+            expiresAt: data.passwordChange.expiresAt,
+            landlord: data.landlord,
+          });
+          setTemporaryPasswordNext("");
+          setTemporaryPasswordConfirm("");
+          setTemporaryPasswordFeedback(
+            data.passwordChange.expiresAt
+              ? `Change this temporary password before ${new Date(
+                  data.passwordChange.expiresAt,
+                ).toLocaleString("en-NG")}.`
+              : "Change this temporary password before continuing.",
+          );
+          setWorkspaceAuthView("change_temporary_password");
+          return;
+        }
+
+        if (!("flow" in data)) {
+          saveLandlordSession({
+            token: data.session.token,
+            expiresAt: data.session.expiresAt,
+            landlord: data.landlord,
+          }, { persist: workspaceRememberMe });
+          clearLandlordOnboardingState();
+          showToast("Workspace login successful", "success");
+          await router.replace(data.dashboardPath);
+        }
         return;
       }
 
@@ -686,6 +774,43 @@ export function PortalExperience({
       );
     } finally {
       setAuthBusy(false);
+    }
+  }
+
+  async function handleResolveWorkspace() {
+    const trimmed = workspaceIdentifier.trim();
+
+    if (!trimmed) {
+      setWorkspaceResolveError("Enter your estate, company, or landlord workspace.");
+      return;
+    }
+
+    setResolvingWorkspace(true);
+    setWorkspaceResolveError("");
+
+    try {
+      const { data } = await apiRequest<{ workspace: PublicWorkspaceContext["workspace"] }>(
+        `/auth/workspace?identifier=${encodeURIComponent(trimmed)}`,
+        {},
+      );
+
+      if (!data.workspace) {
+        setResolvedWorkspace(null);
+        setWorkspaceResolveError("We could not find that workspace.");
+        return;
+      }
+
+      setResolvedWorkspace(data.workspace);
+      setWorkspaceIdentifier(data.workspace.workspaceSlug ?? data.workspace.companyName);
+    } catch (error) {
+      setResolvedWorkspace(null);
+      setWorkspaceResolveError(
+        error instanceof Error
+          ? error.message
+          : "We could not resolve that workspace.",
+      );
+    } finally {
+      setResolvingWorkspace(false);
     }
   }
 
@@ -720,6 +845,58 @@ export function PortalExperience({
       );
     } finally {
       setForgotPasswordBusy(false);
+    }
+  }
+
+  async function handleTemporaryPasswordChange(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!passwordChallenge) {
+      return;
+    }
+
+    setTemporaryPasswordBusy(true);
+    setTemporaryPasswordFeedback("");
+
+    try {
+      const { data } = await apiRequest<LandlordAuthResult>(
+        "/auth/change-temporary-password",
+        {
+          method: "POST",
+          body: {
+            email: passwordChallenge.email,
+            currentPassword: authPassword,
+            password: temporaryPasswordNext,
+            confirmPassword: temporaryPasswordConfirm,
+            workspaceIdentifier:
+              passwordChallenge.workspaceIdentifier ??
+              resolvedWorkspace?.workspaceSlug ??
+              undefined,
+          },
+        },
+      );
+
+      setPasswordChallenge(null);
+      setTemporaryPasswordNext("");
+      setTemporaryPasswordConfirm("");
+      saveLandlordSession(
+        {
+          token: data.session.token,
+          expiresAt: data.session.expiresAt,
+          landlord: data.landlord,
+        },
+        { persist: workspaceRememberMe },
+      );
+      showToast("Password updated", "success");
+      await router.replace(data.dashboardPath);
+    } catch (error) {
+      setTemporaryPasswordFeedback(
+        error instanceof Error
+          ? error.message
+          : "We could not update the temporary password.",
+      );
+    } finally {
+      setTemporaryPasswordBusy(false);
     }
   }
 
@@ -947,13 +1124,18 @@ export function PortalExperience({
       );
     }
 
+    const currentWorkspaceHref =
+      role === "landlord" && landlordSession?.landlord.workspaceMode === "ESTATE_ADMIN"
+        ? "/estate"
+        : roles[role].href;
+
     if (currentSession && currentName && workspaceAuthView === "auth") {
       return (
         <div className="tenant-auth-panel">
           <div className="tenant-auth-panel-title">Signed in on this device</div>
           <div className="tenant-auth-panel-copy">Continue as {currentName}.</div>
           <div className="tenant-auth-actions">
-            <Link href={roles[role].href} className="btn btn-primary">
+            <Link href={currentWorkspaceHref} className="btn btn-primary">
               Continue to workspace
             </Link>
             <button
@@ -1118,6 +1300,100 @@ export function PortalExperience({
       );
     }
 
+    if (role === "landlord" && workspaceAuthView === "change_temporary_password") {
+      return (
+        <>
+          <form onSubmit={handleTemporaryPasswordChange}>
+            <div className="tenant-auth-panel">
+              <div className="tenant-auth-panel-title">Change temporary password</div>
+              <div className="tenant-auth-panel-copy">
+                {passwordChallenge?.landlord.companyName ??
+                  "This workspace"}{" "}
+                needs a new password before the estate admin can continue.
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Temporary password</label>
+              <div className="password-input-wrap">
+                <input
+                  className="form-input"
+                  type={showPassword ? "text" : "password"}
+                  value={authPassword}
+                  onChange={(event) => setAuthPassword(event.target.value)}
+                  placeholder="Enter the temporary password"
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowPassword((current) => !current)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">New password</label>
+              <input
+                className="form-input"
+                type={showPassword ? "text" : "password"}
+                value={temporaryPasswordNext}
+                onChange={(event) => setTemporaryPasswordNext(event.target.value)}
+                placeholder="Create a new password"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Confirm new password</label>
+              <input
+                className="form-input"
+                type={showPassword ? "text" : "password"}
+                value={temporaryPasswordConfirm}
+                onChange={(event) => setTemporaryPasswordConfirm(event.target.value)}
+                placeholder="Repeat the new password"
+                required
+              />
+            </div>
+
+            <div className="tenant-auth-actions">
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={
+                  temporaryPasswordBusy ||
+                  !authPassword ||
+                  !temporaryPasswordNext ||
+                  !temporaryPasswordConfirm
+                }
+              >
+                {temporaryPasswordBusy ? "Updating..." : "Update password"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setPasswordChallenge(null);
+                  setTemporaryPasswordFeedback("");
+                  setWorkspaceAuthView("auth");
+                }}
+              >
+                Back to sign in
+              </button>
+            </div>
+          </form>
+
+          {temporaryPasswordFeedback ? (
+            <div className="tenant-auth-feedback">{temporaryPasswordFeedback}</div>
+          ) : null}
+        </>
+      );
+    }
+
     if (workspaceAuthView === "reset") {
       return (
         <>
@@ -1188,6 +1464,70 @@ export function PortalExperience({
       <>
 
         <form onSubmit={handleWorkspaceAuth}>
+          {role === "landlord" &&
+          landlordMode !== "register" &&
+          !isWorkspaceHost ? (
+            <div className="form-group">
+              <label className="form-label">Estate, company, or landlord workspace</label>
+              {resolvedWorkspace ? (
+                <div className="tenant-auth-panel" style={{ marginBottom: 0 }}>
+                  <div className="tenant-auth-panel-title">
+                    {resolvedWorkspace.companyName}
+                  </div>
+                  <div className="tenant-auth-panel-copy">
+                    {getWorkspaceModeLabel(resolvedWorkspace.workspaceMode)}
+                    {resolvedWorkspace.workspaceSlug
+                      ? ` · ${resolvedWorkspace.workspaceSlug}.usedoorrent.com`
+                      : ""}
+                  </div>
+                  <div className="tenant-auth-actions">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => {
+                        setResolvedWorkspace(null);
+                        setWorkspaceResolveError("");
+                      }}
+                    >
+                      Change workspace
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="password-input-wrap">
+                    <input
+                      className="form-input"
+                      type="text"
+                      placeholder="e.g. lekki or green-homes"
+                      value={workspaceIdentifier}
+                      onChange={(event) => {
+                        setWorkspaceIdentifier(event.target.value);
+                        if (workspaceResolveError) {
+                          setWorkspaceResolveError("");
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="password-toggle"
+                      onClick={() => void handleResolveWorkspace()}
+                      disabled={resolvingWorkspace}
+                    >
+                      {resolvingWorkspace ? "Checking..." : "Use"}
+                    </button>
+                  </div>
+                  <div className="auth-link" style={{ marginTop: 10 }}>
+                    Enter the estate name, company name, or workspace slug.
+                  </div>
+                </>
+              )}
+              {workspaceResolveError ? (
+                <div className="tenant-auth-feedback">{workspaceResolveError}</div>
+              ) : null}
+            </div>
+          ) : null}
+
           {role === "landlord" && landlordMode === "register" ? (
             <>
               <div className="form-group">
@@ -1701,7 +2041,7 @@ export function PortalExperience({
       ? tenantPreview?.branding ?? workspaceBranding ?? null
       : role === "admin"
         ? null
-        : workspaceBranding ?? null;
+        : resolvedWorkspace?.branding ?? workspaceBranding ?? null;
   const authBackgroundUrl = resolveBrandLoginBackgroundUrl(tenantBranding);
   const authHeroStyle = authBackgroundUrl
     ? {
@@ -1909,6 +2249,7 @@ export function PortalExperience({
 
 export const getWorkspaceAuthServerSideProps: GetServerSideProps<{
   workspaceBranding: WorkspaceBranding | null;
+  initialWorkspace: PublicWorkspaceContext["workspace"] | null;
   isWorkspaceHost: boolean;
   marketingOverview: PortalExperienceProps["marketingOverview"];
 }> = async (context: GetServerSidePropsContext) => {
@@ -1943,6 +2284,7 @@ export const getWorkspaceAuthServerSideProps: GetServerSideProps<{
   return {
     props: {
       workspaceBranding: workspaceContext?.workspace?.branding ?? null,
+      initialWorkspace: workspaceContext?.workspace ?? null,
       isWorkspaceHost: Boolean(workspaceContext?.workspace?.workspaceSlug),
       marketingOverview,
     },
@@ -1953,6 +2295,7 @@ export const getServerSideProps = getWorkspaceAuthServerSideProps;
 
 export default function PortalPage({
   workspaceBranding,
+  initialWorkspace,
   isWorkspaceHost,
   marketingOverview,
 }: InferGetServerSidePropsType<typeof getWorkspaceAuthServerSideProps>) {
@@ -1960,6 +2303,7 @@ export default function PortalPage({
     <PortalExperience
       forcedRole="landlord"
       workspaceBranding={workspaceBranding}
+      initialWorkspace={initialWorkspace}
       isWorkspaceHost={isWorkspaceHost}
       marketingOverview={marketingOverview}
     />

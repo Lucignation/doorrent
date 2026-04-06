@@ -76,6 +76,12 @@ const landlordNavSections: NavSection[] = [
     ],
   },
   {
+    section: "Tools",
+    items: [
+      { label: "Integrations", href: "/landlord/integrations", icon: "grid" },
+    ],
+  },
+  {
     section: "Account",
     items: [
       // { label: "Caretakers", href: "/landlord/caretakers", icon: "users" },
@@ -84,9 +90,10 @@ const landlordNavSections: NavSection[] = [
   },
 ];
 
-export function buildLandlordNav(capabilities?: Partial<LandlordCapabilities> | null) {
+export function buildLandlordNav(
+  capabilities?: Partial<LandlordCapabilities> | null,
+) {
   const resolved = resolveLandlordCapabilities({ capabilities });
-
   return landlordNavSections
     .map((section) => ({
       ...section,

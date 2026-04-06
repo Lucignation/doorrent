@@ -45,6 +45,9 @@ interface LandlordDetail {
   id: string;
   name: string;
   companyName: string;
+  workspaceMode: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY" | "ESTATE_ADMIN";
+  workspaceModeLabel: string;
+  workspaceSlug: string | null;
   email: string;
   phone: string | null;
   status: string;
@@ -333,8 +336,18 @@ export default function AdminLandlordDetailPage() {
             <div className="card-body">
               <div className="form-row">
                 <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Workspace Type</div>
+                  <div style={{ fontWeight: 500 }}>{detail.workspaceModeLabel}</div>
+                </div>
+                <div>
                   <div className="td-muted" style={{ fontSize: 12 }}>Phone</div>
                   <div style={{ fontWeight: 500 }}>{detail.phone ?? "—"}</div>
+                </div>
+              </div>
+              <div className="form-row" style={{ marginTop: 16 }}>
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Workspace Slug</div>
+                  <div style={{ fontWeight: 500 }}>{detail.workspaceSlug ?? "—"}</div>
                 </div>
                 <div>
                   <div className="td-muted" style={{ fontSize: 12 }}>Joined</div>

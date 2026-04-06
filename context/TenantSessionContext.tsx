@@ -59,7 +59,7 @@ export interface LandlordPortalIdentity {
   role: "landlord" | "team_member";
   teamRole?: string | null;
   companyName: string;
-  workspaceMode?: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY";
+  workspaceMode?: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY" | "ESTATE_ADMIN";
   workspaceSlug?: string | null;
   firstName: string;
   lastName: string;
@@ -72,6 +72,8 @@ export interface LandlordPortalIdentity {
   subscriptionInterval?: string | null;
   capabilities?: LandlordCapabilities;
   branding?: WorkspaceBranding;
+  forcePasswordChangeRequired?: boolean;
+  forcePasswordChangeExpiresAt?: string | null;
 }
 
 export interface LandlordPortalSession {
