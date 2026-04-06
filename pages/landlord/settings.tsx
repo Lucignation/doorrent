@@ -153,7 +153,10 @@ interface LandlordSettingsResponse {
   }>;
 }
 
-type WorkspaceMode = "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY";
+type WorkspaceMode =
+  | "SOLO_LANDLORD"
+  | "PROPERTY_MANAGER_COMPANY"
+  | "ESTATE_ADMIN";
 
 interface PayoutUpdateResponse {
   payout: LandlordSettingsResponse["payout"];
@@ -301,6 +304,25 @@ function betaBadgeTone(
 }
 
 function getWorkspaceModeCopy(mode?: WorkspaceMode) {
+  if (mode === "ESTATE_ADMIN") {
+    return {
+      profileTitle: "Estate Workspace",
+      nameLabel: "Estate Name",
+      namePlaceholder: "Official estate or association name",
+      displayLabel: "Estate Platform Name",
+      displayPlaceholder: "Defaults to estate name",
+      companyInfoLabel: "Estate name",
+      modeLabel: "Estate admin workspace",
+      teamTitle: "Estate Team",
+      teamDescription:
+        "Invite estate managers, finance officers, security leads, and operations staff into this workspace.",
+      emptyTeamTitle: "No estate staff yet",
+      emptyTeamText:
+        "Invited estate staff will appear here once you add them.",
+      inviteNameLabel: "Estate Staff Name",
+    };
+  }
+
   if (mode === "PROPERTY_MANAGER_COMPANY") {
     return {
       profileTitle: "Company Workspace",
@@ -1516,50 +1538,82 @@ export default function LandlordSettingsPage() {
 
                 <div className="form-group">
                   <label className="form-label">Workspace Mode</label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
-                    {WORKSPACE_MODE_OPTIONS.map((option) => {
-                      const isSelected = (settings?.profile.workspaceMode ?? "SOLO_LANDLORD") === option.value;
-                      return (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => updateProfileField("workspaceMode", option.value)}
-                          style={{
-                            display: "flex",
-                            alignItems: "flex-start",
-                            gap: 12,
-                            padding: "14px 16px",
-                            borderRadius: "var(--radius)",
-                            border: isSelected ? "2px solid var(--accent)" : "1.5px solid var(--border)",
-                            background: isSelected ? "var(--accent-light, #e8f4ed)" : "var(--surface)",
-                            cursor: "pointer",
-                            textAlign: "left",
-                            transition: "border-color 0.15s, background 0.15s",
-                          }}
-                        >
-                          <span style={{
-                            flexShrink: 0,
-                            marginTop: 2,
-                            width: 18,
-                            height: 18,
-                            borderRadius: "50%",
-                            border: isSelected ? "5px solid var(--accent)" : "2px solid var(--border2)",
-                            background: isSelected ? "var(--accent-light)" : "var(--surface)",
-                            display: "inline-block",
-                            transition: "border 0.15s",
-                          }} />
-                          <div>
-                            <div style={{ fontSize: 14, fontWeight: 600, color: isSelected ? "var(--accent)" : "var(--ink)", marginBottom: 3 }}>
-                              {option.label}
+                  {settings?.profile.workspaceMode === "ESTATE_ADMIN" ? (
+                    <div style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "14px 16px",
+                      borderRadius: "var(--radius)",
+                      border: "2px solid var(--accent)",
+                      background: "var(--accent-light)",
+                      marginTop: 4,
+                    }}>
+                      <span style={{
+                        flexShrink: 0,
+                        marginTop: 2,
+                        width: 18,
+                        height: 18,
+                        borderRadius: "50%",
+                        border: "5px solid var(--accent)",
+                        background: "var(--accent-light)",
+                        display: "inline-block",
+                      }} />
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: "var(--accent)", marginBottom: 3 }}>
+                          Estate or residents association
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.5 }}>
+                          This workspace was set up as an estate admin by your platform administrator. Contact support to change your workspace type.
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
+                      {WORKSPACE_MODE_OPTIONS.map((option) => {
+                        const isSelected = (settings?.profile.workspaceMode ?? "SOLO_LANDLORD") === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            onClick={() => updateProfileField("workspaceMode", option.value)}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 12,
+                              padding: "14px 16px",
+                              borderRadius: "var(--radius)",
+                              border: isSelected ? "2px solid var(--accent)" : "1.5px solid var(--border)",
+                              background: isSelected ? "var(--accent-light, #e8f4ed)" : "var(--surface)",
+                              cursor: "pointer",
+                              textAlign: "left",
+                              transition: "border-color 0.15s, background 0.15s",
+                            }}
+                          >
+                            <span style={{
+                              flexShrink: 0,
+                              marginTop: 2,
+                              width: 18,
+                              height: 18,
+                              borderRadius: "50%",
+                              border: isSelected ? "5px solid var(--accent)" : "2px solid var(--border2)",
+                              background: isSelected ? "var(--accent-light)" : "var(--surface)",
+                              display: "inline-block",
+                              transition: "border 0.15s",
+                            }} />
+                            <div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: isSelected ? "var(--accent)" : "var(--ink)", marginBottom: 3 }}>
+                                {option.label}
+                              </div>
+                              <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.5 }}>
+                                {option.description}
+                              </div>
                             </div>
-                            <div style={{ fontSize: 12, color: "var(--ink3)", lineHeight: 1.5 }}>
-                              {option.description}
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {canManageBranding ? (
