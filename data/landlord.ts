@@ -79,6 +79,7 @@ const landlordNavSections: NavSection[] = [
     section: "Tools",
     items: [
       { label: "Integrations", href: "/landlord/integrations", icon: "grid" },
+      { label: "Landing Page Builder", href: "/landlord/landing", icon: "settings" },
     ],
   },
   {
@@ -144,6 +145,10 @@ export function buildLandlordNav(
 
         if (item.href === "/landlord/notices") {
           return resolved.canManageNotices;
+        }
+
+        if (item.href === "/landlord/landing") {
+          return resolved.canManageAccountUpdates || resolved.canManageBranding;
         }
 
         if (item.href === "/landlord/rent-defaults") {

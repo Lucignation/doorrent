@@ -80,10 +80,10 @@ export default function EstateSettingsPage() {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    apiRequest<{ data: EstateSettingsResponse }>("/landlord/settings", { token })
+    apiRequest<EstateSettingsResponse>("/landlord/settings", { token })
       .then(({ data }) => {
-        setSettings(data.data);
-        const p = data.data.profile;
+        setSettings(data);
+        const p = data.profile;
         setFirstName(p.firstName);
         setLastName(p.lastName);
         setPhone(p.phone ?? "");
@@ -93,8 +93,8 @@ export default function EstateSettingsPage() {
         setPublicSupportPhone(p.publicSupportPhone ?? "");
         setPublicLegalAddress(p.publicLegalAddress ?? "");
         setBrandPrimaryColor(p.brandPrimaryColor ?? "");
-        if (data.data.teamRoleOptions.length > 0) {
-          setTeamInviteRole(data.data.teamRoleOptions[0].key);
+        if (data.teamRoleOptions.length > 0) {
+          setTeamInviteRole(data.teamRoleOptions[0].key);
         }
       })
       .catch(() => showToast("Failed to load settings", "error"))
@@ -142,8 +142,8 @@ export default function EstateSettingsPage() {
       showToast("Email updated. Check your inbox for a confirmation.", "success");
       setNewEmail("");
       // Reload settings to reflect new email
-      const { data } = await apiRequest<{ data: EstateSettingsResponse }>("/landlord/settings", { token });
-      setSettings(data.data);
+      const { data } = await apiRequest<EstateSettingsResponse>("/landlord/settings", { token });
+      setSettings(data);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to update email.", "error");
     } finally {
@@ -156,7 +156,7 @@ export default function EstateSettingsPage() {
     if (!token) return;
     setSavingInvite(true);
     try {
-      await apiRequest("/landlord/team-members", {
+      await apiRequest("/landlord/settings/team-members/invite", {
         method: "POST",
         token,
         body: { name: teamInviteName, email: teamInviteEmail, roleKey: teamInviteRole },
@@ -164,8 +164,8 @@ export default function EstateSettingsPage() {
       showToast(`Invitation sent to ${teamInviteEmail}.`, "success");
       setTeamInviteName("");
       setTeamInviteEmail("");
-      const { data } = await apiRequest<{ data: EstateSettingsResponse }>("/landlord/settings", { token });
-      setSettings(data.data);
+      const { data } = await apiRequest<EstateSettingsResponse>("/landlord/settings", { token });
+      setSettings(data);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to send invitation.", "error");
     } finally {
@@ -177,10 +177,10 @@ export default function EstateSettingsPage() {
     if (!token) return;
     if (!confirm(`Remove ${memberName} from the estate workspace?`)) return;
     try {
-      await apiRequest(`/landlord/team-members/${memberId}`, { method: "DELETE", token });
+      await apiRequest(`/landlord/settings/team-members/${memberId}`, { method: "DELETE", token });
       showToast(`${memberName} removed.`, "success");
-      const { data } = await apiRequest<{ data: EstateSettingsResponse }>("/landlord/settings", { token });
-      setSettings(data.data);
+      const { data } = await apiRequest<EstateSettingsResponse>("/landlord/settings", { token });
+      setSettings(data);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to remove team member.", "error");
     }
