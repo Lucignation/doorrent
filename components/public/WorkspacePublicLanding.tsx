@@ -4,6 +4,7 @@ import PageMeta from "../layout/PageMeta";
 import type { PublicWorkspaceContext } from "../../lib/workspace-context";
 import {
   getDefaultLandingBuilderSectionLayout,
+  getLandingBuilderTemplate,
   mergeLandingBuilderDraft,
   type LandingBuilderDraft,
   type LandingBuilderSectionKey,
@@ -81,6 +82,19 @@ function renderActionHref(value: string, fallback: string) {
   return sanitizeExternalRedirectUrl(value) ?? fallback;
 }
 
+function renderList(items: string[]) {
+  if (!items.length) {
+    return null;
+  }
+
+  return (
+    <ul className="wpl-list">
+      {items.slice(0, 6).map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  );
+}
 
 function WorkspacePublicGalleryImage({
   imageUrl,
@@ -155,6 +169,39 @@ function WorkspacePublicHeroMedia({
   );
 }
 
+function getSectionBandNote(
+  sectionKey: LandingBuilderSectionKey,
+  workspaceType: LandingBuilderWorkspace,
+) {
+  switch (sectionKey) {
+    case "about":
+      return workspaceType === "estate"
+        ? "Use this band for the estate story, standards, and governance tone."
+        : "Use this band for the company story, positioning, and trust signals.";
+    case "features":
+      return "Highlight the approved services, amenities, or differentiators that should stand out.";
+    case "listings":
+      return "Feature the properties, units, or portfolio highlights visitors should notice first.";
+    case "team":
+      return workspaceType === "estate"
+        ? "Make the exco or committee structure visible and credible."
+        : "Show the people behind operations, leasing, and client support.";
+    case "fees":
+      return "Keep payment guidance, dues, and pricing information easy to scan.";
+    case "notices":
+      return "Surface current announcements, schedules, and resident-facing updates.";
+    case "contact":
+      return "These verified contact channels should remain consistent wherever the brand appears.";
+    case "faq":
+      return "Answer repeat questions with short, approved responses before enquiries arrive.";
+    case "gallery":
+      return "Curate the approved visual story that represents the estate or company publicly.";
+    case "cta":
+      return "This is the controlled action strip that directs visitors to the right next step.";
+    default:
+      return "";
+  }
+}
 
 type LandingThemeStyle = CSSProperties & Record<string, string | number>;
 
@@ -493,11 +540,34 @@ export default function WorkspacePublicLanding({
     draft.teamItems[0],
     supportAddress ? "Verified public contact desk" : null,
   ].filter((item): item is string => Boolean(item)).slice(0, 3);
+  const heroStats = [
+    {
+      value: String(Math.max(visibleSections.filter((sectionKey) => sectionKey !== "hero").length, 1)).padStart(2, "0"),
+      label: "Live sections",
+    },
+    {
+      value: String(galleryImages.length || 0).padStart(2, "0"),
+      label: "Gallery images",
+    },
+    {
+      value: String(
+        Math.max(
+          draft.teamItems.length,
+          draft.noticeItems.length,
+          draft.featuresItems.length,
+          1,
+        ),
+      ).padStart(2, "0"),
+      label: workspaceType === "estate" ? "Public highlights" : "Portfolio highlights",
+    },
+  ];
   const templateTheme = useMemo(
     () => resolveLandingTemplateTheme(draft.templateId, primaryColor, accentColor),
     [accentColor, draft.templateId, primaryColor],
   );
-
+  const templateName =
+    getLandingBuilderTemplate(draft.templateId)?.name ??
+    (workspaceType === "estate" ? "Estate landing page" : "Property landing page");
 
   function resolveSectionLayout(sectionKey: LandingBuilderSectionKey) {
     return draft.sectionLayouts?.[sectionKey] ?? getDefaultLandingBuilderSectionLayout(sectionKey);
@@ -520,15 +590,37 @@ export default function WorkspacePublicLanding({
   }) {
     const layout = resolveSectionLayout(sectionKey);
     const sectionClass = `wpl-section wpl-section-${sectionKey} ${className} wpl-layout-${layout}`;
+    const sectionPosition = contentSections.findIndex(
+      (contentSectionKey) => contentSectionKey === sectionKey,
+    );
+    const sectionNumber = String(
+      sectionPosition >= 0 ? sectionPosition + 1 : 0,
+    ).padStart(2, "0");
+    const bandNote = getSectionBandNote(sectionKey, workspaceType);
+
+    if (layout === "full") {
+      return (
+        <section key={sectionKey} className={sectionClass}>
+          <div className="wpl-band-rail">
+            <div className="wpl-section-topline">{topline}</div>
+            <strong className="wpl-band-index">{sectionNumber}</strong>
+            {bandNote ? <p className="wpl-band-note">{bandNote}</p> : null}
+          </div>
+          <div className="wpl-band-body">
+            <h2>{title}</h2>
+            {body ? <p>{body}</p> : null}
+            {children}
+          </div>
+        </section>
+      );
+    }
 
     return (
       <section key={sectionKey} className={sectionClass}>
-        <div className="wpl-section-inner">
-          <div className="wpl-section-topline">{topline}</div>
-          <h2>{title}</h2>
-          {body ? <p className="wpl-section-body">{body}</p> : null}
-          {children}
-        </div>
+        <div className="wpl-section-topline">{topline}</div>
+        <h2>{title}</h2>
+        {body ? <p>{body}</p> : null}
+        {children}
       </section>
     );
   }
@@ -541,163 +633,63 @@ export default function WorkspacePublicLanding({
           topline: "About",
           title: draft.aboutTitle,
           body: draft.aboutBody,
-          className: "wpl-about-section",
+          className: "wpl-copy-card",
         });
       case "features":
         return renderSectionFrame({
           sectionKey,
-          topline: "Services & Amenities",
+          topline: "Services",
           title: draft.featuresTitle,
           body: draft.featuresBody,
-          className: "wpl-features-section",
-          children: draft.featuresItems.length ? (
-            <div className="wpl-feature-grid">
-              {draft.featuresItems.slice(0, 8).map((item) => (
-                <div key={item} className="wpl-feature-card">
-                  <span className="wpl-feature-dot" style={{ background: primaryColor }} />
-                  <span>{item}</span>
-                </div>
-              ))}
-            </div>
-          ) : null,
+          className: "wpl-copy-card",
+          children: renderList(draft.featuresItems),
         });
       case "listings":
         return renderSectionFrame({
           sectionKey,
-          topline: workspaceType === "estate" ? "Properties" : "Portfolio",
+          topline: "Highlights",
           title: draft.listingsTitle,
           body: draft.listingsBody,
-          className: "wpl-listings-section",
-          children: draft.listingItems.length ? (
-            <div className="wpl-listing-grid">
-              {draft.listingItems.slice(0, 6).map((item, idx) => {
-                const sepIdx = item.indexOf(" — ");
-                const headline = sepIdx > -1 ? item.slice(0, sepIdx) : item;
-                const detail = sepIdx > -1 ? item.slice(sepIdx + 3) : "";
-                const isPrice = /[₦$€£]/.test(headline) || /^\d/.test(headline.trim());
-                const thumb = galleryImages[idx % Math.max(galleryImages.length, 1)] ?? null;
-                return (
-                  <div key={`${item}-${idx}`} className="wpl-listing-card">
-                    <div
-                      className="wpl-listing-card-img"
-                      style={{
-                        background: `linear-gradient(135deg, ${withAlpha(primaryColor, 0.2)}, ${withAlpha(accentColor, 0.4)})`,
-                      }}
-                    >
-                      {thumb ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={thumb}
-                          alt={headline}
-                          className="wpl-listing-img"
-                          referrerPolicy="no-referrer"
-                          loading="lazy"
-                        />
-                      ) : null}
-                      {isPrice ? (
-                        <span className="wpl-listing-price-badge">{headline}</span>
-                      ) : null}
-                    </div>
-                    <div className="wpl-listing-card-body">
-                      <p>{isPrice ? detail : headline}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null,
+          className: "wpl-copy-card",
+          children: renderList(draft.listingItems),
         });
       case "team":
         return renderSectionFrame({
           sectionKey,
-          topline: workspaceType === "estate" ? "Estate Committee" : "Our Team",
+          topline: workspaceType === "estate" ? "Exco" : "Team",
           title: draft.teamTitle,
           body: draft.teamBody,
-          className: "wpl-team-section",
-          children: draft.teamItems.length ? (
-            <div className="wpl-team-grid">
-              {draft.teamItems.slice(0, 6).map((item) => {
-                const sepIdx = item.indexOf(" — ");
-                const name = sepIdx > -1 ? item.slice(0, sepIdx) : item;
-                const role = sepIdx > -1 ? item.slice(sepIdx + 3) : "";
-                const initials = name
-                  .split(" ")
-                  .slice(0, 2)
-                  .map((w) => w[0] ?? "")
-                  .join("")
-                  .toUpperCase();
-                return (
-                  <div key={item} className="wpl-team-card">
-                    <div className="wpl-team-avatar" style={{ background: primaryColor }}>
-                      {initials}
-                    </div>
-                    <strong className="wpl-team-name">{name}</strong>
-                    {role ? <span className="wpl-team-role">{role}</span> : null}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null,
+          className: "wpl-copy-card",
+          children: renderList(draft.teamItems),
         });
       case "fees":
         return renderSectionFrame({
           sectionKey,
-          topline: "Fees & Dues",
+          topline: "Fees",
           title: draft.feesTitle,
           body: draft.feesBody,
-          className: "wpl-fees-section",
-          children: draft.feeItems.length ? (
-            <div className="wpl-fee-list">
-              {draft.feeItems.slice(0, 8).map((item) => {
-                const sepIdx = item.indexOf(" — ");
-                const label = sepIdx > -1 ? item.slice(0, sepIdx) : item;
-                const amount = sepIdx > -1 ? item.slice(sepIdx + 3) : "";
-                return (
-                  <div key={item} className="wpl-fee-row">
-                    <span className="wpl-fee-label">{label}</span>
-                    {amount ? <strong className="wpl-fee-amount">{amount}</strong> : null}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null,
+          className: "wpl-copy-card",
+          children: renderList(draft.feeItems),
         });
       case "notices":
         return renderSectionFrame({
           sectionKey,
-          topline: "Notices & Updates",
+          topline: "Notices",
           title: draft.noticesTitle,
           body: draft.noticesBody,
-          className: "wpl-notices-section",
-          children: draft.noticeItems.length ? (
-            <div className="wpl-notice-list">
-              {draft.noticeItems.slice(0, 6).map((item) => {
-                const sepIdx = item.indexOf(" — ");
-                const headline = sepIdx > -1 ? item.slice(0, sepIdx) : item;
-                const detail = sepIdx > -1 ? item.slice(sepIdx + 3) : "";
-                return (
-                  <div key={item} className="wpl-notice-item">
-                    <div className="wpl-notice-dot" style={{ background: accentColor }} />
-                    <div className="wpl-notice-text">
-                      <strong>{headline}</strong>
-                      {detail ? <span>{detail}</span> : null}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null,
+          className: "wpl-notice-card",
+          children: renderList(draft.noticeItems),
         });
       case "contact":
         return renderSectionFrame({
           sectionKey,
-          topline: "Get In Touch",
+          topline: "Contact",
           title: draft.contactTitle,
           body:
             workspaceType === "estate"
-              ? "Reach the estate management team through any of these official channels."
-              : "Contact us for leasing enquiries, portfolio access, or general support.",
-          className: "wpl-contact-section",
+              ? "Use the approved estate contact channels below for enquiries, notices, and support."
+              : "Use the approved public contact channels below for leasing, portfolio, and support enquiries.",
+          className: "wpl-copy-card",
           children: (
             <div className="wpl-contact-grid">
               {supportEmail ? <a href={`mailto:${supportEmail}`}>{supportEmail}</a> : null}
@@ -711,25 +703,11 @@ export default function WorkspacePublicLanding({
       case "faq":
         return renderSectionFrame({
           sectionKey,
-          topline: "Frequently Asked Questions",
+          topline: "FAQ",
           title: draft.faqTitle,
-          body: null,
-          className: "wpl-faq-section",
-          children: draft.faqItems.length ? (
-            <div className="wpl-faq-list">
-              {draft.faqItems.slice(0, 8).map((item) => {
-                const sepIdx = item.indexOf(" — ");
-                const question = sepIdx > -1 ? item.slice(0, sepIdx) : item;
-                const answer = sepIdx > -1 ? item.slice(sepIdx + 3) : "";
-                return (
-                  <div key={item} className="wpl-faq-item">
-                    <strong className="wpl-faq-q">{question}</strong>
-                    {answer ? <p className="wpl-faq-a">{answer}</p> : null}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null,
+          body: "Keep public answers short, clear, and aligned with the approved visitor journey.",
+          className: "wpl-copy-card",
+          children: renderList(draft.faqItems),
         });
       case "gallery":
         return renderSectionFrame({
@@ -737,7 +715,7 @@ export default function WorkspacePublicLanding({
           topline: "Gallery",
           title: draft.galleryTitle,
           body: draft.galleryBody,
-          className: "wpl-gallery-section",
+          className: "wpl-copy-card",
           children: (
             <div className="wpl-gallery-grid">
               {(galleryImages.length ? galleryImages : [null, null, null]).map((image, index) => (
@@ -754,12 +732,11 @@ export default function WorkspacePublicLanding({
       case "cta":
         return renderSectionFrame({
           sectionKey,
-          topline: "Next Step",
-          title: draft.ctaPrimaryLabel,
-          body: supportEmail
-            ? `Reach us at ${supportEmail} or open the portal to get started.`
-            : "Open the portal to get started.",
-          className: "wpl-cta-section",
+          topline: "Next step",
+          title: "Ready to continue?",
+          body:
+            "Open the workspace portal or contact the team directly using the approved public contact details.",
+          className: "wpl-cta-card",
           children: (
             <div className="wpl-actions">
               <Link href={primaryHref} className="wpl-button wpl-button-primary">
@@ -841,12 +818,41 @@ export default function WorkspacePublicLanding({
           </div>
 
           <div className="wpl-hero-stage">
-            <WorkspacePublicHeroMedia
-              imageUrl={heroMediaUrl}
-              alt={displayName}
-              fallbackBackground={heroBackground}
-              fallbackLabel={displayName.slice(0, 2).toUpperCase()}
-            />
+            <div className="wpl-hero-media-shell">
+              <WorkspacePublicHeroMedia
+                imageUrl={heroMediaUrl}
+                alt={`${displayName} public preview`}
+                fallbackBackground={heroBackground}
+                fallbackLabel={displayName.slice(0, 2).toUpperCase()}
+              />
+              <div className="wpl-hero-media-caption">
+                <span>{templateName}</span>
+                <strong>
+                  {workspaceType === "estate"
+                    ? "Branded estate home"
+                    : "Branded public profile"}
+                </strong>
+              </div>
+            </div>
+            <div className="wpl-hero-stack">
+              <div className="wpl-hero-card">
+                <div className="wpl-section-topline">
+                  {workspaceType === "estate" ? "Community profile" : "Workspace profile"}
+                </div>
+                <h3>{estate?.name || workspace.companyName}</h3>
+                {estate?.location ? <p>{estate.location}</p> : null}
+                {supportEmail ? <span>{supportEmail}</span> : null}
+                {supportPhone ? <span>{supportPhone}</span> : null}
+              </div>
+              <div className="wpl-hero-metrics">
+                {heroStats.map((stat) => (
+                  <div key={stat.label} className="wpl-hero-metric">
+                    <strong>{stat.value}</strong>
+                    <span>{stat.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </header>
 
@@ -863,17 +869,15 @@ export default function WorkspacePublicLanding({
       <style jsx>{`
         .wpl-root {
           min-height: 100vh;
+          padding: 18px 0 14px;
           background: var(--wpl-bg-layer), var(--wpl-bg-base);
           color: #171914;
           font-family: var(--wpl-body-font);
         }
         .wpl-nav,
+        .wpl-main,
         .wpl-footer {
-          width: min(1280px, calc(100% - 40px));
-          margin: 0 auto;
-        }
-        .wpl-section-inner {
-          width: min(1160px, calc(100% - 48px));
+          width: min(1320px, calc(100% - 36px));
           margin: 0 auto;
         }
         .wpl-nav {
@@ -881,12 +885,11 @@ export default function WorkspacePublicLanding({
           align-items: center;
           justify-content: space-between;
           gap: 16px;
-          padding: 14px 20px;
-          margin-top: 16px;
+          padding: 18px 22px;
           border-radius: 28px;
           border: 1px solid var(--wpl-nav-border);
           background: var(--wpl-nav-bg);
-          box-shadow: 0 8px 28px rgba(18, 22, 16, 0.08);
+          box-shadow: 0 18px 42px rgba(18, 22, 16, 0.08);
           backdrop-filter: blur(16px);
         }
         .wpl-brand {
@@ -901,7 +904,7 @@ export default function WorkspacePublicLanding({
         }
         .wpl-brand strong {
           font-family: var(--wpl-title-font);
-          font-size: 20px;
+          font-size: 21px;
           line-height: 1.05;
         }
         .wpl-brand span {
@@ -910,12 +913,12 @@ export default function WorkspacePublicLanding({
         }
         .wpl-logo,
         .wpl-brandmark {
-          width: 44px;
-          height: 44px;
-          border-radius: 12px;
+          width: 52px;
+          height: 52px;
+          border-radius: 16px;
           object-fit: cover;
           flex-shrink: 0;
-          box-shadow: 0 6px 18px rgba(18, 22, 16, 0.12);
+          box-shadow: 0 10px 26px rgba(18, 22, 16, 0.12);
         }
         .wpl-brandmark {
           display: inline-flex;
@@ -923,403 +926,373 @@ export default function WorkspacePublicLanding({
           justify-content: center;
           color: #fff;
           font-weight: 800;
-          font-size: 15px;
         }
-
-        /* ─── Hero ─── */
         .wpl-hero {
           position: relative;
-          width: 100%;
-          margin: 0;
+          width: min(1360px, calc(100% - 20px));
+          margin: 18px auto 34px;
           display: grid;
-          grid-template-columns: minmax(0, 1fr) minmax(0, 480px);
-          align-items: center;
-          gap: 0;
-          padding: clamp(80px, 10vw, 140px) 0;
+          grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+          gap: 26px;
+          padding: clamp(34px, 5vw, 68px);
+          border-radius: 44px;
           color: #fff;
+          box-shadow: var(--wpl-hero-shadow);
+          background-size: 100% 100%;
           overflow: hidden;
-          background-size: cover;
-          background-position: center;
         }
         .wpl-hero::before {
           content: "";
           position: absolute;
           inset: 0;
           background:
-            radial-gradient(ellipse at 75% 0%, rgba(255,255,255,0.18) 0%, transparent 50%),
-            linear-gradient(160deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.04) 100%);
+            radial-gradient(circle at 88% 12%, rgba(255, 255, 255, 0.26), transparent 28%),
+            radial-gradient(circle at 0% 100%, rgba(255, 255, 255, 0.14), transparent 34%),
+            linear-gradient(140deg, rgba(11, 15, 12, 0.2), rgba(11, 15, 12, 0.04));
           pointer-events: none;
         }
-        .wpl-hero-copy {
-          position: relative;
-          z-index: 1;
-          padding: 0 clamp(24px, 5vw, 80px);
-          max-width: 640px;
+        .wpl-hero::after {
+          content: "";
+          position: absolute;
+          inset: auto -6% -32% 52%;
+          height: 260px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.18));
+          opacity: 0.8;
+          transform: rotate(-9deg);
+          pointer-events: none;
         }
-        .wpl-eyebrow {
-          margin-bottom: 16px;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.16em;
-          text-transform: uppercase;
-          opacity: 0.76;
-        }
-        .wpl-hero h1 {
-          margin: 0 0 20px;
-          font-family: var(--wpl-title-font);
-          font-size: clamp(40px, 6vw, 76px);
-          line-height: 0.94;
-          letter-spacing: -0.03em;
-        }
-        .wpl-hero p {
-          margin: 0 0 32px;
-          font-size: clamp(17px, 2vw, 21px);
-          line-height: 1.7;
-          color: rgba(255,255,255,0.86);
-          max-width: 520px;
-        }
+        .wpl-hero-copy,
         .wpl-hero-stage {
           position: relative;
           z-index: 1;
+        }
+        .wpl-eyebrow,
+        .wpl-section-topline {
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+        }
+        .wpl-eyebrow {
+          margin-bottom: 12px;
+          opacity: 0.72;
+        }
+        .wpl-hero h1 {
+          margin: 0 0 14px;
+          max-width: 12ch;
+          font-family: var(--wpl-title-font);
+          font-size: clamp(42px, 6vw, 74px);
+          line-height: 0.92;
+          letter-spacing: -0.03em;
+        }
+        .wpl-hero p {
+          margin: 0 0 20px;
+          max-width: 680px;
+          font-size: clamp(16px, 2vw, 21px);
+          line-height: 1.7;
+          color: rgba(255, 255, 255, 0.84);
+        }
+        .wpl-highlight-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-top: 20px;
+        }
+        .wpl-highlight-pill {
+          display: inline-flex;
+          align-items: center;
+          min-height: 34px;
+          padding: 0 14px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          color: rgba(255, 255, 255, 0.92);
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+        }
+        .wpl-hero-stage {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 16px;
           align-self: stretch;
-          min-height: 420px;
+        }
+        .wpl-hero-media-shell {
+          position: relative;
+          padding: 14px;
+          border-radius: 30px;
+          background: rgba(255, 255, 255, 0.12);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          backdrop-filter: blur(16px);
+          box-shadow: 0 22px 46px rgba(12, 14, 13, 0.14);
+        }
+        .wpl-hero-media-shell::before {
+          content: "";
+          position: absolute;
+          inset: 18px;
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          pointer-events: none;
         }
         .wpl-hero-media-frame {
-          position: absolute;
-          inset: 0;
+          position: relative;
           overflow: hidden;
+          aspect-ratio: 1.2 / 1;
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.14);
         }
-        .wpl-hero-media-frame.wpl-hero-media-placeholder {
-          background: rgba(255,255,255,0.08);
-        }
-        .wpl-hero-media-image {
+        .wpl-hero-media-image,
+        .wpl-hero-media-fallback {
           width: 100%;
           height: 100%;
           display: block;
           object-fit: cover;
         }
         .wpl-hero-media-fallback {
-          width: 100%;
-          height: 100%;
           display: flex;
           align-items: center;
           justify-content: center;
           background-size: cover;
           background-position: center;
-          opacity: 0.3;
         }
         .wpl-hero-media-fallback span {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 80px;
-          height: 80px;
-          border-radius: 20px;
-          background: rgba(255,255,255,0.9);
+          width: 86px;
+          height: 86px;
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.86);
           color: var(--wpl-primary);
           font-family: var(--wpl-title-font);
-          font-size: 26px;
+          font-size: 28px;
           font-weight: 800;
+          box-shadow: 0 18px 32px rgba(15, 18, 17, 0.16);
         }
-        .wpl-highlight-row {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-          margin-top: 24px;
-        }
-        .wpl-highlight-pill {
-          display: inline-flex;
-          align-items: center;
-          min-height: 32px;
-          padding: 0 14px;
-          border-radius: 999px;
-          background: rgba(255,255,255,0.14);
-          border: 1px solid rgba(255,255,255,0.2);
-          color: rgba(255,255,255,0.92);
-          font-size: 12px;
-          font-weight: 600;
-          letter-spacing: 0.02em;
-        }
-
-        /* ─── Sections ─── */
-        .wpl-main {
-          padding: 0;
-        }
-        .wpl-section {
-          padding: clamp(56px, 7vw, 96px) 0;
-          border-bottom: 1px solid var(--wpl-border);
-        }
-        .wpl-section:nth-child(even) {
-          background: rgba(255,255,255,0.44);
-        }
-        .wpl-section-topline {
-          margin-bottom: 12px;
-          font-size: 12px;
-          font-weight: 700;
-          letter-spacing: 0.14em;
-          text-transform: uppercase;
-          color: var(--wpl-primary);
-        }
-        .wpl-section h2 {
-          margin: 0 0 16px;
-          font-family: var(--wpl-title-font);
-          font-size: clamp(30px, 4vw, 54px);
-          line-height: 0.96;
-          letter-spacing: -0.03em;
-          color: #171914;
-        }
-        .wpl-section-body {
-          margin: 0 0 36px;
-          max-width: 640px;
-          font-size: 18px;
-          line-height: 1.72;
-          color: var(--wpl-muted);
-        }
-
-        /* ─── Features grid ─── */
-        .wpl-feature-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-          gap: 16px;
-          margin-top: 36px;
-        }
-        .wpl-feature-card {
-          display: flex;
-          align-items: flex-start;
-          gap: 14px;
-          padding: 22px 20px;
-          border-radius: 18px;
-          background: var(--wpl-surface);
-          border: 1px solid var(--wpl-border);
-          box-shadow: 0 4px 16px rgba(18,22,16,0.06);
-          font-size: 15px;
-          font-weight: 500;
-          line-height: 1.5;
-          color: #2a3028;
-        }
-        .wpl-feature-dot {
-          flex-shrink: 0;
-          width: 8px;
-          height: 8px;
-          margin-top: 6px;
-          border-radius: 50%;
-        }
-
-        /* ─── Listings grid ─── */
-        .wpl-listing-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          gap: 24px;
-          margin-top: 36px;
-        }
-        .wpl-listing-card {
-          border-radius: 20px;
-          overflow: hidden;
-          background: var(--wpl-surface);
-          border: 1px solid var(--wpl-border);
-          box-shadow: 0 8px 30px rgba(18,22,16,0.08);
-          transition: transform 0.15s ease, box-shadow 0.15s ease;
-        }
-        .wpl-listing-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 18px 48px rgba(18,22,16,0.14);
-        }
-        .wpl-listing-card-img {
-          position: relative;
-          aspect-ratio: 16 / 10;
-          overflow: hidden;
-        }
-        .wpl-listing-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          display: block;
-        }
-        .wpl-listing-price-badge {
-          position: absolute;
-          bottom: 12px;
-          left: 12px;
-          padding: 6px 14px;
-          border-radius: 999px;
-          background: rgba(0,0,0,0.72);
-          color: #fff;
-          font-size: 14px;
-          font-weight: 700;
-          letter-spacing: 0.01em;
-          backdrop-filter: blur(8px);
-        }
-        .wpl-listing-card-body {
-          padding: 18px 20px;
-        }
-        .wpl-listing-card-body p {
-          margin: 0;
-          font-size: 15px;
-          line-height: 1.55;
-          color: #3a433a;
-        }
-
-        /* ─── Team grid ─── */
-        .wpl-team-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-          gap: 20px;
-          margin-top: 36px;
-        }
-        .wpl-team-card {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 12px;
-          padding: 24px 22px;
-          border-radius: 20px;
-          background: var(--wpl-surface);
-          border: 1px solid var(--wpl-border);
-          box-shadow: 0 4px 18px rgba(18,22,16,0.06);
-        }
-        .wpl-team-avatar {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 52px;
-          height: 52px;
-          border-radius: 16px;
-          color: #fff;
-          font-weight: 800;
-          font-size: 18px;
-          letter-spacing: -0.02em;
-        }
-        .wpl-team-name {
-          display: block;
-          font-size: 17px;
-          font-weight: 700;
-          line-height: 1.3;
-          color: #171914;
-        }
-        .wpl-team-role {
-          display: block;
-          font-size: 13px;
-          line-height: 1.5;
-          color: var(--wpl-muted);
-        }
-
-        /* ─── Fees list ─── */
-        .wpl-fee-list {
-          margin-top: 32px;
-          border-radius: 20px;
-          overflow: hidden;
-          border: 1px solid var(--wpl-border);
-          box-shadow: 0 4px 18px rgba(18,22,16,0.06);
-        }
-        .wpl-fee-row {
+        .wpl-hero-media-caption {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 16px;
-          padding: 18px 24px;
-          background: var(--wpl-surface);
-          border-bottom: 1px solid var(--wpl-border);
+          gap: 12px;
+          padding: 14px 4px 0;
         }
-        .wpl-fee-row:last-child {
-          border-bottom: none;
+        .wpl-hero-media-caption span,
+        .wpl-hero-media-caption strong {
+          display: block;
         }
-        .wpl-fee-label {
-          font-size: 15px;
-          color: #2a3028;
+        .wpl-hero-media-caption span {
+          font-size: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.72);
         }
-        .wpl-fee-amount {
-          flex-shrink: 0;
-          font-size: 16px;
-          font-weight: 700;
-          color: var(--wpl-primary);
+        .wpl-hero-media-caption strong {
+          text-align: right;
+          font-size: 14px;
+          line-height: 1.4;
+          color: rgba(255, 255, 255, 0.92);
         }
-
-        /* ─── Notices list ─── */
-        .wpl-notice-list {
-          display: grid;
-          gap: 14px;
-          margin-top: 32px;
-        }
-        .wpl-notice-item {
-          display: flex;
-          align-items: flex-start;
-          gap: 16px;
-          padding: 20px 22px;
-          border-radius: 18px;
-          background: rgba(255,248,225,0.72);
-          border: 1px solid rgba(210,168,90,0.22);
-          box-shadow: 0 3px 12px rgba(18,22,16,0.05);
-        }
-        .wpl-notice-dot {
-          flex-shrink: 0;
-          width: 10px;
-          height: 10px;
-          margin-top: 5px;
-          border-radius: 50%;
-        }
-        .wpl-notice-text {
+        .wpl-hero-stack {
           display: flex;
           flex-direction: column;
-          gap: 4px;
+          justify-content: flex-end;
+          gap: 14px;
         }
-        .wpl-notice-text strong {
-          font-size: 15px;
-          font-weight: 700;
-          color: #2a3028;
+        .wpl-hero-card {
+          padding: 22px;
+          border-radius: 26px;
+          background: rgba(255, 255, 255, 0.16);
+          backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.22);
+          box-shadow: 0 18px 36px rgba(15, 18, 17, 0.12);
         }
-        .wpl-notice-text span {
-          font-size: 14px;
-          line-height: 1.6;
-          color: var(--wpl-muted);
+        .wpl-hero-card h3 {
+          margin: 10px 0 10px;
+          font-family: var(--wpl-title-font);
+          font-size: 28px;
+          line-height: 1;
         }
-
-        /* ─── FAQ list ─── */
-        .wpl-faq-list {
-          display: grid;
-          gap: 0;
-          margin-top: 32px;
-          border-radius: 20px;
-          overflow: hidden;
-          border: 1px solid var(--wpl-border);
-        }
-        .wpl-faq-item {
-          padding: 24px 28px;
-          border-bottom: 1px solid var(--wpl-border);
-          background: var(--wpl-surface);
-        }
-        .wpl-faq-item:last-child {
-          border-bottom: none;
-        }
-        .wpl-faq-q {
+        .wpl-hero-card p,
+        .wpl-hero-card span {
+          margin: 0 0 4px;
           display: block;
-          font-size: 16px;
-          font-weight: 700;
-          line-height: 1.4;
-          color: #171914;
-          margin-bottom: 8px;
+          font-size: 14px;
+          color: rgba(255, 255, 255, 0.8);
         }
-        .wpl-faq-a {
+        .wpl-hero-metrics {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+        }
+        .wpl-hero-metric {
+          padding: 16px 14px;
+          border-radius: 20px;
+          background: rgba(255, 255, 255, 0.14);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          backdrop-filter: blur(12px);
+        }
+        .wpl-hero-metric strong,
+        .wpl-hero-metric span {
+          display: block;
+        }
+        .wpl-hero-metric strong {
+          font-size: 24px;
+          line-height: 1;
+          letter-spacing: -0.04em;
+        }
+        .wpl-hero-metric span {
+          margin-top: 8px;
+          font-size: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.76);
+        }
+        .wpl-main {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 26px;
+          padding-bottom: 34px;
+        }
+        .wpl-section {
+          grid-column: span 1;
+          position: relative;
+          padding: 30px;
+          border-radius: 30px;
+          border: 1px solid var(--wpl-border);
+          background: var(--wpl-surface);
+          box-shadow: var(--wpl-card-shadow);
+          overflow: hidden;
+        }
+        .wpl-section::before {
+          content: "";
+          position: absolute;
+          inset: auto -10% -24% auto;
+          width: 260px;
+          height: 260px;
+          background: radial-gradient(circle, var(--wpl-band-glow), transparent 74%);
+          opacity: 0.42;
+          pointer-events: none;
+        }
+        .wpl-section.wpl-layout-full {
+          grid-column: 1 / -1;
+          display: grid;
+          grid-template-columns: minmax(180px, 230px) minmax(0, 1fr);
+          gap: 20px 40px;
+          align-items: start;
+          min-height: clamp(260px, 32vw, 360px);
+          padding: clamp(34px, 4vw, 46px);
+          background: var(--wpl-band-surface);
+          border-color: var(--wpl-band-border);
+          box-shadow: var(--wpl-shadow);
+        }
+        .wpl-section.wpl-layout-center {
+          grid-column: 1 / -1;
+          width: min(760px, 100%);
+          justify-self: center;
+        }
+        .wpl-section.wpl-layout-half {
+          grid-column: span 1;
+        }
+        .wpl-band-rail {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          gap: 18px;
+          min-height: 100%;
+          padding-right: 12px;
+        }
+        .wpl-band-rail::after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          right: 0;
+          bottom: 2px;
+          width: 1px;
+          background: linear-gradient(
+            180deg,
+            rgba(255, 255, 255, 0.14),
+            var(--wpl-primary-soft),
+            rgba(255, 255, 255, 0.05)
+          );
+        }
+        .wpl-band-index {
+          display: block;
+          font-family: var(--wpl-title-font);
+          font-size: clamp(48px, 7vw, 84px);
+          line-height: 0.88;
+          letter-spacing: -0.06em;
+          color: var(--wpl-primary-strong);
+        }
+        .wpl-band-note {
           margin: 0;
-          font-size: 15px;
+          max-width: 17ch;
+          font-size: 14px;
           line-height: 1.7;
           color: var(--wpl-muted);
         }
-
-        /* ─── Gallery ─── */
+        .wpl-band-body {
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          gap: 0;
+          max-width: 860px;
+        }
+        .wpl-copy-card h2,
+        .wpl-cta-card h2,
+        .wpl-notice-card h2 {
+          margin: 8px 0 10px;
+          font-family: var(--wpl-title-font);
+          font-size: clamp(30px, 3vw, 42px);
+          line-height: 0.98;
+          letter-spacing: -0.03em;
+        }
+        .wpl-copy-card p,
+        .wpl-cta-card p,
+        .wpl-notice-card p {
+          margin: 0;
+          font-size: 17px;
+          line-height: 1.74;
+          color: var(--wpl-muted);
+        }
+        .wpl-notice-card {
+          background: linear-gradient(180deg, rgba(255, 248, 233, 0.96), rgba(255, 255, 255, 0.92));
+        }
+        .wpl-cta-card {
+          background: linear-gradient(135deg, ${withAlpha(primaryColor, 0.08)}, ${withAlpha(
+            accentColor,
+            0.18,
+          )});
+        }
+        .wpl-list {
+          margin: 14px 0 0;
+          padding-left: 18px;
+          display: grid;
+          gap: 10px;
+          color: #2f372f;
+          line-height: 1.62;
+        }
         .wpl-gallery-grid {
           display: grid;
-          grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr));
-          grid-template-rows: 260px 260px;
-          gap: 16px;
-          margin-top: 36px;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+          margin-top: 20px;
         }
         .wpl-gallery-tile {
-          border-radius: 20px;
+          aspect-ratio: 1 / 1;
+          border-radius: 22px;
           overflow: hidden;
           border: 1px solid var(--wpl-border);
-          box-shadow: 0 8px 24px rgba(18,22,16,0.08);
+          box-shadow: 0 12px 28px rgba(18, 22, 16, 0.08);
         }
-        .wpl-gallery-tile:first-child {
+        .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid {
+          grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 0.8fr));
+        }
+        .wpl-section-gallery.wpl-layout-full .wpl-gallery-tile:first-child {
           grid-row: span 2;
+          aspect-ratio: auto;
+          min-height: 320px;
         }
         .wpl-gallery-placeholder {
           background-size: cover;
@@ -1331,65 +1304,50 @@ export default function WorkspacePublicLanding({
           object-fit: cover;
           display: block;
         }
-
-        /* ─── Contact ─── */
         .wpl-contact-grid {
           display: grid;
-          gap: 14px;
-          margin-top: 32px;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 12px;
+          margin-top: 20px;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         }
         .wpl-contact-grid a,
         .wpl-contact-grid span {
           display: flex;
           align-items: center;
-          min-height: 64px;
-          padding: 0 22px;
-          border-radius: 18px;
-          background: var(--wpl-surface);
+          min-height: 62px;
+          padding: 0 18px;
+          border-radius: 20px;
+          background: rgba(255, 255, 255, 0.72);
           border: 1px solid var(--wpl-border);
-          box-shadow: 0 4px 16px rgba(18,22,16,0.06);
-          color: #2a3028;
+          color: #2f372f;
           text-decoration: none;
           font-size: 15px;
           font-weight: 600;
-          transition: box-shadow 0.15s ease;
         }
-        .wpl-contact-grid a:hover {
-          box-shadow: 0 8px 28px rgba(18,22,16,0.12);
+        .wpl-section-contact.wpl-layout-full .wpl-contact-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
-
-        /* ─── CTA section ─── */
-        .wpl-cta-section {
-          background: linear-gradient(135deg, ${withAlpha(primaryColor, 0.1)}, ${withAlpha(accentColor, 0.16)});
-        }
-        .wpl-cta-section h2 {
-          font-size: clamp(28px, 4vw, 50px);
-        }
-
-        /* ─── Buttons ─── */
         .wpl-actions {
           display: flex;
           flex-wrap: wrap;
           gap: 14px;
-          margin-top: 28px;
+          margin-top: 24px;
         }
         .wpl-button {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-height: 50px;
-          padding: 0 26px;
+          min-height: 48px;
+          padding: 0 20px;
           border-radius: 999px;
           font-weight: 700;
-          font-size: 15px;
           letter-spacing: 0.01em;
           text-decoration: none;
           transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
         }
         .wpl-button:hover {
-          transform: translateY(-2px);
-          opacity: 0.92;
+          transform: translateY(-1px);
+          opacity: 0.94;
         }
         .wpl-button-primary {
           background: ${primaryColor};
@@ -1399,48 +1357,124 @@ export default function WorkspacePublicLanding({
         .wpl-button-light {
           background: #fff;
           color: ${primaryColor};
-          box-shadow: 0 10px 28px rgba(18,22,16,0.14);
+          box-shadow: 0 14px 34px rgba(18, 22, 16, 0.14);
         }
-        .wpl-button-outline {
-          border: 1.5px solid rgba(255,255,255,0.38);
+        .wpl-button-outline,
+        .wpl-button-secondary {
+          border: 1.5px solid rgba(255, 255, 255, 0.34);
           color: #fff;
-          background: rgba(255,255,255,0.14);
+          background: rgba(255, 255, 255, 0.12);
         }
         .wpl-button-secondary {
-          border: 1.5px solid var(--wpl-border);
-          background: rgba(255,255,255,0.88);
+          border-color: var(--wpl-border);
+          background: rgba(255, 255, 255, 0.82);
           color: #171914;
-          box-shadow: 0 6px 20px rgba(18,22,16,0.08);
+          box-shadow: 0 10px 26px rgba(18, 22, 16, 0.08);
         }
-
-        /* ─── Footer ─── */
         .wpl-footer {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          padding: 24px 28px;
-          border-top: 1px solid var(--wpl-border);
-          background: rgba(255,255,255,0.6);
+          margin-bottom: 28px;
+          padding: 18px 22px;
+          border-radius: 26px;
+          border: 1px solid var(--wpl-nav-border);
+          background: rgba(255, 255, 255, 0.56);
           color: #6c7367;
           font-size: 13px;
           backdrop-filter: blur(12px);
         }
-
-        /* ─── Responsive ─── */
-        @media (max-width: 960px) {
+        .theme-estate-official .wpl-band-index,
+        .theme-property-profile .wpl-band-index {
+          letter-spacing: -0.08em;
+        }
+        .theme-estate-exco .wpl-section-team.wpl-layout-full,
+        .theme-property-corporate .wpl-section-team.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(
+            primaryColor,
+            0.16,
+          )}, ${withAlpha(accentColor, 0.14)});
+        }
+        .theme-estate-fees .wpl-section-fees.wpl-layout-full,
+        .theme-property-leasing .wpl-section-listings.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(
+            accentColor,
+            0.14,
+          )}, ${withAlpha(primaryColor, 0.1)});
+        }
+        .theme-property-portfolio .wpl-section-gallery.wpl-layout-full,
+        .theme-estate-resident .wpl-section-gallery.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(
+            primaryColor,
+            0.1,
+          )}, ${withAlpha(accentColor, 0.18)});
+        }
+        .theme-estate-resident .wpl-hero,
+        .theme-property-leasing .wpl-hero {
+          border-radius: 48px;
+        }
+        .theme-property-profile .wpl-hero,
+        .theme-property-corporate .wpl-hero {
+          border-radius: 42px;
+        }
+        .theme-estate-official .wpl-hero,
+        .theme-estate-exco .wpl-hero {
+          border-radius: 42px 42px 30px 30px;
+        }
+        .theme-property-profile .wpl-hero h1 {
+          max-width: 10ch;
+        }
+        .theme-property-portfolio .wpl-hero-media-shell {
+          transform: rotate(-2deg);
+        }
+        .theme-property-corporate .wpl-section,
+        .theme-estate-fees .wpl-section {
+          border-radius: 24px;
+        }
+        .theme-property-leasing .wpl-section-listings .wpl-list,
+        .theme-estate-resident .wpl-section-features .wpl-list {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          padding-left: 0;
+          list-style: none;
+        }
+        .theme-property-leasing .wpl-section-listings .wpl-list li,
+        .theme-estate-resident .wpl-section-features .wpl-list li {
+          padding: 14px 16px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid var(--wpl-border);
+        }
+        @media (max-width: 920px) {
           .wpl-hero {
             grid-template-columns: 1fr;
           }
-          .wpl-hero-stage {
-            display: none;
+          .wpl-hero-media-caption {
+            flex-direction: column;
+            align-items: flex-start;
           }
-          .wpl-gallery-grid {
-            grid-template-columns: 1fr 1fr;
-            grid-template-rows: auto;
+          .wpl-section.wpl-layout-full {
+            grid-template-columns: 1fr;
+            min-height: 0;
           }
-          .wpl-gallery-tile:first-child {
-            grid-row: auto;
+          .wpl-band-rail {
+            padding-right: 0;
+            padding-bottom: 14px;
+          }
+          .wpl-band-rail::after {
+            top: auto;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: auto;
+            height: 1px;
+          }
+          .wpl-band-note {
+            max-width: none;
+          }
+          .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid,
+          .wpl-section-contact.wpl-layout-full .wpl-contact-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
         @media (max-width: 720px) {
@@ -1450,23 +1484,44 @@ export default function WorkspacePublicLanding({
             align-items: flex-start;
           }
           .wpl-hero {
-            padding: clamp(60px, 12vw, 100px) 0;
+            padding: 26px;
+            border-radius: 28px;
           }
           .wpl-hero h1 {
-            font-size: clamp(36px, 11vw, 54px);
+            max-width: none;
+            font-size: clamp(34px, 11vw, 52px);
           }
-          .wpl-feature-grid {
+          .wpl-hero-media-shell {
+            padding: 12px;
+          }
+          .wpl-hero-metrics {
             grid-template-columns: 1fr;
           }
-          .wpl-listing-grid {
+          .wpl-main {
             grid-template-columns: 1fr;
           }
-          .wpl-team-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+          .wpl-section.wpl-layout-full,
+          .wpl-section.wpl-layout-center,
+          .wpl-section.wpl-layout-half {
+            grid-column: auto;
+            width: auto;
+            justify-self: stretch;
+          }
+          .wpl-section {
+            padding: 22px;
+            border-radius: 24px;
           }
           .wpl-gallery-grid {
+            grid-template-columns: 1fr 1fr;
+          }
+          .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid,
+          .wpl-section-contact.wpl-layout-full .wpl-contact-grid,
+          .theme-property-leasing .wpl-section-listings .wpl-list,
+          .theme-estate-resident .wpl-section-features .wpl-list {
             grid-template-columns: 1fr;
-            grid-template-rows: auto;
+          }
+          .wpl-section-gallery.wpl-layout-full .wpl-gallery-tile:first-child {
+            min-height: 220px;
           }
           .wpl-contact-grid {
             grid-template-columns: 1fr;
