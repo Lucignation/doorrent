@@ -125,8 +125,8 @@ export default function EstateOverviewPage() {
         />
         <ModuleCard
           href="/estate/landing"
-          title="Landing Page"
-          description="Configure your estate's public landing page."
+          title="Landing Page Builder"
+          description="Choose approved templates, reorder sections, and preview the public estate page."
           stat={null}
         />
         <ModuleCard

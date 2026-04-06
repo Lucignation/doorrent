@@ -1793,6 +1793,33 @@ export default function LandlordSettingsPage() {
                         </div>
                       </div>
                     </div>
+
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 14,
+                        padding: "14px 16px",
+                        borderRadius: 14,
+                        border: "1px solid var(--border)",
+                        background: "linear-gradient(135deg, rgba(26, 92, 66, 0.06), rgba(210, 168, 90, 0.12))",
+                        marginBottom: 16,
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
+                          Landing Page Builder
+                        </div>
+                        <div style={{ fontSize: 12, lineHeight: 1.5, color: "var(--ink3)" }}>
+                          Open the approved template library, drag sections into place, and preview
+                          the public landing experience before publish.
+                        </div>
+                      </div>
+                      <Link href="/landlord/landing" className="btn btn-secondary">
+                        Open builder
+                      </Link>
+                    </div>
                   </>
                 ) : null}
 

@@ -207,6 +207,10 @@ export function canAccessLandlordPath(
     return capabilities.canManageNotices;
   }
 
+  if (path.startsWith("/landlord/landing")) {
+    return capabilities.canManageAccountUpdates || capabilities.canManageBranding;
+  }
+
   if (path.startsWith("/landlord/emergency")) {
     return capabilities.canManageEmergency;
   }

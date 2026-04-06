@@ -1,18 +1,19 @@
-import { useEffect, useState } from "react";
-import EstatePortalShell from "../../components/auth/EstatePortalShell";
+import { useEffect, useMemo, useState } from "react";
+import LandlordPortalShell from "../../components/auth/LandlordPortalShell";
 import LandingPageBuilder from "../../components/landing/LandingPageBuilder";
 import PageMeta from "../../components/layout/PageMeta";
 import PageHeader from "../../components/ui/PageHeader";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
-import type { LandingBuilderDraft } from "../../lib/landing-builder";
+import type { LandingBuilderDraft, LandingBuilderWorkspace } from "../../lib/landing-builder";
 import type { LandlordCapabilities } from "../../lib/landlord-access";
 
-interface EstateLandingSettingsResponse {
+interface LandlordLandingSettingsResponse {
   capabilities: LandlordCapabilities;
   profile: {
     companyName: string;
+    workspaceMode?: "SOLO_LANDLORD" | "PROPERTY_MANAGER_COMPANY" | "ESTATE_ADMIN";
     workspaceSlug?: string | null;
     workspaceOrigin?: string | null;
     brandDisplayName?: string | null;
@@ -35,11 +36,11 @@ function formatPublishDomain(origin?: string | null, workspaceSlug?: string | nu
   return origin.replace(/^https?:\/\//, "").replace(/^www\./, "") || fallback;
 }
 
-export default function EstateLandingPage() {
+export default function LandlordLandingPage() {
   const { showToast } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const token = landlordSession?.token;
-  const [settings, setSettings] = useState<EstateLandingSettingsResponse | null>(null);
+  const [settings, setSettings] = useState<LandlordLandingSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -52,7 +53,7 @@ export default function EstateLandingPage() {
     setLoading(true);
     setError("");
 
-    apiRequest<EstateLandingSettingsResponse>("/landlord/settings", { token })
+    apiRequest<LandlordLandingSettingsResponse>("/landlord/settings", { token })
       .then(({ data }) => {
         if (!cancelled) {
           setSettings(data);
@@ -77,6 +78,14 @@ export default function EstateLandingPage() {
       cancelled = true;
     };
   }, [token]);
+
+  const workspace = useMemo<LandingBuilderWorkspace>(() => {
+    if (settings?.profile.workspaceMode === "ESTATE_ADMIN") {
+      return "estate";
+    }
+
+    return "property";
+  }, [settings?.profile.workspaceMode]);
 
   async function publishBranding(draft: LandingBuilderDraft) {
     if (!token || !settings) {
@@ -116,17 +125,17 @@ export default function EstateLandingPage() {
     );
 
     showToast(
-      "Estate branding published. Template ordering and section content remain in the local builder draft until the landing content API is connected.",
+      "Brand shell published. Template arrangement and controlled content blocks stay in your local builder draft until the landing content API is connected.",
       "success",
     );
   }
 
   return (
-    <EstatePortalShell topbarTitle="Landing Page Builder" breadcrumb="Landing Page Builder">
-      <PageMeta title="Landing Page Builder — Estate" />
+    <LandlordPortalShell topbarTitle="Landing Page Builder" breadcrumb="Landing Page Builder">
+      <PageMeta title="Landing Page Builder — Workspace" />
       <PageHeader
         title="Landing Page Builder"
-        description="Choose approved estate templates, edit content blocks, and preview the public page before publishing."
+        description="Preview approved landlord and property company templates, reorder sections with drag and drop, and publish the branded shell."
       />
 
       {error ? (
@@ -143,10 +152,12 @@ export default function EstateLandingPage() {
         </div>
       ) : (
         <LandingPageBuilder
-          workspace="estate"
-          workspaceLabel={settings.profile.brandDisplayName || settings.profile.companyName || "Estate"}
+          workspace={workspace}
+          workspaceLabel={
+            settings.profile.brandDisplayName || settings.profile.companyName || "Workspace"
+          }
           profile={settings.profile}
-          storageKey={`doorrent.landing.builder.estate.${settings.profile.workspaceSlug ?? "default"}`}
+          storageKey={`doorrent.landing.builder.landlord.${settings.profile.workspaceSlug ?? "default"}`}
           publishDomain={formatPublishDomain(
             settings.profile.workspaceOrigin,
             settings.profile.workspaceSlug,
@@ -159,6 +170,6 @@ export default function EstateLandingPage() {
           onPublishBranding={publishBranding}
         />
       )}
-    </EstatePortalShell>
+    </LandlordPortalShell>
   );
 }
