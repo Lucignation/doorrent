@@ -5,11 +5,13 @@ import {
   LANDING_BUILDER_SECTIONS,
   applyTemplateToDraft,
   createLandingBuilderDraft,
+  getDefaultLandingBuilderSectionLayout,
   getLandingBuilderTemplate,
   getLandingBuilderTemplates,
   mergeLandingBuilderDraft,
   type LandingBuilderDraft,
   type LandingBuilderProfile,
+  type LandingBuilderSectionLayout,
   type LandingBuilderSectionKey,
   type LandingBuilderWorkspace,
 } from "../../lib/landing-builder";
@@ -207,6 +209,23 @@ export default function LandingPageBuilder({
         sectionOrder: nextOrder,
       };
     });
+  }
+
+  function updateSectionLayout(
+    sectionKey: LandingBuilderSectionKey,
+    layout: LandingBuilderSectionLayout,
+  ) {
+    setDraft((current) => ({
+      ...current,
+      sectionLayouts: {
+        ...current.sectionLayouts,
+        [sectionKey]: layout,
+      },
+    }));
+  }
+
+  function getSectionLayout(sectionKey: LandingBuilderSectionKey) {
+    return draft.sectionLayouts?.[sectionKey] ?? getDefaultLandingBuilderSectionLayout(sectionKey);
   }
 
   async function publishBranding() {
@@ -991,6 +1010,24 @@ export default function LandingPageBuilder({
                         </div>
                       </div>
                       <div className="lpb-section-actions">
+                        <label className="lpb-layout-picker">
+                          <span>Width</span>
+                          <select
+                            className="form-input"
+                            value={getSectionLayout(sectionKey)}
+                            onChange={(event) =>
+                              updateSectionLayout(
+                                sectionKey,
+                                event.target.value as LandingBuilderSectionLayout,
+                              )
+                            }
+                            disabled={sectionKey === "hero"}
+                          >
+                            <option value="half">Side by side</option>
+                            <option value="center">Center</option>
+                            <option value="full">Full width</option>
+                          </select>
+                        </label>
                         <div className="lpb-reorder-actions">
                           <button
                             type="button"
@@ -1046,6 +1083,12 @@ export default function LandingPageBuilder({
             <div className="lpb-preview-note">
               This preview uses the same public landing component rendered on the workspace
               subdomain.
+            </div>
+
+            <div className="lpb-preview-note lpb-preview-note-layout">
+              Set neighboring sections to <strong>Side by side</strong> to place them on one row,
+              or switch a section to <strong>Full width</strong> to let it span the full content
+              area. Layout settings stay separate from the text, images, and CTA content.
             </div>
 
             <div className="lpb-preview-live">
@@ -1293,6 +1336,17 @@ export default function LandingPageBuilder({
           flex-wrap: wrap;
           justify-content: flex-end;
         }
+        .lpb-layout-picker {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 12px;
+          color: var(--ink2);
+          font-weight: 600;
+        }
+        .lpb-layout-picker :global(select) {
+          min-width: 148px;
+        }
         .lpb-section-title {
           display: flex;
           align-items: center;
@@ -1339,6 +1393,9 @@ export default function LandingPageBuilder({
           color: var(--ink2);
           font-size: 12px;
           line-height: 1.5;
+        }
+        .lpb-preview-note-layout {
+          background: rgba(210, 168, 90, 0.14);
         }
         .lpb-preview-live {
           max-height: min(80vh, 980px);

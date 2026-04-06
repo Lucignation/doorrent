@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import PageMeta from "../layout/PageMeta";
 import type { PublicWorkspaceContext } from "../../lib/workspace-context";
 import {
+  getDefaultLandingBuilderSectionLayout,
   mergeLandingBuilderDraft,
   type LandingBuilderDraft,
   type LandingBuilderSectionKey,
@@ -91,6 +92,41 @@ function renderList(items: string[]) {
         <li key={item}>{item}</li>
       ))}
     </ul>
+  );
+}
+
+function WorkspacePublicGalleryImage({
+  imageUrl,
+  alt,
+  fallbackBackground,
+}: {
+  imageUrl?: string | null;
+  alt: string;
+  fallbackBackground: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  if (!imageUrl || failed) {
+    return (
+      <div
+        className="wpl-gallery-tile wpl-gallery-placeholder"
+        style={{ backgroundImage: fallbackBackground }}
+      />
+    );
+  }
+
+  return (
+    <div className="wpl-gallery-tile">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={imageUrl}
+        alt={alt}
+        className="wpl-gallery-image"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+        onError={() => setFailed(true)}
+      />
+    </div>
   );
 }
 
@@ -228,11 +264,17 @@ export default function WorkspacePublicLanding({
     ? `mailto:${supportEmail}`
     : renderActionHref(draft.ctaSecondaryUrl, portalUrl);
 
+  function resolveSectionLayout(sectionKey: LandingBuilderSectionKey) {
+    return draft.sectionLayouts?.[sectionKey] ?? getDefaultLandingBuilderSectionLayout(sectionKey);
+  }
+
   function renderSection(sectionKey: LandingBuilderSectionKey) {
+    const layoutClass = `wpl-layout-${resolveSectionLayout(sectionKey)}`;
+
     switch (sectionKey) {
       case "about":
         return (
-          <section key={sectionKey} className="wpl-section wpl-copy-card">
+          <section key={sectionKey} className={`wpl-section wpl-copy-card ${layoutClass}`}>
             <div className="wpl-section-topline">About</div>
             <h2>{draft.aboutTitle}</h2>
             <p>{draft.aboutBody}</p>
@@ -240,7 +282,7 @@ export default function WorkspacePublicLanding({
         );
       case "features":
         return (
-          <section key={sectionKey} className="wpl-section wpl-copy-card">
+          <section key={sectionKey} className={`wpl-section wpl-copy-card ${layoutClass}`}>
             <div className="wpl-section-topline">Services</div>
             <h2>{draft.featuresTitle}</h2>
             <p>{draft.featuresBody}</p>
@@ -249,7 +291,7 @@ export default function WorkspacePublicLanding({
         );
       case "listings":
         return (
-          <section key={sectionKey} className="wpl-section wpl-copy-card">
+          <section key={sectionKey} className={`wpl-section wpl-copy-card ${layoutClass}`}>
             <div className="wpl-section-topline">Highlights</div>
             <h2>{draft.listingsTitle}</h2>
             <p>{draft.listingsBody}</p>
@@ -258,7 +300,7 @@ export default function WorkspacePublicLanding({
         );
       case "team":
         return (
-          <section key={sectionKey} className="wpl-section wpl-copy-card">
+          <section key={sectionKey} className={`wpl-section wpl-copy-card ${layoutClass}`}>
             <div className="wpl-section-topline">
               {workspaceType === "estate" ? "Exco" : "Team"}
             </div>
@@ -269,7 +311,7 @@ export default function WorkspacePublicLanding({
         );
       case "fees":
         return (
-          <section key={sectionKey} className="wpl-section wpl-copy-card">
+          <section key={sectionKey} className={`wpl-section wpl-copy-card ${layoutClass}`}>
             <div className="wpl-section-topline">Fees</div>
             <h2>{draft.feesTitle}</h2>
             <p>{draft.feesBody}</p>
@@ -278,7 +320,7 @@ export default function WorkspacePublicLanding({
         );
       case "notices":
         return (
-          <section key={sectionKey} className="wpl-section wpl-notice-card">
+          <section key={sectionKey} className={`wpl-section wpl-notice-card ${layoutClass}`}>
             <div className="wpl-section-topline">Notices</div>
             <h2>{draft.noticesTitle}</h2>
             <p>{draft.noticesBody}</p>
@@ -287,7 +329,7 @@ export default function WorkspacePublicLanding({
         );
       case "contact":
         return (
-          <section key={sectionKey} className="wpl-section wpl-copy-card">
+          <section key={sectionKey} className={`wpl-section wpl-copy-card ${layoutClass}`}>
             <div className="wpl-section-topline">Contact</div>
             <h2>{draft.contactTitle}</h2>
             <div className="wpl-contact-grid">
@@ -301,7 +343,7 @@ export default function WorkspacePublicLanding({
         );
       case "faq":
         return (
-          <section key={sectionKey} className="wpl-section wpl-copy-card">
+          <section key={sectionKey} className={`wpl-section wpl-copy-card ${layoutClass}`}>
             <div className="wpl-section-topline">FAQ</div>
             <h2>{draft.faqTitle}</h2>
             {renderList(draft.faqItems)}
@@ -314,31 +356,26 @@ export default function WorkspacePublicLanding({
           .slice(0, 3);
 
         return (
-          <section key={sectionKey} className="wpl-section wpl-copy-card">
+          <section key={sectionKey} className={`wpl-section wpl-copy-card ${layoutClass}`}>
             <div className="wpl-section-topline">Gallery</div>
             <h2>{draft.galleryTitle}</h2>
             <p>{draft.galleryBody}</p>
             <div className="wpl-gallery-grid">
-              {(galleryImages.length ? galleryImages : [heroBackground, heroBackground, heroBackground]).map(
-                (image, index) => (
-                  <div
-                    key={`${image}-${index}`}
-                    className="wpl-gallery-tile"
-                    style={
-                      image.startsWith("linear-gradient")
-                        ? { backgroundImage: image }
-                        : { backgroundImage: `url(${image})` }
-                    }
-                  />
-                ),
-              )}
+              {(galleryImages.length ? galleryImages : [null, null, null]).map((image, index) => (
+                <WorkspacePublicGalleryImage
+                  key={`${image ?? "placeholder"}-${index}`}
+                  imageUrl={image}
+                  alt={`${displayName} gallery image ${index + 1}`}
+                  fallbackBackground={heroBackground}
+                />
+              ))}
             </div>
           </section>
         );
       }
       case "cta":
         return (
-          <section key={sectionKey} className="wpl-section wpl-cta-card">
+          <section key={sectionKey} className={`wpl-section wpl-cta-card ${layoutClass}`}>
             <h2>Ready to continue?</h2>
             <p>
               Open the workspace portal or contact the team directly using the approved public
@@ -373,7 +410,12 @@ export default function WorkspacePublicLanding({
           <div className="wpl-brand">
             {logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={`${displayName} logo`} className="wpl-logo" />
+              <img
+                src={logoUrl}
+                alt={`${displayName} logo`}
+                className="wpl-logo"
+                referrerPolicy="no-referrer"
+              />
             ) : (
               <span className="wpl-brandmark" style={{ background: primaryColor }}>
                 {displayName.slice(0, 2).toUpperCase()}
@@ -534,16 +576,28 @@ export default function WorkspacePublicLanding({
         }
         .wpl-main {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 18px;
           padding-bottom: 32px;
         }
         .wpl-section {
+          grid-column: span 1;
           padding: 22px;
           border-radius: 22px;
           border: 1px solid rgba(25, 30, 23, 0.08);
           background: rgba(255, 255, 255, 0.82);
           box-shadow: 0 14px 28px rgba(18, 22, 16, 0.05);
+        }
+        .wpl-section.wpl-layout-full {
+          grid-column: 1 / -1;
+        }
+        .wpl-section.wpl-layout-center {
+          grid-column: 1 / -1;
+          width: min(560px, 100%);
+          justify-self: center;
+        }
+        .wpl-section.wpl-layout-half {
+          grid-column: span 1;
         }
         .wpl-copy-card h2,
         .wpl-cta-card h2 {
@@ -581,9 +635,18 @@ export default function WorkspacePublicLanding({
         .wpl-gallery-tile {
           aspect-ratio: 1 / 1;
           border-radius: 16px;
+          overflow: hidden;
+          border: 1px solid rgba(25, 30, 23, 0.08);
+        }
+        .wpl-gallery-placeholder {
           background-size: cover;
           background-position: center;
-          border: 1px solid rgba(25, 30, 23, 0.08);
+        }
+        .wpl-gallery-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
         }
         .wpl-contact-grid {
           display: grid;
@@ -658,6 +721,13 @@ export default function WorkspacePublicLanding({
           }
           .wpl-main {
             grid-template-columns: 1fr;
+          }
+          .wpl-section.wpl-layout-full,
+          .wpl-section.wpl-layout-center,
+          .wpl-section.wpl-layout-half {
+            grid-column: auto;
+            width: auto;
+            justify-self: stretch;
           }
           .wpl-gallery-grid {
             grid-template-columns: 1fr 1fr;
