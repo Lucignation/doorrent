@@ -635,6 +635,7 @@ export default function WorkspacePublicLanding({
           body: draft.aboutBody,
           className: "wpl-copy-card",
         });
+
       case "features":
         return renderSectionFrame({
           sectionKey,
@@ -644,15 +645,41 @@ export default function WorkspacePublicLanding({
           className: "wpl-copy-card",
           children: renderList(draft.featuresItems),
         });
+
       case "listings":
         return renderSectionFrame({
           sectionKey,
-          topline: "Highlights",
+          topline: workspaceType === "estate" ? "Properties" : "Portfolio",
           title: draft.listingsTitle,
           body: draft.listingsBody,
           className: "wpl-copy-card",
-          children: renderList(draft.listingItems),
+          children: draft.listingItems.length ? (
+            <div className="wpl-listings-grid">
+              {draft.listingItems.slice(0, 6).map((item, idx) => {
+                const sep = item.indexOf(" — ");
+                const headline = sep > -1 ? item.slice(0, sep) : item;
+                const detail = sep > -1 ? item.slice(sep + 3) : "";
+                const isPrice = /[₦$€£]/.test(headline) || /^\d[\d,]/.test(headline.trim());
+                const thumb = galleryImages[idx % Math.max(galleryImages.length, 1)] ?? null;
+                return (
+                  <div key={`${item}-${idx}`} className="wpl-listing-card">
+                    <div className="wpl-listing-card-img" style={{ background: heroBackground }}>
+                      {thumb ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={thumb} alt={headline} className="wpl-listing-img" loading="lazy" referrerPolicy="no-referrer" />
+                      ) : null}
+                      {isPrice ? <span className="wpl-listing-badge">{headline}</span> : null}
+                    </div>
+                    <div className="wpl-listing-card-body">
+                      <p>{isPrice ? detail : headline}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null,
         });
+
       case "team":
         return renderSectionFrame({
           sectionKey,
@@ -660,8 +687,25 @@ export default function WorkspacePublicLanding({
           title: draft.teamTitle,
           body: draft.teamBody,
           className: "wpl-copy-card",
-          children: renderList(draft.teamItems),
+          children: draft.teamItems.length ? (
+            <div className="wpl-team-grid">
+              {draft.teamItems.slice(0, 6).map((item) => {
+                const sep = item.indexOf(" — ");
+                const name = sep > -1 ? item.slice(0, sep) : item;
+                const role = sep > -1 ? item.slice(sep + 3) : "";
+                const initials = name.split(" ").slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase();
+                return (
+                  <div key={item} className="wpl-team-card">
+                    <div className="wpl-team-avatar" style={{ background: primaryColor }}>{initials}</div>
+                    <strong>{name}</strong>
+                    {role ? <span>{role}</span> : null}
+                  </div>
+                );
+              })}
+            </div>
+          ) : null,
         });
+
       case "fees":
         return renderSectionFrame({
           sectionKey,
@@ -669,8 +713,23 @@ export default function WorkspacePublicLanding({
           title: draft.feesTitle,
           body: draft.feesBody,
           className: "wpl-copy-card",
-          children: renderList(draft.feeItems),
+          children: draft.feeItems.length ? (
+            <div className="wpl-fees-grid">
+              {draft.feeItems.slice(0, 6).map((item) => {
+                const sep = item.indexOf(" — ");
+                const label = sep > -1 ? item.slice(0, sep) : item;
+                const amount = sep > -1 ? item.slice(sep + 3) : "";
+                return (
+                  <div key={item} className="wpl-fee-item">
+                    {amount ? <strong>{amount}</strong> : null}
+                    <span>{label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null,
         });
+
       case "notices":
         return renderSectionFrame({
           sectionKey,
@@ -680,6 +739,7 @@ export default function WorkspacePublicLanding({
           className: "wpl-notice-card",
           children: renderList(draft.noticeItems),
         });
+
       case "contact":
         return renderSectionFrame({
           sectionKey,
@@ -700,15 +760,31 @@ export default function WorkspacePublicLanding({
             </div>
           ),
         });
+
       case "faq":
         return renderSectionFrame({
           sectionKey,
           topline: "FAQ",
           title: draft.faqTitle,
-          body: "Keep public answers short, clear, and aligned with the approved visitor journey.",
+          body: null,
           className: "wpl-copy-card",
-          children: renderList(draft.faqItems),
+          children: draft.faqItems.length ? (
+            <ul className="wpl-faq-list">
+              {draft.faqItems.slice(0, 8).map((item) => {
+                const sep = item.indexOf(" — ");
+                const q = sep > -1 ? item.slice(0, sep) : item;
+                const a = sep > -1 ? item.slice(sep + 3) : "";
+                return (
+                  <li key={item} className="wpl-faq-item">
+                    <strong>{q}</strong>
+                    {a ? <span>{a}</span> : null}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null,
         });
+
       case "gallery":
         return renderSectionFrame({
           sectionKey,
@@ -729,6 +805,7 @@ export default function WorkspacePublicLanding({
             </div>
           ),
         });
+
       case "cta":
         return renderSectionFrame({
           sectionKey,
@@ -748,6 +825,7 @@ export default function WorkspacePublicLanding({
             </div>
           ),
         });
+
       default:
         return null;
     }
@@ -867,12 +945,14 @@ export default function WorkspacePublicLanding({
       </div>
 
       <style jsx>{`
+        /* ─── BASE ─── */
         .wpl-root {
           min-height: 100vh;
           padding: 18px 0 14px;
           background: var(--wpl-bg-layer), var(--wpl-bg-base);
           color: #171914;
           font-family: var(--wpl-body-font);
+          -webkit-font-smoothing: antialiased;
         }
         .wpl-nav,
         .wpl-main,
@@ -1432,19 +1512,312 @@ export default function WorkspacePublicLanding({
         .theme-estate-fees .wpl-section {
           border-radius: 24px;
         }
-        .theme-property-leasing .wpl-section-listings .wpl-list,
-        .theme-estate-resident .wpl-section-features .wpl-list {
+        /* ─── FEES GRID ─── */
+        .wpl-fees-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+          gap: 12px;
+          margin-top: 18px;
+        }
+        .wpl-fee-item {
+          padding: 18px 16px;
+          border-radius: 20px;
+          background: rgba(255, 255, 255, 0.74);
+          border: 1px solid var(--wpl-border);
+          box-shadow: 0 4px 14px rgba(18, 22, 16, 0.06);
+        }
+        .wpl-fee-item strong {
+          display: block;
+          font-family: var(--wpl-title-font);
+          font-size: 26px;
+          letter-spacing: -0.04em;
+          color: var(--wpl-primary);
+          margin-bottom: 4px;
+          line-height: 1;
+        }
+        .wpl-fee-item span {
+          font-size: 13px;
+          color: var(--wpl-muted);
+          line-height: 1.5;
+        }
+
+        /* ─── FAQ LIST ─── */
+        .wpl-faq-list {
+          margin: 14px 0 0;
+          display: grid;
+          gap: 10px;
+          list-style: none;
+          padding: 0;
+        }
+        .wpl-faq-item {
+          padding: 16px 18px;
+          border-radius: 18px;
+          background: rgba(255, 255, 255, 0.72);
+          border: 1px solid var(--wpl-border);
+          box-shadow: 0 3px 10px rgba(18, 22, 16, 0.05);
+        }
+        .wpl-faq-item strong {
+          display: block;
+          font-size: 14px;
+          font-weight: 600;
+          color: #171914;
+          margin-bottom: 6px;
+          line-height: 1.4;
+        }
+        .wpl-faq-item span {
+          display: block;
+          font-size: 13px;
+          color: var(--wpl-muted);
+          line-height: 1.62;
+        }
+
+        /* ─── TEAM GRID ─── */
+        .wpl-team-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+          gap: 12px;
+          margin-top: 18px;
+        }
+        .wpl-team-card {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 18px 16px;
+          border-radius: 20px;
+          background: rgba(255, 255, 255, 0.74);
+          border: 1px solid var(--wpl-border);
+          box-shadow: 0 4px 14px rgba(18, 22, 16, 0.06);
+        }
+        .wpl-team-avatar {
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+          flex-shrink: 0;
+        }
+        .wpl-team-card strong {
+          display: block;
+          font-size: 14px;
+          font-weight: 700;
+          color: #171914;
+          line-height: 1.3;
+        }
+        .wpl-team-card span {
+          display: block;
+          font-size: 12px;
+          color: var(--wpl-muted);
+          line-height: 1.5;
+        }
+
+        /* ─── LISTINGS GRID ─── */
+        .wpl-listings-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 16px;
+          margin-top: 18px;
+        }
+        .wpl-listing-card {
+          border-radius: 20px;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.82);
+          border: 1px solid var(--wpl-border);
+          box-shadow: 0 8px 24px rgba(18, 22, 16, 0.08);
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .wpl-listing-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 16px 40px rgba(18, 22, 16, 0.12);
+        }
+        .wpl-listing-card-img {
+          position: relative;
+          aspect-ratio: 16 / 9;
+          overflow: hidden;
+        }
+        .wpl-listing-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .wpl-listing-badge {
+          position: absolute;
+          bottom: 10px;
+          left: 10px;
+          padding: 5px 12px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.68);
+          color: #fff;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+          backdrop-filter: blur(8px);
+        }
+        .wpl-listing-card-body {
+          padding: 14px 16px;
+        }
+        .wpl-listing-card-body p {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.5;
+          color: #2f372f;
+        }
+
+        /* ─── TEMPLATE LAYOUT OVERRIDES ─── */
+
+        /* estate-official: 2-col grid, serif authority, gold rail */
+        .theme-estate-official .wpl-section.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 251, 245, 0.98), ${withAlpha(accentColor, 0.13)});
+        }
+
+        /* estate-resident: 3-col grid, service pill cards */
+        .theme-estate-resident .wpl-main {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .theme-estate-resident .wpl-section.wpl-layout-full,
+        .theme-estate-resident .wpl-section.wpl-layout-center {
+          grid-column: 1 / -1;
+        }
+        .theme-estate-resident .wpl-section {
+          border-top: 3px solid var(--wpl-primary);
+          border-radius: 28px 28px 20px 20px;
+        }
+        .theme-estate-resident .wpl-section.wpl-layout-full {
+          border-top-color: var(--wpl-accent);
+        }
+        .theme-estate-resident .wpl-section-features .wpl-list,
+        .theme-estate-resident .wpl-section-notices .wpl-list {
           grid-template-columns: repeat(2, minmax(0, 1fr));
           padding-left: 0;
           list-style: none;
         }
-        .theme-property-leasing .wpl-section-listings .wpl-list li,
-        .theme-estate-resident .wpl-section-features .wpl-list li {
-          padding: 14px 16px;
-          border-radius: 18px;
+        .theme-estate-resident .wpl-section-features .wpl-list li,
+        .theme-estate-resident .wpl-section-notices .wpl-list li {
+          padding: 13px 15px;
+          border-radius: 16px;
           background: rgba(255, 255, 255, 0.72);
           border: 1px solid var(--wpl-border);
+          font-size: 14px;
         }
+
+        /* estate-fees: single wide column, fee-table focused */
+        .theme-estate-fees .wpl-main {
+          grid-template-columns: 1fr;
+          max-width: 860px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .theme-estate-fees .wpl-section.wpl-layout-full {
+          grid-column: auto;
+          grid-template-columns: minmax(160px, 200px) minmax(0, 1fr);
+        }
+        .theme-estate-fees .wpl-section {
+          border-radius: 22px;
+          border-left: 4px solid var(--wpl-primary);
+        }
+        .theme-estate-fees .wpl-section-fees .wpl-fees-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
+        /* estate-exco: centered governance, committee cards */
+        .theme-estate-exco .wpl-section.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 253, 249, 0.96), ${withAlpha(primaryColor, 0.10)}, ${withAlpha(accentColor, 0.14)});
+        }
+        .theme-estate-exco .wpl-section-team .wpl-team-grid {
+          grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        }
+        .theme-estate-exco .wpl-section-team .wpl-team-card {
+          align-items: center;
+          text-align: center;
+        }
+        .theme-estate-exco .wpl-hero {
+          border-radius: 42px 42px 30px 30px;
+        }
+        .theme-estate-exco .wpl-section {
+          border-radius: 20px;
+        }
+
+        /* property-profile: dark authority hero, service rows */
+        .theme-property-profile .wpl-hero {
+          border-radius: 42px;
+        }
+        .theme-property-profile .wpl-section.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(accentColor, 0.12)});
+        }
+        .theme-property-profile .wpl-section-features .wpl-list {
+          grid-template-columns: 1fr;
+          padding-left: 0;
+          list-style: none;
+          gap: 8px;
+        }
+        .theme-property-profile .wpl-section-features .wpl-list li {
+          padding: 14px 18px;
+          border-radius: 14px;
+          background: rgba(255, 255, 255, 0.80);
+          border-left: 3px solid var(--wpl-primary);
+          border-right: 1px solid var(--wpl-border);
+          border-top: 1px solid var(--wpl-border);
+          border-bottom: 1px solid var(--wpl-border);
+          font-size: 14px;
+        }
+        .theme-property-profile .wpl-hero h1 {
+          max-width: 10ch;
+        }
+
+        /* property-leasing: urgency, 3-col listings */
+        .theme-property-leasing .wpl-hero {
+          border-radius: 48px;
+        }
+        .theme-property-leasing .wpl-section-listings .wpl-listings-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .theme-property-leasing .wpl-section.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(accentColor, 0.13)}, ${withAlpha(primaryColor, 0.09)});
+        }
+
+        /* property-portfolio: gallery-dominant */
+        .theme-property-portfolio .wpl-hero {
+          border-radius: 42px;
+        }
+        .theme-property-portfolio .wpl-section-gallery.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(primaryColor, 0.10)}, ${withAlpha(accentColor, 0.16)});
+        }
+        .theme-property-portfolio .wpl-hero-media-shell {
+          transform: rotate(-2deg);
+        }
+        .theme-property-portfolio .wpl-gallery-grid {
+          grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 0.7fr));
+          gap: 16px;
+        }
+        .theme-property-portfolio .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid {
+          grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 0.7fr));
+        }
+        .theme-property-portfolio .wpl-listings-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        /* property-corporate: enterprise clean, KPI section */
+        .theme-property-corporate .wpl-hero {
+          border-radius: 42px;
+        }
+        .theme-property-corporate .wpl-section {
+          border-radius: 20px;
+        }
+        .theme-property-corporate .wpl-section.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(primaryColor, 0.10)}, ${withAlpha(accentColor, 0.10)});
+        }
+        .theme-property-corporate .wpl-section-team.wpl-layout-full {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(primaryColor, 0.16)}, ${withAlpha(accentColor, 0.12)});
+        }
+        .theme-property-corporate .wpl-fees-grid {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+
         @media (max-width: 920px) {
           .wpl-hero {
             grid-template-columns: 1fr;
@@ -1474,6 +1847,19 @@ export default function WorkspacePublicLanding({
           }
           .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid,
           .wpl-section-contact.wpl-layout-full .wpl-contact-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .theme-estate-resident .wpl-main {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .theme-estate-fees .wpl-section.wpl-layout-full {
+            grid-template-columns: 1fr;
+          }
+          .theme-estate-fees .wpl-section-fees .wpl-fees-grid,
+          .theme-property-corporate .wpl-fees-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .theme-property-leasing .wpl-section-listings .wpl-listings-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
         }
@@ -1515,15 +1901,30 @@ export default function WorkspacePublicLanding({
             grid-template-columns: 1fr 1fr;
           }
           .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid,
-          .wpl-section-contact.wpl-layout-full .wpl-contact-grid,
-          .theme-property-leasing .wpl-section-listings .wpl-list,
-          .theme-estate-resident .wpl-section-features .wpl-list {
+          .wpl-section-contact.wpl-layout-full .wpl-contact-grid {
             grid-template-columns: 1fr;
           }
           .wpl-section-gallery.wpl-layout-full .wpl-gallery-tile:first-child {
             min-height: 220px;
           }
           .wpl-contact-grid {
+            grid-template-columns: 1fr;
+          }
+          .theme-estate-resident .wpl-main,
+          .theme-estate-fees .wpl-main {
+            grid-template-columns: 1fr;
+          }
+          .theme-estate-resident .wpl-section-features .wpl-list,
+          .theme-estate-resident .wpl-section-notices .wpl-list,
+          .theme-property-leasing .wpl-section-listings .wpl-listings-grid,
+          .theme-property-portfolio .wpl-listings-grid,
+          .theme-property-corporate .wpl-fees-grid,
+          .theme-estate-fees .wpl-section-fees .wpl-fees-grid,
+          .wpl-fees-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .wpl-listings-grid,
+          .wpl-team-grid {
             grid-template-columns: 1fr;
           }
         }
