@@ -15,6 +15,8 @@ export type LandingBuilderSectionKey =
   | "gallery"
   | "cta";
 
+export type LandingBuilderSectionLayout = "half" | "center" | "full";
+
 export type LandingBuilderTemplateId =
   | "estate-official"
   | "estate-resident"
@@ -55,6 +57,7 @@ export interface LandingBuilderDraft {
   templateId: LandingBuilderTemplateId;
   hiddenSectionKeys: LandingBuilderSectionKey[];
   sectionOrder: LandingBuilderSectionKey[];
+  sectionLayouts: Partial<Record<LandingBuilderSectionKey, LandingBuilderSectionLayout>>;
   brandDisplayName: string;
   brandLogoUrl: string;
   brandPrimaryColor: string;
@@ -159,6 +162,36 @@ export const LANDING_BUILDER_SECTIONS: Array<{
 export const LANDING_BUILDER_SECTION_KEYS = LANDING_BUILDER_SECTIONS.map(
   (section) => section.key,
 );
+
+const DEFAULT_FULL_WIDTH_SECTIONS: LandingBuilderSectionKey[] = [
+  "hero",
+  "about",
+  "gallery",
+  "cta",
+];
+
+export function getDefaultLandingBuilderSectionLayout(
+  sectionKey: LandingBuilderSectionKey,
+): LandingBuilderSectionLayout {
+  return DEFAULT_FULL_WIDTH_SECTIONS.includes(sectionKey) ? "full" : "half";
+}
+
+function createSectionLayouts(
+  sectionOrder: LandingBuilderSectionKey[],
+  overrides?: Partial<Record<LandingBuilderSectionKey, LandingBuilderSectionLayout>>,
+) {
+  return sectionOrder.reduce<Partial<Record<LandingBuilderSectionKey, LandingBuilderSectionLayout>>>(
+    (layouts, sectionKey) => {
+      const override = overrides?.[sectionKey];
+      layouts[sectionKey] =
+        override === "full" || override === "half" || override === "center"
+          ? override
+          : getDefaultLandingBuilderSectionLayout(sectionKey);
+      return layouts;
+    },
+    {},
+  );
+}
 
 const LANDING_TEMPLATES: LandingBuilderTemplate[] = [
   {
@@ -535,6 +568,9 @@ function buildDefaultDraft(
     templateId: fallbackTemplate.id,
     hiddenSectionKeys: [],
     sectionOrder: uniqueSectionOrder(fallbackTemplate.recommendedSections),
+    sectionLayouts: createSectionLayouts(
+      uniqueSectionOrder(fallbackTemplate.recommendedSections),
+    ),
     brandDisplayName,
     brandLogoUrl: profile.brandLogoUrl?.trim() || "",
     brandPrimaryColor:
@@ -610,6 +646,9 @@ export function createLandingBuilderDraft(
       (key) => !selectedTemplate.recommendedSections.includes(key),
     ),
     sectionOrder: uniqueSectionOrder(selectedTemplate.recommendedSections),
+    sectionLayouts: createSectionLayouts(
+      uniqueSectionOrder(selectedTemplate.recommendedSections),
+    ),
   };
 }
 
@@ -625,6 +664,7 @@ export function applyTemplateToDraft(
       (key) => !template.recommendedSections.includes(key),
     ),
     sectionOrder: uniqueSectionOrder(template.recommendedSections),
+    sectionLayouts: createSectionLayouts(uniqueSectionOrder(template.recommendedSections)),
   };
 
   return nextDraft;
@@ -657,6 +697,16 @@ export function mergeLandingBuilderDraft(
           ),
         )
       : baseDraft.sectionOrder,
+    sectionLayouts: createSectionLayouts(
+      Array.isArray(partialDraft?.sectionOrder)
+        ? uniqueSectionOrder(
+            partialDraft.sectionOrder.filter((key): key is LandingBuilderSectionKey =>
+              LANDING_BUILDER_SECTION_KEYS.includes(key as LandingBuilderSectionKey),
+            ),
+          )
+        : baseDraft.sectionOrder,
+      partialDraft?.sectionLayouts,
+    ),
     featuresItems: Array.isArray(partialDraft?.featuresItems)
       ? partialDraft.featuresItems
       : baseDraft.featuresItems,
