@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import EstatePortalShell from "../../components/auth/EstatePortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
@@ -7,8 +7,16 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
-import { formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
+import { convertRowsToCsv, parseCsvText, formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
 import type { TableColumn } from "../../types/app";
+
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 type ExpenseRow = EstateDashboardData["expenses"][number];
 
@@ -18,11 +26,13 @@ export default function EstateTreasuryPage() {
   const { showToast, dataRefreshVersion } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const token = landlordSession?.token;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   async function loadData() {
     if (!token) return;
@@ -38,6 +48,38 @@ export default function EstateTreasuryPage() {
   }
 
   useEffect(() => { void loadData(); }, [token, dataRefreshVersion]);
+
+  function handleExport() {
+    if (!expenses.length) { showToast("No expenses to export.", "error"); return; }
+    const csv = convertRowsToCsv(expenses.map((e) => ({ title: e.title, category: e.category, amount: e.amount, requestedByName: e.requestedByName ?? "", status: e.status, incurredOn: e.incurredOn ?? "", notes: e.notes ?? "" })));
+    downloadCsv(csv, "expenses.csv");
+  }
+
+  async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !token) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const { headers, rows } = parseCsvText(text);
+      const idx = (col: string) => headers.findIndex((h) => h.toLowerCase() === col.toLowerCase());
+      let created = 0;
+      for (const row of rows) {
+        const title = row[idx("title")] ?? "";
+        const amount = Number(row[idx("amount")] ?? 0);
+        if (!title || !amount) continue;
+        await apiRequest("/estate/expenses", { method: "POST", token, body: { title, category: row[idx("category")] || "General", amount, requestedByName: row[idx("requestedByName")] || undefined, status: row[idx("status")] || "PENDING", incurredOn: row[idx("incurredOn")] || undefined, notes: row[idx("notes")] || undefined } });
+        created++;
+      }
+      showToast(`Imported ${created} expense(s).`, "success");
+      void loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Import failed.", "error");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   function fillForm(e: ExpenseRow) {
     setForm({ id: e.id, title: e.title, category: e.category, amount: String(e.amount), requestedByName: e.requestedByName ?? "", status: e.status, incurredOn: e.incurredOn ?? "", notes: e.notes ?? "" });
@@ -117,6 +159,16 @@ export default function EstateTreasuryPage() {
           <div className="stat-label">Pending Approval</div>
           <div className="stat-value">{pending.length}</div>
           <div className="stat-sub">{formatEstateCurrency(pending.reduce((s, e) => s + e.amount, 0))}</div>
+        </div>
+      </div>
+
+      {/* CSV actions */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleExport}>Export Expenses CSV</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? "Importing…" : "Import Expenses CSV"}</button>
+          <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImport} />
+          <span className="td-muted" style={{ fontSize: 12 }}>CSV columns: title, category, amount, requestedByName, status, incurredOn, notes</span>
         </div>
       </div>
 

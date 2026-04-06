@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import EstatePortalShell from "../../components/auth/EstatePortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
@@ -8,8 +8,16 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
-import { formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
+import { convertRowsToCsv, parseCsvText, formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
 import type { TableColumn } from "../../types/app";
+
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
 
 type ChargeRow = EstateDashboardData["charges"][number];
 type ResidentRow = EstateDashboardData["residents"][number];
@@ -20,12 +28,14 @@ export default function EstateDuesPage() {
   const { showToast, dataRefreshVersion } = usePrototypeUI();
   const { landlordSession } = useLandlordPortalSession();
   const token = landlordSession?.token;
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [charges, setCharges] = useState<ChargeRow[]>([]);
   const [residents, setResidents] = useState<ResidentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [chargeForm, setChargeForm] = useState(initialChargeForm);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   async function loadData() {
     if (!token) return;
@@ -42,6 +52,38 @@ export default function EstateDuesPage() {
   }
 
   useEffect(() => { void loadData(); }, [token, dataRefreshVersion]);
+
+  function handleExport() {
+    if (!charges.length) { showToast("No charges to export.", "error"); return; }
+    const csv = convertRowsToCsv(charges.map((c) => ({ title: c.title, amount: c.amount, frequency: c.frequency, billingBasis: c.billingBasis, status: c.status, notes: c.notes ?? "" })));
+    downloadCsv(csv, "charges.csv");
+  }
+
+  async function handleImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !token) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const { headers, rows } = parseCsvText(text);
+      const idx = (col: string) => headers.findIndex((h) => h.toLowerCase() === col.toLowerCase());
+      let created = 0;
+      for (const row of rows) {
+        const title = row[idx("title")] ?? "";
+        const amount = Number(row[idx("amount")] ?? 0);
+        if (!title || !amount) continue;
+        await apiRequest("/estate/charges", { method: "POST", token, body: { title, amount, frequency: row[idx("frequency")] || "MONTHLY", billingBasis: row[idx("billingBasis")] || row[idx("billing_basis")] || "UNIT_BASED", status: row[idx("status")] || "ACTIVE", notes: row[idx("notes")] || undefined } });
+        created++;
+      }
+      showToast(`Imported ${created} charge(s).`, "success");
+      void loadData();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Import failed.", "error");
+    } finally {
+      setImporting(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
 
   function fillChargeForm(c: ChargeRow) {
     setChargeForm({ id: c.id, title: c.title, amount: String(c.amount), frequency: c.frequency, billingBasis: c.billingBasis, status: c.status, notes: c.notes ?? "" });
@@ -130,6 +172,16 @@ export default function EstateDuesPage() {
         <div className="stat-card">
           <div className="stat-label">Active Residents</div>
           <div className="stat-value">{residents.filter((r) => r.status === "ACTIVE").length}</div>
+        </div>
+      </div>
+
+      {/* CSV actions */}
+      <div className="card" style={{ marginBottom: 24 }}>
+        <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleExport}>Export Charges CSV</button>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()} disabled={importing}>{importing ? "Importing…" : "Import Charges CSV"}</button>
+          <input ref={fileInputRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImport} />
+          <span className="td-muted" style={{ fontSize: 12 }}>CSV columns: title, amount, frequency, billingBasis, status, notes</span>
         </div>
       </div>
 
