@@ -86,7 +86,7 @@ export default function EstateTreasuryPage() {
     { key: "requestedByName", label: "Requested by", render: (r) => <span className="td-muted">{r.requestedByName ?? "—"}</span> },
     { key: "incurredOn", label: "Date", render: (r) => <span className="td-muted">{r.incurredOn ? new Date(r.incurredOn).toLocaleDateString("en-NG") : "—"}</span> },
     { key: "amount", label: "Amount", render: (r) => <strong>{formatEstateCurrency(r.amount)}</strong> },
-    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "APPROVED" ? "green" : r.status === "REJECTED" ? "red" : "amber"} label={r.status} /> },
+    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "APPROVED" ? "green" : r.status === "REJECTED" ? "red" : "amber"}>{r.status}</StatusBadge> },
     {
       key: "actions", label: "",
       render: (r) => (

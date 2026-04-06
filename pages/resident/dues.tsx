@@ -38,10 +38,10 @@ export default function ResidentDuesPage() {
 
   const columns = useMemo<TableColumn<ChargeRow>[]>(() => [
     { key: "title", label: "Charge", render: (r) => <strong>{r.title}</strong> },
-    { key: "frequency", label: "Frequency", render: (r) => <StatusBadge tone="blue" label={r.frequency} /> },
+    { key: "frequency", label: "Frequency", render: (r) => <StatusBadge tone="blue">{r.frequency}</StatusBadge> },
     { key: "billingBasis", label: "Basis", render: (r) => <span className="td-muted">{r.billingBasis === "UNIT_BASED" ? "Per house" : "Per resident"}</span> },
     { key: "amount", label: "Amount", render: (r) => <strong>{formatEstateCurrency(r.amount)}</strong> },
-    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : "gray"} label={r.status} /> },
+    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : "gray"}>{r.status}</StatusBadge> },
   ], []);
 
   return (

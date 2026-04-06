@@ -103,7 +103,7 @@ export default function ResidentContributionsPage() {
     { key: "causeId", label: "Cause", render: (r) => { const c = causes.find((x) => x.id === r.causeId); return <span>{c?.title ?? "—"}</span>; } },
     { key: "amount", label: "Amount", render: (r) => <strong>{formatEstateCurrency(r.amount)}</strong> },
     { key: "paidAt", label: "Paid on", render: (r) => <span className="td-muted">{r.paidAt ? new Date(r.paidAt).toLocaleDateString("en-NG") : "—"}</span> },
-    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "PAID" ? "green" : "amber"} label={r.status} /> },
+    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "PAID" ? "green" : "amber"}>{r.status}</StatusBadge> },
   ], [causes]);
 
   return (

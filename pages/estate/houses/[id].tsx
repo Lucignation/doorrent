@@ -103,15 +103,15 @@ export default function EstateHouseDetailPage() {
 
   const residentColumns = useMemo<TableColumn<ResidentRow>[]>(() => [
     { key: "fullName", label: "Name", render: (r) => <strong>{r.fullName}</strong> },
-    { key: "residentType", label: "Type", render: (r) => <StatusBadge tone="blue" label={r.residentType} /> },
+    { key: "residentType", label: "Type", render: (r) => <StatusBadge tone="blue">{r.residentType}</StatusBadge> },
     { key: "phone", label: "Phone", render: (r) => <span className="td-muted">{r.phone ?? "—"}</span> },
     { key: "email", label: "Email", render: (r) => <span className="td-muted">{r.email ?? "—"}</span> },
     {
       key: "canAccessResidentPortal",
       label: "Portal access",
-      render: (r) => <StatusBadge tone={r.canAccessResidentPortal ? "green" : "gray"} label={r.canAccessResidentPortal ? "Yes" : "No"} />,
+      render: (r) => <StatusBadge tone={r.canAccessResidentPortal ? "green" : "gray"}>{r.canAccessResidentPortal ? "Yes" : "No"}</StatusBadge>,
     },
-    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : "gray"} label={r.status} /> },
+    { key: "status", label: "Status", render: (r) => <StatusBadge tone={r.status === "ACTIVE" ? "green" : "gray"}>{r.status}</StatusBadge> },
     {
       key: "actions",
       label: "",
@@ -127,12 +127,12 @@ export default function EstateHouseDetailPage() {
   return (
     <EstatePortalShell topbarTitle="House Detail" breadcrumb="Houses & Residents">
       <PageMeta title={house ? `${house.houseNumber} — Estate` : "House — Estate"} />
+      <div style={{ marginBottom: 8 }}>
+        <Link href="/estate/houses" className="btn btn-secondary btn-sm">← All Houses</Link>
+      </div>
       <PageHeader
         title={house ? `House ${house.houseNumber}` : "House"}
         description={house ? [house.block ? `Block ${house.block}` : null, house.label, house.ownerName].filter(Boolean).join(" · ") : ""}
-        actions={
-          <Link href="/estate/houses" className="btn btn-secondary btn-sm">← All Houses</Link>
-        }
       />
 
       {loading && !house ? (

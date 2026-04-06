@@ -189,7 +189,7 @@ export default function EstateSettingsPage() {
   return (
     <EstatePortalShell topbarTitle="Settings" breadcrumb="Settings">
       <PageMeta title="Settings — Estate" />
-      <PageHeader title="Settings" subtitle="Manage your estate profile, branding, and team." />
+      <PageHeader title="Settings" description="Manage your estate profile, branding, and team." />
 
       {loading ? (
         <div className="empty-state"><p>Loading settings…</p></div>
@@ -307,7 +307,7 @@ export default function EstateSettingsPage() {
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{member.name}</div>
                       <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 2 }}>{member.email}</div>
                       <div style={{ marginTop: 4 }}>
-                        <StatusBadge tone="blue" label={member.role} />
+                        <StatusBadge tone="blue">{member.role}</StatusBadge>
                       </div>
                     </div>
                     <button
