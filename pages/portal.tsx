@@ -312,6 +312,7 @@ export function PortalExperience({
   const [landlordPhone, setLandlordPhone] = useState("");
   const [landlordPlanSelection, setLandlordPlanSelection] =
     useState<LandlordPlanChoice>("STARTER");
+  const [landlordWorkspaceType, setLandlordWorkspaceType] = useState<"landlord" | "estate">("landlord");
   const [landlordPromoCode, setLandlordPromoCode] = useState("");
   const [workspaceIdentifier, setWorkspaceIdentifier] = useState(
     initialWorkspace?.workspaceSlug ?? initialWorkspace?.companyName ?? "",
@@ -664,13 +665,14 @@ export function PortalExperience({
               email: authEmail,
               phone: landlordPhone,
               password: authPassword,
-              plan: landlordPlanSelection,
-              subscriptionModel: landlordSubscriptionModel,
+              plan: landlordWorkspaceType === "estate" ? undefined : landlordPlanSelection,
+              subscriptionModel: landlordWorkspaceType === "estate" ? undefined : landlordSubscriptionModel,
               subscriptionInterval:
-                landlordSubscriptionModel === "SUBSCRIPTION"
+                landlordWorkspaceType !== "estate" && landlordSubscriptionModel === "SUBSCRIPTION"
                   ? landlordEffectiveSubscriptionInterval
                   : undefined,
               promoCode: landlordPromoCode || undefined,
+              workspaceType: landlordWorkspaceType === "estate" ? "estate" : undefined,
             },
           });
 
@@ -1624,6 +1626,33 @@ export function PortalExperience({
           {role === "landlord" && landlordMode === "register" ? (
             <>
               <div className="form-group">
+                <label className="form-label">Workspace type</label>
+                <div className="plan-toggle">
+                  <button
+                    type="button"
+                    className={`plan-toggle-opt ${landlordWorkspaceType === "landlord" ? "active" : ""}`}
+                    onClick={() => setLandlordWorkspaceType("landlord")}
+                  >
+                    Landlord / Property Manager
+                  </button>
+                  <button
+                    type="button"
+                    className={`plan-toggle-opt ${landlordWorkspaceType === "estate" ? "active" : ""}`}
+                    onClick={() => setLandlordWorkspaceType("estate")}
+                  >
+                    Estate Admin
+                  </button>
+                </div>
+                {landlordWorkspaceType === "estate" ? (
+                  <div className="plan-detail">
+                    <span className="plan-detail-price">3% of dues collected</span>
+                    <span className="plan-detail-features">Residents · Houses · Dues · Treasury · Contributions · Passes · Governance · Workforce · and more</span>
+                  </div>
+                ) : null}
+              </div>
+
+              {landlordWorkspaceType !== "estate" ? (
+              <div className="form-group">
                 <label className="form-label">Choose your plan</label>
                 <div className="plan-toggle">
                   <button
@@ -1669,6 +1698,7 @@ export function PortalExperience({
                   .
                 </div>
               </div>
+              ) : null}
 
               <div className="form-group">
                 <label className="form-label">Promo code <span style={{ fontWeight: 400, color: "var(--ink3)" }}>(optional)</span></label>
