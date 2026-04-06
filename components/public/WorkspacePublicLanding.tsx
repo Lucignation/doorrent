@@ -33,6 +33,9 @@ interface WorkspacePublicLandingProps {
   estate?: WorkspacePublicEstateData;
   portalUrl: string;
   publishedDraft?: Partial<LandingBuilderDraft> | null;
+  draftOverride?: Partial<LandingBuilderDraft> | null;
+  preferLocalDraft?: boolean;
+  previewMode?: boolean;
 }
 
 function mapTemplateId(
@@ -96,6 +99,9 @@ export default function WorkspacePublicLanding({
   estate = null,
   portalUrl,
   publishedDraft = null,
+  draftOverride = null,
+  preferLocalDraft = false,
+  previewMode = false,
 }: WorkspacePublicLandingProps) {
   const workspaceType = resolveWorkspaceType(workspace.workspaceMode);
   const profile = useMemo(
@@ -113,29 +119,46 @@ export default function WorkspacePublicLanding({
     }),
     [estate?.name, workspace],
   );
-
-  const initialDraft = useMemo(
+  const effectivePublishedDraft =
+    draftOverride || preferLocalDraft ? null : publishedDraft;
+  const estateFallbackDraft = useMemo(
     () =>
-      mergeLandingBuilderDraft(workspaceType, profile, {
-        ...(publishedDraft ?? {}),
-        templateId: mapTemplateId(estate?.landingTemplateId),
-        heroTitle: estate?.landingHeroTitle || undefined,
-        heroSubtitle:
-          estate?.landingHeroSubtitle ||
-          estate?.description ||
-          undefined,
-        ctaPrimaryLabel: estate?.landingPrimaryCta || undefined,
-        ctaSecondaryLabel: estate?.landingSecondaryCta || undefined,
-      }),
+      !draftOverride && !effectivePublishedDraft
+        ? {
+            templateId: mapTemplateId(estate?.landingTemplateId),
+            heroTitle: estate?.landingHeroTitle || undefined,
+            heroSubtitle:
+              estate?.landingHeroSubtitle ||
+              estate?.description ||
+              undefined,
+            ctaPrimaryLabel: estate?.landingPrimaryCta || undefined,
+            ctaSecondaryLabel: estate?.landingSecondaryCta || undefined,
+          }
+        : {},
     [
+      draftOverride,
+      effectivePublishedDraft,
       estate?.description,
       estate?.landingHeroSubtitle,
       estate?.landingHeroTitle,
       estate?.landingPrimaryCta,
       estate?.landingSecondaryCta,
       estate?.landingTemplateId,
+    ],
+  );
+
+  const initialDraft = useMemo(
+    () =>
+      mergeLandingBuilderDraft(
+        workspaceType,
+        profile,
+        draftOverride ?? effectivePublishedDraft ?? estateFallbackDraft,
+      ),
+    [
+      draftOverride,
+      effectivePublishedDraft,
+      estateFallbackDraft,
       profile,
-      publishedDraft,
       workspaceType,
     ],
   );
@@ -151,7 +174,7 @@ export default function WorkspacePublicLanding({
       return;
     }
 
-    if (publishedDraft) {
+    if (draftOverride || effectivePublishedDraft) {
       return;
     }
 
@@ -171,7 +194,14 @@ export default function WorkspacePublicLanding({
     } catch {
       setDraft(initialDraft);
     }
-  }, [initialDraft, profile, publishedDraft, workspace.workspaceSlug, workspaceType]);
+  }, [
+    draftOverride,
+    effectivePublishedDraft,
+    initialDraft,
+    profile,
+    workspace.workspaceSlug,
+    workspaceType,
+  ]);
 
   const displayName = draft.brandDisplayName || workspace.branding.displayName || workspace.companyName;
   const primaryColor =
@@ -331,10 +361,12 @@ export default function WorkspacePublicLanding({
 
   return (
     <>
-      <PageMeta
-        title={`${displayName} — ${workspaceType === "estate" ? "Estate" : "Property"}`}
-        description={draft.heroSubtitle}
-      />
+      {!previewMode ? (
+        <PageMeta
+          title={`${displayName} — ${workspaceType === "estate" ? "Estate" : "Property"}`}
+          description={draft.heroSubtitle}
+        />
+      ) : null}
 
       <div className="wpl-root">
         <nav className="wpl-nav">

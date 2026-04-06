@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
 import LandingTemplateThumbnail from "../estate/LandingTemplateThumbnail";
+import WorkspacePublicLanding from "../public/WorkspacePublicLanding";
 import {
   LANDING_BUILDER_SECTIONS,
   applyTemplateToDraft,
@@ -12,6 +13,7 @@ import {
   type LandingBuilderSectionKey,
   type LandingBuilderWorkspace,
 } from "../../lib/landing-builder";
+import type { PublicWorkspaceContext } from "../../lib/workspace-context";
 import {
   buildSafeTelephoneHref,
   sanitizeHexColor,
@@ -78,6 +80,8 @@ export default function LandingPageBuilder({
     createLandingBuilderDraft(workspace, profile),
   );
   const [draggingSection, setDraggingSection] =
+    useState<LandingBuilderSectionKey | null>(null);
+  const [dragOverSection, setDragOverSection] =
     useState<LandingBuilderSectionKey | null>(null);
   const [publishing, setPublishing] = useState(false);
 
@@ -180,6 +184,31 @@ export default function LandingPageBuilder({
     });
   }
 
+  function moveSection(sectionKey: LandingBuilderSectionKey, direction: -1 | 1) {
+    setDraft((current) => {
+      const currentIndex = current.sectionOrder.indexOf(sectionKey);
+
+      if (currentIndex === -1) {
+        return current;
+      }
+
+      const targetIndex = currentIndex + direction;
+
+      if (targetIndex < 0 || targetIndex >= current.sectionOrder.length) {
+        return current;
+      }
+
+      const nextOrder = [...current.sectionOrder];
+      nextOrder.splice(currentIndex, 1);
+      nextOrder.splice(targetIndex, 0, sectionKey);
+
+      return {
+        ...current,
+        sectionOrder: nextOrder,
+      };
+    });
+  }
+
   async function publishBranding() {
     setPublishing(true);
 
@@ -198,6 +227,43 @@ export default function LandingPageBuilder({
 
     setDraft((current) => applyTemplateToDraft(current, template));
   }
+
+  const previewWorkspace = useMemo<NonNullable<PublicWorkspaceContext["workspace"]>>(
+    () => ({
+      id: `${workspace}-preview`,
+      companyName: profile.companyName,
+      workspaceMode:
+        workspace === "estate"
+          ? "ESTATE_ADMIN"
+          : profile.workspaceMode === "SOLO_LANDLORD"
+            ? "SOLO_LANDLORD"
+            : "PROPERTY_MANAGER_COMPANY",
+      workspaceSlug: profile.workspaceSlug ?? null,
+      publicSupportEmail: draft.publicSupportEmail || profile.publicSupportEmail || null,
+      publicSupportPhone: draft.publicSupportPhone || profile.publicSupportPhone || null,
+      publicLegalAddress: draft.publicLegalAddress || profile.publicLegalAddress || null,
+      branding: {
+        displayName: draft.brandDisplayName || workspaceLabel || profile.companyName,
+        logoUrl: draft.brandLogoUrl || profile.brandLogoUrl || null,
+        primaryColor: draft.brandPrimaryColor || profile.brandPrimaryColor || null,
+        accentColor: draft.brandAccentColor || profile.brandAccentColor || null,
+      },
+    }),
+    [draft, profile, workspace, workspaceLabel],
+  );
+  const previewEstate = useMemo(
+    () =>
+      workspace === "estate"
+        ? {
+            id: "preview-estate",
+            name: draft.brandDisplayName || workspaceLabel || profile.companyName,
+            location: draft.publicLegalAddress || publishDomain,
+            description: draft.aboutBody,
+          }
+        : null,
+    [draft.aboutBody, draft.brandDisplayName, draft.publicLegalAddress, profile.companyName, publishDomain, workspace, workspaceLabel],
+  );
+  const previewPortalUrl = draft.ctaPrimaryUrl || "/portal";
 
   function renderSectionEditor(sectionKey: LandingBuilderSectionKey) {
     switch (sectionKey) {
@@ -863,47 +929,94 @@ export default function LandingPageBuilder({
               <div>
                 <div className="card-title">Section-based editor</div>
                 <div className="card-subtitle">
-                  Drag approved blocks to reorder them. Hide what the template should not show.
+                  Drag approved blocks with the handle, or use move controls for precise section
+                  ordering.
                 </div>
               </div>
             </div>
             <div className="card-body lpb-stack">
-              {draft.sectionOrder.map((sectionKey) => {
+              {draft.sectionOrder.map((sectionKey, index) => {
                 const meta = sectionMeta(sectionKey);
                 const isHidden = draft.hiddenSectionKeys.includes(sectionKey);
 
                 return (
                   <div
                     key={sectionKey}
-                    className={`lpb-section-card${isHidden ? " is-hidden" : ""}`}
-                    draggable
-                    onDragStart={() => setDraggingSection(sectionKey)}
+                    className={`lpb-section-card${isHidden ? " is-hidden" : ""}${
+                      draggingSection === sectionKey ? " is-dragging" : ""
+                    }${dragOverSection === sectionKey ? " is-drop-target" : ""}`}
                     onDragOver={(event: DragEvent<HTMLDivElement>) => {
                       event.preventDefault();
+                      event.dataTransfer.dropEffect = "move";
                     }}
-                    onDrop={() => {
+                    onDragEnter={(event: DragEvent<HTMLDivElement>) => {
+                      event.preventDefault();
+                      if (draggingSection && draggingSection !== sectionKey) {
+                        setDragOverSection(sectionKey);
+                      }
+                    }}
+                    onDrop={(event: DragEvent<HTMLDivElement>) => {
+                      event.preventDefault();
                       reorderSections(sectionKey);
                       setDraggingSection(null);
+                      setDragOverSection(null);
                     }}
-                    onDragEnd={() => setDraggingSection(null)}
                   >
                     <div className="lpb-section-header">
                       <div>
                         <div className="lpb-section-title">
-                          <span className="lpb-drag-handle">::</span>
+                          <span
+                            className="lpb-drag-handle"
+                            draggable
+                            onDragStart={(event) => {
+                              event.stopPropagation();
+                              event.dataTransfer.effectAllowed = "move";
+                              event.dataTransfer.setData("text/plain", sectionKey);
+                              setDraggingSection(sectionKey);
+                              setDragOverSection(sectionKey);
+                            }}
+                            onDragEnd={() => {
+                              setDraggingSection(null);
+                              setDragOverSection(null);
+                            }}
+                            title="Drag to reorder this section"
+                            aria-label={`Drag ${meta?.label ?? sectionKey} section`}
+                          >
+                            ::
+                          </span>
                           {meta?.label ?? sectionKey}
                         </div>
                         <div className="lpb-section-copy">
                           {meta?.description ?? "Reusable content block"}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className={`btn ${isHidden ? "btn-ghost" : "btn-secondary"} btn-xs`}
-                        onClick={() => toggleSection(sectionKey)}
-                      >
-                        {isHidden ? "Show section" : "Hide section"}
-                      </button>
+                      <div className="lpb-section-actions">
+                        <div className="lpb-reorder-actions">
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-xs"
+                            disabled={index === 0}
+                            onClick={() => moveSection(sectionKey, -1)}
+                          >
+                            Up
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-xs"
+                            disabled={index === draft.sectionOrder.length - 1}
+                            onClick={() => moveSection(sectionKey, 1)}
+                          >
+                            Down
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className={`btn ${isHidden ? "btn-ghost" : "btn-secondary"} btn-xs`}
+                          onClick={() => toggleSection(sectionKey)}
+                        >
+                          {isHidden ? "Show section" : "Hide section"}
+                        </button>
+                      </div>
                     </div>
                     {!isHidden ? renderSectionEditor(sectionKey) : null}
                   </div>
@@ -917,7 +1030,7 @@ export default function LandingPageBuilder({
           <div className="lpb-preview-shell">
             <div className="lpb-preview-top">
               <div>
-                <div className="lpb-preview-label">Live preview</div>
+                <div className="lpb-preview-label">Exact preview</div>
                 <strong>{selectedTemplate?.name ?? "Approved template"}</strong>
               </div>
               <span className="lpb-domain-chip">{publishDomain}</span>
@@ -930,52 +1043,19 @@ export default function LandingPageBuilder({
               className="lpb-preview-thumbnail"
             />
 
-            <div className="lpb-preview-page">
-              <div className="lpb-preview-hero" style={{ backgroundImage: heroGradient }}>
-                <div className="lpb-preview-hero-meta">{draft.heroEyebrow}</div>
-                <h3>{draft.heroTitle}</h3>
-                <p>{draft.heroSubtitle}</p>
-                <div className="lpb-preview-actions">
-                  <button type="button" className="btn btn-primary">
-                    {draft.ctaPrimaryLabel}
-                  </button>
-                  <button type="button" className="btn btn-secondary">
-                    {draft.ctaSecondaryLabel}
-                  </button>
-                </div>
-              </div>
+            <div className="lpb-preview-note">
+              This preview uses the same public landing component rendered on the workspace
+              subdomain.
+            </div>
 
-              <div className="lpb-preview-brandbar">
-                <div className="lpb-preview-brand">
-                  {sanitizeRemoteAssetUrl(draft.brandLogoUrl) ? (
-                    <img
-                      src={sanitizeRemoteAssetUrl(draft.brandLogoUrl) || undefined}
-                      alt={`${draft.brandDisplayName} logo`}
-                    />
-                  ) : (
-                    <span
-                      className="lpb-preview-brandmark"
-                      style={{ background: primaryColor }}
-                    >
-                      {(draft.brandDisplayName || workspaceLabel)
-                        .slice(0, 2)
-                        .toUpperCase()}
-                    </span>
-                  )}
-                  <div>
-                    <strong>{draft.brandDisplayName || workspaceLabel}</strong>
-                    <span>{workspaceLabel} public profile</span>
-                  </div>
-                </div>
-                <div className="lpb-preview-status">
-                  {visibleSections.length} visible section
-                  {visibleSections.length === 1 ? "" : "s"}
-                </div>
-              </div>
-
-              <div className="lpb-preview-grid">
-                {visibleSections.map((sectionKey) => renderPreviewSection(sectionKey))}
-              </div>
+            <div className="lpb-preview-live">
+              <WorkspacePublicLanding
+                workspace={previewWorkspace}
+                estate={previewEstate}
+                portalUrl={previewPortalUrl}
+                draftOverride={draft}
+                previewMode
+              />
             </div>
           </div>
         </aside>
@@ -1183,12 +1263,20 @@ export default function LandingPageBuilder({
           border-radius: 16px;
           border: 1px solid var(--border);
           background: #fff;
-          cursor: grab;
+          transition: border-color 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
         }
         .lpb-section-card.is-hidden {
           background: #faf7f1;
           border-style: dashed;
           opacity: 0.92;
+        }
+        .lpb-section-card.is-dragging {
+          opacity: 0.72;
+        }
+        .lpb-section-card.is-drop-target {
+          border-color: rgba(26, 92, 66, 0.36);
+          box-shadow: 0 0 0 2px rgba(26, 92, 66, 0.08);
+          transform: translateY(-1px);
         }
         .lpb-section-header {
           display: flex;
@@ -1196,6 +1284,14 @@ export default function LandingPageBuilder({
           justify-content: space-between;
           gap: 16px;
           margin-bottom: 14px;
+        }
+        .lpb-section-actions,
+        .lpb-reorder-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
         }
         .lpb-section-title {
           display: flex;
@@ -1221,6 +1317,7 @@ export default function LandingPageBuilder({
           color: var(--ink3);
           font-size: 10px;
           letter-spacing: 0.08em;
+          cursor: grab;
         }
         .lpb-preview-shell {
           position: sticky;
@@ -1234,6 +1331,25 @@ export default function LandingPageBuilder({
           background:
             radial-gradient(circle at top right, rgba(210, 168, 90, 0.14), transparent 32%),
             #fbfaf7;
+        }
+        .lpb-preview-note {
+          padding: 10px 12px;
+          border-radius: 12px;
+          background: rgba(26, 92, 66, 0.08);
+          color: var(--ink2);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+        .lpb-preview-live {
+          max-height: min(80vh, 980px);
+          overflow: auto;
+          border-radius: 18px;
+          border: 1px solid rgba(29, 37, 31, 0.08);
+          background: #fff;
+        }
+        .lpb-preview-live :global(a),
+        .lpb-preview-live :global(button) {
+          pointer-events: none;
         }
         .lpb-preview-top {
           display: flex;
