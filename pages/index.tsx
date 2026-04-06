@@ -1,6 +1,9 @@
 import type { GetServerSideProps, GetServerSidePropsContext } from "next";
 import Link from "next/link";
 import { Fragment, type FormEvent, useEffect, useRef, useState } from "react";
+import WorkspacePublicLanding, {
+  type WorkspacePublicEstateData,
+} from "../components/public/WorkspacePublicLanding";
 import PageMeta from "../components/layout/PageMeta";
 import { apiRequest, getApiRequestBaseUrl } from "../lib/api";
 import { LOGO_PATH } from "../lib/site";
@@ -10,7 +13,12 @@ import {
   buildWebPageStructuredData,
   buildWebsiteStructuredData,
 } from "../lib/seo";
-import { fetchWorkspaceContextByHost } from "../lib/workspace-context";
+import type { LandingBuilderDraft } from "../lib/landing-builder";
+import { getPublishedLandingDraft } from "../lib/public-landing-store";
+import {
+  fetchWorkspaceContextByHost,
+  type PublicWorkspaceContext,
+} from "../lib/workspace-context";
 
 type RoleKey = "landlord" | "tenant";
 const PUBLIC_PORTAL_URL = "https://usedoorrent.com/portal";
@@ -389,6 +397,12 @@ type EnterpriseRequestResponse = {
 
 type LandingPageProps = {
   isRootDomain?: boolean;
+  workspaceLanding?: {
+    workspace: NonNullable<PublicWorkspaceContext["workspace"]>;
+    estate: WorkspacePublicEstateData;
+    publishedDraft?: Partial<LandingBuilderDraft> | null;
+    portalUrl: string;
+  } | null;
   marketingOverview?: {
     proofStats?: Array<{ label: string; value: string }>;
     heroDashboard?: {
@@ -456,6 +470,30 @@ const testimonials = [
   },
 ];
 
+async function fetchEstatePublicProfile(workspaceSlug?: string | null) {
+  if (!workspaceSlug) {
+    return null;
+  }
+
+  try {
+    const res = await fetch(
+      `${getApiRequestBaseUrl()}/estate/public-profile?workspaceSlug=${encodeURIComponent(workspaceSlug)}`,
+    );
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const payload = (await res.json()) as {
+      data?: { estate?: WorkspacePublicEstateData };
+    };
+
+    return payload.data?.estate ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export const getServerSideProps: GetServerSideProps<LandingPageProps> = async (
   context: GetServerSidePropsContext,
 ) => {
@@ -468,19 +506,19 @@ export const getServerSideProps: GetServerSideProps<LandingPageProps> = async (
   const workspaceContext = await fetchWorkspaceContextByHost(hostHeader);
 
   if (workspaceContext?.workspace?.workspaceSlug) {
-    // Estate workspaces serve a public landing page at the root URL
-    if (workspaceContext.workspace.workspaceMode === "ESTATE_ADMIN") {
-      return {
-        redirect: {
-          destination: "/estate-public",
-          permanent: false,
-        },
-      };
-    }
     return {
-      redirect: {
-        destination: "/portal",
-        permanent: false,
+      props: {
+        workspaceLanding: {
+          workspace: workspaceContext.workspace,
+          estate:
+            workspaceContext.workspace.workspaceMode === "ESTATE_ADMIN"
+              ? await fetchEstatePublicProfile(workspaceContext.workspace.workspaceSlug)
+              : null,
+          publishedDraft: await getPublishedLandingDraft(
+            workspaceContext.workspace.workspaceSlug,
+          ).then((record) => record?.draft ?? null),
+          portalUrl: "/portal",
+        },
       },
     };
   }
@@ -514,7 +552,21 @@ export const getServerSideProps: GetServerSideProps<LandingPageProps> = async (
   };
 };
 
-export default function LandingPage({ marketingOverview }: LandingPageProps) {
+export default function LandingPage({
+  marketingOverview,
+  workspaceLanding,
+}: LandingPageProps) {
+  if (workspaceLanding?.workspace) {
+    return (
+      <WorkspacePublicLanding
+        workspace={workspaceLanding.workspace}
+        estate={workspaceLanding.estate}
+        publishedDraft={workspaceLanding.publishedDraft}
+        portalUrl={workspaceLanding.portalUrl}
+      />
+    );
+  }
+
   const [activeRole, setActiveRole] = useState<RoleKey>("landlord");
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

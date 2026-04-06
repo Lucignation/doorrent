@@ -26,6 +26,7 @@ interface LandingPageBuilderProps {
   publishDomain: string;
   canPublishBranding: boolean;
   enterpriseEnabled: boolean;
+  publishedDraft?: Partial<LandingBuilderDraft> | null;
   onPublishBranding: (draft: LandingBuilderDraft) => Promise<void>;
 }
 
@@ -66,6 +67,7 @@ export default function LandingPageBuilder({
   publishDomain,
   canPublishBranding,
   enterpriseEnabled,
+  publishedDraft = null,
   onPublishBranding,
 }: LandingPageBuilderProps) {
   const templates = useMemo(
@@ -80,7 +82,7 @@ export default function LandingPageBuilder({
   const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
-    const baseDraft = createLandingBuilderDraft(workspace, profile);
+    const baseDraft = mergeLandingBuilderDraft(workspace, profile, publishedDraft);
 
     if (typeof window === "undefined") {
       setDraft(baseDraft);
@@ -99,7 +101,7 @@ export default function LandingPageBuilder({
     } catch {
       setDraft(baseDraft);
     }
-  }, [profile, storageKey, workspace]);
+  }, [profile, publishedDraft, storageKey, workspace]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -687,7 +689,7 @@ export default function LandingPageBuilder({
               <div>
                 <div className="card-title">Branding and publishing</div>
                 <div className="card-subtitle">
-                  Publish the approved brand shell to{" "}
+                  Publish the selected template, approved sections, and brand shell to{" "}
                   <strong>{publishDomain}</strong>.
                 </div>
               </div>
@@ -707,14 +709,14 @@ export default function LandingPageBuilder({
                     void publishBranding();
                   }}
                 >
-                  {publishing ? "Publishing..." : "Publish branding"}
+                  {publishing ? "Publishing..." : "Publish landing page"}
                 </button>
               </div>
             </div>
             <div className="card-body lpb-stack">
               <div className="lpb-publish-note">
-                Profile-backed branding fields publish now. Template content and section order stay
-                in this builder draft until the dedicated landing-page content API is connected.
+                Publishing saves your selected template, section order, and controlled content
+                fields to the live landing page on this workspace subdomain.
               </div>
               {!canPublishBranding ? (
                 <div className="lpb-warning-note">

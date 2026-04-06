@@ -8,6 +8,10 @@ import { useLandlordPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import type { LandingBuilderDraft } from "../../lib/landing-builder";
 import type { LandlordCapabilities } from "../../lib/landlord-access";
+import {
+  fetchPublishedLandingDraft,
+  publishLandingDraft,
+} from "../../lib/public-landing-client";
 
 interface EstateLandingSettingsResponse {
   capabilities: LandlordCapabilities;
@@ -40,6 +44,7 @@ export default function EstateLandingPage() {
   const { landlordSession } = useLandlordPortalSession();
   const token = landlordSession?.token;
   const [settings, setSettings] = useState<EstateLandingSettingsResponse | null>(null);
+  const [publishedDraft, setPublishedDraft] = useState<Partial<LandingBuilderDraft> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -51,14 +56,30 @@ export default function EstateLandingPage() {
     let cancelled = false;
     setLoading(true);
     setError("");
+    setPublishedDraft(null);
 
-    apiRequest<EstateLandingSettingsResponse>("/landlord/settings", { token })
-      .then(({ data }) => {
+    void (async () => {
+      try {
+        const { data } = await apiRequest<EstateLandingSettingsResponse>("/landlord/settings", {
+          token,
+        });
+        const workspaceSlug = data.profile.workspaceSlug?.trim();
+        let nextPublishedDraft: Partial<LandingBuilderDraft> | null = null;
+
+        if (workspaceSlug) {
+          try {
+            nextPublishedDraft =
+              (await fetchPublishedLandingDraft(workspaceSlug))?.draft ?? null;
+          } catch {
+            nextPublishedDraft = null;
+          }
+        }
+
         if (!cancelled) {
           setSettings(data);
+          setPublishedDraft(nextPublishedDraft);
         }
-      })
-      .catch((requestError) => {
+      } catch (requestError) {
         if (!cancelled) {
           setError(
             requestError instanceof Error
@@ -66,12 +87,12 @@ export default function EstateLandingPage() {
               : "Failed to load landing builder.",
           );
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
@@ -83,42 +104,84 @@ export default function EstateLandingPage() {
       return;
     }
 
-    await apiRequest("/landlord/settings/profile", {
-      method: "PATCH",
-      token,
-      body: {
-        brandDisplayName: draft.brandDisplayName || undefined,
-        brandLogoUrl: draft.brandLogoUrl || undefined,
-        brandPrimaryColor: draft.brandPrimaryColor || undefined,
-        brandAccentColor: draft.brandAccentColor || undefined,
-        publicSupportEmail: draft.publicSupportEmail || undefined,
-        publicSupportPhone: draft.publicSupportPhone || undefined,
-        publicLegalAddress: draft.publicLegalAddress || undefined,
-      },
-    });
+    const workspaceSlug = settings.profile.workspaceSlug?.trim();
 
-    setSettings((current) =>
-      current
-        ? {
-            ...current,
-            profile: {
-              ...current.profile,
-              brandDisplayName: draft.brandDisplayName,
-              brandLogoUrl: draft.brandLogoUrl,
-              brandPrimaryColor: draft.brandPrimaryColor,
-              brandAccentColor: draft.brandAccentColor,
-              publicSupportEmail: draft.publicSupportEmail,
-              publicSupportPhone: draft.publicSupportPhone,
-              publicLegalAddress: draft.publicLegalAddress,
-            },
-          }
-        : current,
-    );
+    if (!workspaceSlug) {
+      showToast(
+        "Add a branded workspace slug before publishing this landing page.",
+        "error",
+      );
+      return;
+    }
 
-    showToast(
-      "Estate branding published. Template ordering and section content remain in the local builder draft until the landing content API is connected.",
-      "success",
-    );
+    try {
+      const record = await publishLandingDraft({
+        workspaceSlug,
+        workspaceType: "estate",
+        profile: settings.profile,
+        draft,
+      });
+
+      setPublishedDraft(record.draft);
+
+      try {
+        await apiRequest("/landlord/settings/profile", {
+          method: "PATCH",
+          token,
+          body: {
+            brandDisplayName: draft.brandDisplayName || undefined,
+            brandLogoUrl: draft.brandLogoUrl || undefined,
+            brandPrimaryColor: draft.brandPrimaryColor || undefined,
+            brandAccentColor: draft.brandAccentColor || undefined,
+            publicSupportEmail: draft.publicSupportEmail || undefined,
+            publicSupportPhone: draft.publicSupportPhone || undefined,
+            publicLegalAddress: draft.publicLegalAddress || undefined,
+          },
+        });
+
+        setSettings((current) =>
+          current
+            ? {
+                ...current,
+                profile: {
+                  ...current.profile,
+                  brandDisplayName: draft.brandDisplayName,
+                  brandLogoUrl: draft.brandLogoUrl,
+                  brandPrimaryColor: draft.brandPrimaryColor,
+                  brandAccentColor: draft.brandAccentColor,
+                  publicSupportEmail: draft.publicSupportEmail,
+                  publicSupportPhone: draft.publicSupportPhone,
+                  publicLegalAddress: draft.publicLegalAddress,
+                },
+              }
+            : current,
+        );
+      } catch {
+        showToast(
+          `Landing page published to ${formatPublishDomain(
+            settings.profile.workspaceOrigin,
+            workspaceSlug,
+          )}. Profile settings will sync on the next successful save.`,
+          "success",
+        );
+        return;
+      }
+
+      showToast(
+        `Landing page published to ${formatPublishDomain(
+          settings.profile.workspaceOrigin,
+          workspaceSlug,
+        )}.`,
+        "success",
+      );
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error
+          ? requestError.message
+          : "Failed to publish landing page.",
+        "error",
+      );
+    }
   }
 
   return (
@@ -156,6 +219,7 @@ export default function EstateLandingPage() {
             settings.capabilities.canUseBrandedSubdomain
           }
           enterpriseEnabled={settings.capabilities.isEnterprisePlan}
+          publishedDraft={publishedDraft}
           onPublishBranding={publishBranding}
         />
       )}
