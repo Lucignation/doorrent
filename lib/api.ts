@@ -100,6 +100,16 @@ export class ApiError extends Error {
   }
 }
 
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: () => void) {
+  unauthorizedHandler = fn;
+}
+
+export function clearUnauthorizedHandler() {
+  unauthorizedHandler = null;
+}
+
 export async function apiRequest<T>(
   path: string,
   { method = "GET", token, body, headers, offline }: ApiRequestOptions = {},
@@ -133,6 +143,9 @@ export async function apiRequest<T>(
       payload?.message ?? issuesMessage ?? "We could not complete your request.";
 
     if (!response.ok) {
+      if (response.status === 401 && unauthorizedHandler) {
+        unauthorizedHandler();
+      }
       throw new ApiError(message, response.status);
     }
 
