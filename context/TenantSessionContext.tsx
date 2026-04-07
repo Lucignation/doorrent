@@ -9,7 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { clearOfflineMutationQueue } from "../lib/api";
+import { clearOfflineMutationQueue, setUnauthorizedHandler, clearUnauthorizedHandler } from "../lib/api";
 
 export interface TenantPortalIdentity {
   id: string;
@@ -321,6 +321,52 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
     setResidentSession(storedResident?.session ?? null);
     setResidentSessionPersistent(storedResident?.persist ?? true);
     setIsHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      if (typeof window === "undefined") return;
+
+      const path = window.location.pathname;
+
+      if (path.startsWith("/estate")) {
+        setLandlordSession(null);
+        setLandlordSessionPersistent(true);
+        removeStoredKeyEverywhere(LANDLORD_SESSION_STORAGE_KEY);
+        void clearOfflineMutationQueue();
+        window.location.href = "/estate/login";
+      } else if (path.startsWith("/landlord")) {
+        setLandlordSession(null);
+        setLandlordSessionPersistent(true);
+        removeStoredKeyEverywhere(LANDLORD_SESSION_STORAGE_KEY);
+        void clearOfflineMutationQueue();
+        window.location.href = "/landlord/login";
+      } else if (path.startsWith("/caretaker")) {
+        setCaretakerSession(null);
+        setCaretakerSessionPersistent(true);
+        removeStoredKeyEverywhere(CARETAKER_SESSION_STORAGE_KEY);
+        void clearOfflineMutationQueue();
+        window.location.href = "/caretaker/login";
+      } else if (path.startsWith("/resident")) {
+        setResidentSession(null);
+        setResidentSessionPersistent(true);
+        removeStoredKeyEverywhere(RESIDENT_SESSION_STORAGE_KEY);
+        void clearOfflineMutationQueue();
+        window.location.href = "/resident/login";
+      } else {
+        setTenantSession(null);
+        setTenantSessionPersistent(true);
+        removeStoredKeyEverywhere(TENANT_SESSION_STORAGE_KEY);
+        void clearOfflineMutationQueue();
+        window.location.href = "/login";
+      }
+    }
+
+    setUnauthorizedHandler(handleUnauthorized);
+
+    return () => {
+      clearUnauthorizedHandler();
+    };
   }, []);
 
   const saveTenantSession = useCallback(
