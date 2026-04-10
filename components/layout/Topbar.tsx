@@ -6,6 +6,7 @@ interface TopbarProps {
   title: string;
   breadcrumb: string;
   initials: string;
+  sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
 }
 
@@ -13,6 +14,7 @@ export default function Topbar({
   title,
   breadcrumb,
   initials,
+  sidebarCollapsed,
   onToggleSidebar,
 }: TopbarProps) {
   const { openModal } = usePrototypeUI();
@@ -20,7 +22,13 @@ export default function Topbar({
   return (
     <header className="topbar">
       <div className="topbar-left">
-        <button className="icon-btn sidebar-toggle" onClick={onToggleSidebar} type="button">
+        <button
+          className="icon-btn sidebar-toggle"
+          onClick={onToggleSidebar}
+          type="button"
+          aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
           <MenuIcon />
         </button>
         <div>
