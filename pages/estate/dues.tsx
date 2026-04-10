@@ -6,7 +6,7 @@ import DataTable from "../../components/ui/DataTable";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
-import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import { convertRowsToCsv, parseCsvText, formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
 import type { TableColumn } from "../../types/app";
@@ -26,8 +26,8 @@ const initialChargeForm = { id: "", title: "", amount: "", frequency: "MONTHLY",
 
 export default function EstateDuesPage() {
   const { showToast, dataRefreshVersion } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
-  const token = landlordSession?.token;
+  const { estateAdminSession } = useEstateAdminPortalSession();
+  const token = estateAdminSession?.token;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [charges, setCharges] = useState<ChargeRow[]>([]);

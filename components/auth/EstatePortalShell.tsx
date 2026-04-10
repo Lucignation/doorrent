@@ -2,11 +2,11 @@ import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { buildEstateNav } from "../../data/estate";
 import {
-  useLandlordPortalSession,
+  useEstateAdminPortalSession,
 } from "../../context/TenantSessionContext";
 import type { WorkspaceBranding } from "../../lib/branding";
 import AppShell from "../layout/AppShell";
-import { resolveLandlordCapabilities } from "../../lib/landlord-access";
+import { resolveEstateAdminCapabilities } from "../../lib/estate-admin-access";
 import {
   getSafeWorkspaceHostFromWindow,
   isWorkspaceSubdomainHost,
@@ -34,33 +34,33 @@ export default function EstatePortalShell({
   children,
 }: EstatePortalShellProps) {
   const router = useRouter();
-  const { isHydrated, landlordSession } = useLandlordPortalSession();
+  const { isHydrated, estateAdminSession } = useEstateAdminPortalSession();
   const [resolvedBranding, setResolvedBranding] = useState<WorkspaceBranding | null>(
-    landlordSession?.landlord.branding ?? null,
+    estateAdminSession?.landlord.branding ?? null,
   );
 
   useEffect(() => {
-    if (isHydrated && !landlordSession) {
+    if (isHydrated && !estateAdminSession) {
       void router.replace("/portal");
     }
-  }, [isHydrated, landlordSession, router]);
+  }, [estateAdminSession, isHydrated, router]);
 
   useEffect(() => {
     if (
       isHydrated &&
-      landlordSession &&
-      landlordSession.landlord.workspaceMode !== "ESTATE_ADMIN"
+      estateAdminSession &&
+      estateAdminSession.landlord.workspaceMode !== "ESTATE_ADMIN"
     ) {
       void router.replace("/landlord");
     }
-  }, [isHydrated, landlordSession, router]);
+  }, [estateAdminSession, isHydrated, router]);
 
   useEffect(() => {
-    setResolvedBranding(landlordSession?.landlord.branding ?? null);
-  }, [landlordSession?.landlord.branding]);
+    setResolvedBranding(estateAdminSession?.landlord.branding ?? null);
+  }, [estateAdminSession?.landlord.branding]);
 
   useEffect(() => {
-    if (!isHydrated || !landlordSession || typeof window === "undefined") {
+    if (!isHydrated || !estateAdminSession || typeof window === "undefined") {
       return;
     }
 
@@ -85,7 +85,7 @@ export default function EstatePortalShell({
     return () => {
       cancelled = true;
     };
-  }, [isHydrated, landlordSession]);
+  }, [estateAdminSession, isHydrated]);
 
   if (!isHydrated) {
     return (
@@ -96,30 +96,30 @@ export default function EstatePortalShell({
     );
   }
 
-  if (!landlordSession || landlordSession.landlord.workspaceMode !== "ESTATE_ADMIN") {
+  if (!estateAdminSession || estateAdminSession.landlord.workspaceMode !== "ESTATE_ADMIN") {
     return null;
   }
 
-  const capabilities = resolveLandlordCapabilities({
-    capabilities: landlordSession.landlord.capabilities,
-    subscriptionModel: landlordSession.landlord.subscriptionModel,
-    plan: landlordSession.landlord.planKey ?? landlordSession.landlord.plan,
+  const capabilities = resolveEstateAdminCapabilities({
+    capabilities: estateAdminSession.landlord.capabilities,
+    subscriptionModel: estateAdminSession.landlord.subscriptionModel,
+    plan: estateAdminSession.landlord.planKey ?? estateAdminSession.landlord.plan,
   });
 
   return (
     <AppShell
       user={{
-        name: landlordSession.landlord.fullName,
+        name: estateAdminSession.landlord.fullName,
         role:
-          landlordSession.landlord.role === "team_member"
-            ? (landlordSession.landlord.teamRole ?? "Estate staff")
+          estateAdminSession.landlord.role === "team_member"
+            ? (estateAdminSession.landlord.teamRole ?? "Estate staff")
             : "Estate admin",
-        initials: initialsFromName(landlordSession.landlord.fullName),
+        initials: initialsFromName(estateAdminSession.landlord.fullName),
       }}
       topbarTitle={topbarTitle}
       breadcrumb={breadcrumb}
       navSections={buildEstateNav(capabilities)}
-      branding={resolvedBranding ?? landlordSession.landlord.branding}
+      branding={resolvedBranding ?? estateAdminSession.landlord.branding}
     >
       {children}
     </AppShell>

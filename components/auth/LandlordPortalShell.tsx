@@ -89,12 +89,8 @@ export default function LandlordPortalShell({
   }
 
   const isEstateWorkspace = landlordSession.landlord.workspaceMode === "ESTATE_ADMIN";
-  const isSharedEstateUtilityPath =
-    router.pathname.startsWith("/landlord/settings") ||
-    router.pathname.startsWith("/landlord/audit") ||
-    router.pathname.startsWith("/landlord/integrations");
 
-  if (isEstateWorkspace && !isSharedEstateUtilityPath) {
+  if (isEstateWorkspace) {
     void router.replace("/estate");
     return null;
   }

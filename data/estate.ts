@@ -1,8 +1,8 @@
 import type { NavSection } from "../types/app";
 import {
-  resolveLandlordCapabilities,
-  type LandlordCapabilities,
-} from "../lib/landlord-access";
+  resolveEstateAdminCapabilities,
+  type EstateAdminCapabilities,
+} from "../lib/estate-admin-access";
 
 const estateNavSections: NavSection[] = [
   {
@@ -29,9 +29,9 @@ const estateNavSections: NavSection[] = [
 ];
 
 export function buildEstateNav(
-  capabilities?: Partial<LandlordCapabilities> | null,
+  capabilities?: Partial<EstateAdminCapabilities> | null,
 ) {
-  const resolved = resolveLandlordCapabilities({ capabilities });
+  const resolved = resolveEstateAdminCapabilities({ capabilities });
 
   return estateNavSections
     .map((section) => ({

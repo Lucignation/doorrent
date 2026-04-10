@@ -3,13 +3,13 @@ import { useEffect, useState } from "react";
 import EstatePortalShell from "../../components/auth/EstatePortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import PageHeader from "../../components/ui/PageHeader";
-import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import { formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
 
 export default function EstateOverviewPage() {
-  const { landlordSession } = useLandlordPortalSession();
-  const token = landlordSession?.token;
+  const { estateAdminSession } = useEstateAdminPortalSession();
+  const token = estateAdminSession?.token;
 
   const [data, setData] = useState<EstateDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,7 +26,7 @@ export default function EstateOverviewPage() {
     return () => { cancelled = true; };
   }, [token]);
 
-  const estateName = data?.estate?.name ?? landlordSession?.landlord?.companyName ?? "Estate";
+  const estateName = data?.estate?.name ?? estateAdminSession?.landlord?.companyName ?? "Estate";
   const activeHouses = (data?.residences ?? []).filter((r) => r.status === "ACTIVE").length;
   const activeResidents = (data?.residents ?? []).filter((r) => r.status === "ACTIVE").length;
   const totalRaised = (data?.contributions ?? []).filter((c) => c.status === "PAID").reduce((s, c) => s + c.amount, 0);

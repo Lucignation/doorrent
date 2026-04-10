@@ -4,7 +4,7 @@ import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
 import PageHeader from "../../components/ui/PageHeader";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
-import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import { type EstateDashboardData } from "../../lib/estate-preview";
 import type { TableColumn } from "../../types/app";
@@ -18,8 +18,8 @@ const initialForm = {
 
 export default function EstateGovernancePage() {
   const { showToast, dataRefreshVersion } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
-  const token = landlordSession?.token;
+  const { estateAdminSession } = useEstateAdminPortalSession();
+  const token = estateAdminSession?.token;
 
   const [approvals, setApprovals] = useState<ApprovalRow[]>([]);
   const [loading, setLoading] = useState(true);

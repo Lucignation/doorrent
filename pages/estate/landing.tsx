@@ -4,17 +4,17 @@ import LandingPageBuilder from "../../components/landing/LandingPageBuilder";
 import PageMeta from "../../components/layout/PageMeta";
 import PageHeader from "../../components/ui/PageHeader";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
-import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import type { LandingBuilderDraft } from "../../lib/landing-builder";
-import type { LandlordCapabilities } from "../../lib/landlord-access";
+import type { EstateAdminCapabilities } from "../../lib/estate-admin-access";
 import {
   fetchPublishedLandingDraft,
   publishLandingDraft,
 } from "../../lib/public-landing-client";
 
 interface EstateLandingSettingsResponse {
-  capabilities: LandlordCapabilities;
+  capabilities: EstateAdminCapabilities;
   profile: {
     companyName: string;
     workspaceSlug?: string | null;
@@ -41,8 +41,8 @@ function formatPublishDomain(origin?: string | null, workspaceSlug?: string | nu
 
 export default function EstateLandingPage() {
   const { showToast } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
-  const token = landlordSession?.token;
+  const { estateAdminSession } = useEstateAdminPortalSession();
+  const token = estateAdminSession?.token;
   const [settings, setSettings] = useState<EstateLandingSettingsResponse | null>(null);
   const [publishedDraft, setPublishedDraft] = useState<Partial<LandingBuilderDraft> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +60,7 @@ export default function EstateLandingPage() {
 
     void (async () => {
       try {
-        const { data } = await apiRequest<EstateLandingSettingsResponse>("/landlord/settings", {
+        const { data } = await apiRequest<EstateLandingSettingsResponse>("/estate/settings", {
           token,
         });
         const workspaceSlug = data.profile.workspaceSlug?.trim();
@@ -124,7 +124,7 @@ export default function EstateLandingPage() {
       setPublishedDraft(record.draft);
 
       try {
-        await apiRequest("/landlord/settings/profile", {
+        await apiRequest("/estate/settings/profile", {
           method: "PATCH",
           token,
           body: {

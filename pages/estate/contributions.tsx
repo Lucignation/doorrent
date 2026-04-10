@@ -5,7 +5,7 @@ import DataTable from "../../components/ui/DataTable";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
-import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import { convertRowsToCsv, parseCsvText, formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
 import type { TableColumn } from "../../types/app";
@@ -26,8 +26,8 @@ const initialContribForm = { id: "", causeId: "", contributorName: "", amount: "
 
 export default function EstateContributionsPage() {
   const { showToast, dataRefreshVersion } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
-  const token = landlordSession?.token;
+  const { estateAdminSession } = useEstateAdminPortalSession();
+  const token = estateAdminSession?.token;
   const contribFileRef = useRef<HTMLInputElement>(null);
 
   const [causes, setCauses] = useState<CauseRow[]>([]);

@@ -7,7 +7,7 @@ import DataTable from "../../../components/ui/DataTable";
 import PageHeader from "../../../components/ui/PageHeader";
 import StatusBadge from "../../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../../context/PrototypeUIContext";
-import { useLandlordPortalSession } from "../../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../../context/TenantSessionContext";
 import { apiRequest } from "../../../lib/api";
 import type { EstateDashboardData } from "../../../lib/estate-preview";
 import type { TableColumn } from "../../../types/app";
@@ -28,8 +28,8 @@ export default function EstateHouseDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { showToast, dataRefreshVersion } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
-  const token = landlordSession?.token;
+  const { estateAdminSession } = useEstateAdminPortalSession();
+  const token = estateAdminSession?.token;
 
   const [house, setHouse] = useState<ResidenceRow | null>(null);
   const [residents, setResidents] = useState<ResidentRow[]>([]);
