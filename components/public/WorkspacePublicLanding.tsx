@@ -143,6 +143,33 @@ function getEstateSectionLabel(sectionKey: LandingBuilderSectionKey) {
   }
 }
 
+function getPropertySectionLabel(sectionKey: LandingBuilderSectionKey) {
+  switch (sectionKey) {
+    case "about":
+      return "About";
+    case "features":
+      return "Services";
+    case "listings":
+      return "Listings";
+    case "team":
+      return "Team";
+    case "fees":
+      return "Pricing";
+    case "notices":
+      return "Updates";
+    case "faq":
+      return "FAQs";
+    case "gallery":
+      return "Gallery";
+    case "contact":
+      return "Contact";
+    case "cta":
+      return "Enquire";
+    default:
+      return "Overview";
+  }
+}
+
 function WorkspacePublicGalleryImage({
   imageUrl,
   alt,
@@ -661,6 +688,22 @@ export default function WorkspacePublicLanding({
       key: sectionKey,
       href: `#${getSectionAnchorId(sectionKey)}`,
       label: getEstateSectionLabel(sectionKey),
+    }));
+  const propertyNavLinks = contentSections
+    .filter((sectionKey) => !["contact", "cta"].includes(sectionKey))
+    .slice(0, 4)
+    .map((sectionKey) => ({
+      key: sectionKey,
+      href: `#${getSectionAnchorId(sectionKey)}`,
+      label: getPropertySectionLabel(sectionKey),
+    }));
+  const propertyFooterLinks = contentSections
+    .filter((sectionKey) => !["contact", "cta"].includes(sectionKey))
+    .slice(0, 5)
+    .map((sectionKey) => ({
+      key: sectionKey,
+      href: `#${getSectionAnchorId(sectionKey)}`,
+      label: getPropertySectionLabel(sectionKey),
     }));
   const estateSectionMedia: Partial<Record<LandingBuilderSectionKey, string | null>> = {
     about: galleryImages[1] ?? galleryImages[0] ?? heroMediaUrl,
@@ -1623,7 +1666,7 @@ export default function WorkspacePublicLanding({
           </>
         ) : (
           <>
-            <nav className="wpl-nav">
+            <nav className="wpl-nav wpl-property-nav">
               <div className="wpl-brand">
                 {logoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -1643,13 +1686,26 @@ export default function WorkspacePublicLanding({
                   <span>Official company page</span>
                 </div>
               </div>
-              <Link href={primaryHref} className="wpl-button wpl-button-primary">
-                {draft.ctaPrimaryLabel}
-              </Link>
+
+              {propertyNavLinks.length ? (
+                <div className="wpl-property-nav-links">
+                  {propertyNavLinks.map((link) => (
+                    <a key={link.key} href={link.href}>
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="wpl-property-nav-actions">
+                <Link href={primaryHref} className="wpl-button wpl-button-primary">
+                  {draft.ctaPrimaryLabel}
+                </Link>
+              </div>
             </nav>
 
             <header
-              className={`wpl-hero${heroMediaUrl ? " has-media" : ""}`}
+              className={`wpl-hero wpl-property-hero${heroMediaUrl ? " has-media" : ""}`}
               style={{ backgroundImage: heroBackground }}
             >
               <div className="wpl-hero-copy">
@@ -1712,9 +1768,54 @@ export default function WorkspacePublicLanding({
               {contentSections.map((sectionKey) => renderSection(sectionKey))}
             </main>
 
-            <footer className="wpl-footer">
-              <span>{displayName}</span>
-              <span>Powered by DoorRent</span>
+            <footer className="wpl-footer wpl-property-footer">
+              <div className="wpl-property-footer-brand">
+                <div className="wpl-brand">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt={`${displayName} logo`}
+                      className="wpl-logo"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span className="wpl-brandmark" style={{ background: primaryColor }}>
+                      {displayName.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                  <div>
+                    <strong>{displayName}</strong>
+                    <span>{templateName}</span>
+                  </div>
+                </div>
+                <p>{draft.aboutBody || draft.heroSubtitle}</p>
+              </div>
+
+              <div className="wpl-property-footer-column">
+                <strong>Explore</strong>
+                <div className="wpl-property-footer-links">
+                  {propertyFooterLinks.map((link) => (
+                    <a key={link.key} href={link.href}>
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              <div className="wpl-property-footer-column">
+                <strong>Contact</strong>
+                <div className="wpl-property-footer-contact">
+                  {supportAddress ? <span>{supportAddress}</span> : null}
+                  {supportPhone ? <span>{supportPhone}</span> : null}
+                  {supportEmail ? <span>{supportEmail}</span> : null}
+                </div>
+              </div>
+
+              <div className="wpl-property-footer-meta">
+                <span>Copyright © {new Date().getFullYear()} {displayName}. All rights reserved.</span>
+                <span>Powered by DoorRent</span>
+              </div>
             </footer>
           </>
         )}
@@ -2244,6 +2345,97 @@ export default function WorkspacePublicLanding({
         .wpl-surface-fallback {
           background-size: cover;
           background-position: center;
+        }
+
+        /* ─── PROPERTY EXPERIENCE ─── */
+        .wpl-property-nav {
+          gap: 20px;
+        }
+        .wpl-property-nav-links {
+          display: flex;
+          flex: 1;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .wpl-property-nav-links a {
+          display: inline-flex;
+          align-items: center;
+          min-height: 40px;
+          padding: 0 16px;
+          border-radius: 999px;
+          border: 1px solid var(--wpl-border);
+          background: rgba(255, 255, 255, 0.64);
+          color: #171914;
+          text-decoration: none;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .wpl-property-nav-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+        }
+        .wpl-property-hero .wpl-hero-copy {
+          max-width: 640px;
+        }
+        .wpl-property-hero .wpl-hero-stage {
+          align-self: end;
+        }
+        .wpl-property-footer {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) repeat(2, minmax(220px, 0.8fr));
+          gap: 30px 34px;
+          padding: clamp(30px, 4vw, 42px);
+          background: rgba(255, 255, 255, 0.62);
+        }
+        .wpl-property-footer .wpl-brand strong,
+        .wpl-property-footer .wpl-brand span,
+        .wpl-property-footer-column strong,
+        .wpl-property-footer-links a,
+        .wpl-property-footer-contact span,
+        .wpl-property-footer-brand p,
+        .wpl-property-footer-meta span {
+          display: block;
+        }
+        .wpl-property-footer .wpl-brand span,
+        .wpl-property-footer-brand p,
+        .wpl-property-footer-links a,
+        .wpl-property-footer-contact span,
+        .wpl-property-footer-meta span {
+          color: #5f655e;
+        }
+        .wpl-property-footer-brand p {
+          margin: 16px 0 0;
+          max-width: 36ch;
+          font-size: 15px;
+          line-height: 1.76;
+        }
+        .wpl-property-footer-column strong {
+          margin-bottom: 16px;
+          font-family: var(--wpl-title-font);
+          font-size: 17px;
+          color: #171914;
+        }
+        .wpl-property-footer-links,
+        .wpl-property-footer-contact {
+          display: grid;
+          gap: 12px;
+        }
+        .wpl-property-footer-links a {
+          text-decoration: none;
+        }
+        .wpl-property-footer-meta {
+          grid-column: 1 / -1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding-top: 22px;
+          border-top: 1px solid var(--wpl-border);
         }
 
         /* ─── ESTATE EXPERIENCE ─── */
@@ -3236,7 +3428,339 @@ export default function WorkspacePublicLanding({
           grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
+        /* ─── STRONGER TEMPLATE DIFFERENTIATION ─── */
+
+        .theme-estate-official .wpl-root {
+          background:
+            radial-gradient(circle at 0% 0%, ${withAlpha(accentColor, 0.22)}, transparent 26%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0)),
+            var(--wpl-bg-layer),
+            var(--wpl-bg-base);
+        }
+        .theme-estate-official .wpl-estate-nav {
+          background: linear-gradient(135deg, rgba(18, 16, 13, 0.96), rgba(34, 27, 19, 0.88));
+          border-color: ${withAlpha(accentColor, 0.32)};
+        }
+        .theme-estate-official .wpl-estate-nav-links a {
+          background: rgba(255, 255, 255, 0.04);
+          border-color: rgba(255, 255, 255, 0.08);
+        }
+        .theme-estate-official .wpl-estate-hero {
+          justify-items: start;
+          text-align: left;
+          min-height: clamp(560px, 74vh, 780px);
+          padding-inline: clamp(34px, 6vw, 94px);
+        }
+        .theme-estate-official .wpl-estate-hero-copy {
+          align-items: flex-start;
+          max-width: 720px;
+        }
+        .theme-estate-official .wpl-estate-actions {
+          justify-content: flex-start;
+        }
+        .theme-estate-official .wpl-estate-footer {
+          background: linear-gradient(180deg, #16110d, #0d1218);
+        }
+
+        .theme-estate-resident .wpl-root {
+          background:
+            radial-gradient(circle at 100% 0%, ${withAlpha(accentColor, 0.18)}, transparent 26%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0)),
+            var(--wpl-bg-layer),
+            var(--wpl-bg-base);
+        }
+        .theme-estate-resident .wpl-estate-nav {
+          background: linear-gradient(135deg, ${withAlpha(primaryColor, 0.88)}, ${withAlpha(
+            accentColor,
+            0.48,
+          )});
+          border-radius: 38px;
+        }
+        .theme-estate-resident .wpl-estate-hero {
+          justify-items: start;
+          text-align: left;
+          min-height: clamp(500px, 66vh, 680px);
+        }
+        .theme-estate-resident .wpl-estate-hero-copy {
+          align-items: flex-start;
+          max-width: 680px;
+          padding: 26px 28px;
+          border-radius: 30px;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(14px);
+        }
+        .theme-estate-resident .wpl-estate-actions {
+          justify-content: flex-start;
+        }
+        .theme-estate-resident .wpl-estate-footer {
+          background: linear-gradient(135deg, #f5f7f2, #e4ede0);
+          color: #171914;
+          box-shadow: 0 24px 60px rgba(45, 64, 43, 0.12);
+        }
+        .theme-estate-resident .wpl-estate-footer .wpl-brand strong,
+        .theme-estate-resident .wpl-estate-footer .wpl-brand span,
+        .theme-estate-resident .wpl-estate-footer-column strong,
+        .theme-estate-resident .wpl-estate-footer-links a,
+        .theme-estate-resident .wpl-estate-footer-contact span,
+        .theme-estate-resident .wpl-estate-footer-brand p,
+        .theme-estate-resident .wpl-estate-footer-meta span {
+          color: inherit;
+        }
+        .theme-estate-resident .wpl-estate-footer .wpl-brand span,
+        .theme-estate-resident .wpl-estate-footer-links a,
+        .theme-estate-resident .wpl-estate-footer-contact span,
+        .theme-estate-resident .wpl-estate-footer-brand p,
+        .theme-estate-resident .wpl-estate-footer-meta span {
+          color: #556055;
+        }
+        .theme-estate-resident .wpl-estate-footer-meta {
+          border-top-color: ${withAlpha(primaryColor, 0.12)};
+        }
+
+        .theme-estate-fees .wpl-root {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0)),
+            linear-gradient(${withAlpha(primaryColor, 0.06)} 1px, transparent 1px),
+            linear-gradient(90deg, ${withAlpha(primaryColor, 0.06)} 1px, transparent 1px),
+            var(--wpl-bg-base);
+          background-size: auto, 140px 140px, 140px 140px, auto;
+        }
+        .theme-estate-fees .wpl-estate-nav {
+          background: rgba(255, 255, 255, 0.92);
+          border-color: var(--wpl-border);
+          box-shadow: 0 20px 42px rgba(18, 22, 16, 0.08);
+        }
+        .theme-estate-fees .wpl-estate-nav .wpl-brand strong {
+          color: #171914;
+        }
+        .theme-estate-fees .wpl-estate-nav .wpl-brand span {
+          color: #5e656d;
+        }
+        .theme-estate-fees .wpl-estate-nav-links a {
+          background: ${withAlpha(primaryColor, 0.08)};
+          border-color: ${withAlpha(primaryColor, 0.12)};
+          color: #171914;
+          border-radius: 14px;
+        }
+        .theme-estate-fees .wpl-estate-hero {
+          justify-items: start;
+          text-align: left;
+          min-height: clamp(480px, 62vh, 620px);
+          border-radius: 28px;
+        }
+        .theme-estate-fees .wpl-estate-hero-overlay {
+          background:
+            linear-gradient(180deg, ${withAlpha(primaryColor, 0.18)}, ${withAlpha(primaryColor, 0.42)}),
+            linear-gradient(${withAlpha("#ffffff", 0.06)} 1px, transparent 1px),
+            linear-gradient(90deg, ${withAlpha("#ffffff", 0.06)} 1px, transparent 1px);
+          background-size: auto, 110px 110px, 110px 110px;
+        }
+        .theme-estate-fees .wpl-estate-hero-copy {
+          align-items: flex-start;
+          max-width: 720px;
+        }
+        .theme-estate-fees .wpl-estate-actions {
+          justify-content: flex-start;
+        }
+        .theme-estate-fees .wpl-estate-stat-card,
+        .theme-estate-fees .wpl-fee-item {
+          border-radius: 16px;
+        }
+        .theme-estate-fees .wpl-estate-footer {
+          background: linear-gradient(180deg, #0f1720, #172335);
+        }
+
+        .theme-estate-exco .wpl-root {
+          background:
+            radial-gradient(circle at 50% 0%, ${withAlpha(accentColor, 0.16)}, transparent 24%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0)),
+            var(--wpl-bg-layer),
+            var(--wpl-bg-base);
+        }
+        .theme-estate-exco .wpl-estate-nav {
+          background: linear-gradient(135deg, ${withAlpha(primaryColor, 0.9)}, ${withAlpha(
+            primaryColor,
+            0.74,
+          )});
+          border-color: ${withAlpha(accentColor, 0.2)};
+        }
+        .theme-estate-exco .wpl-estate-hero {
+          min-height: clamp(540px, 72vh, 740px);
+          padding-inline: clamp(28px, 6vw, 86px);
+        }
+        .theme-estate-exco .wpl-estate-hero-copy {
+          max-width: 760px;
+          padding: 28px 32px;
+          border-radius: 32px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          backdrop-filter: blur(12px);
+        }
+        .theme-estate-exco .wpl-estate-team-pill {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.8));
+        }
+        .theme-estate-exco .wpl-estate-footer {
+          background: linear-gradient(180deg, #17202d, #0f141d);
+        }
+
+        .theme-property-profile .wpl-root {
+          background:
+            radial-gradient(circle at 0% 0%, rgba(255, 255, 255, 0.18), transparent 20%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0)),
+            var(--wpl-bg-layer),
+            var(--wpl-bg-base);
+        }
+        .theme-property-profile .wpl-property-nav {
+          background: linear-gradient(135deg, rgba(19, 18, 18, 0.96), rgba(34, 28, 24, 0.92));
+          border-color: ${withAlpha(accentColor, 0.28)};
+        }
+        .theme-property-profile .wpl-property-nav .wpl-brand strong {
+          color: #fff;
+        }
+        .theme-property-profile .wpl-property-nav .wpl-brand span {
+          color: rgba(255, 255, 255, 0.66);
+        }
+        .theme-property-profile .wpl-property-nav-links a {
+          background: rgba(255, 255, 255, 0.05);
+          border-color: rgba(255, 255, 255, 0.08);
+          color: rgba(255, 255, 255, 0.9);
+        }
+        .theme-property-profile .wpl-property-hero {
+          min-height: clamp(560px, 72vh, 760px);
+          border-radius: 44px 44px 28px 28px;
+        }
+        .theme-property-profile .wpl-property-footer {
+          background: linear-gradient(180deg, #141211, #0d1319);
+          border: 0;
+        }
+        .theme-property-profile .wpl-property-footer .wpl-brand strong,
+        .theme-property-profile .wpl-property-footer .wpl-brand span,
+        .theme-property-profile .wpl-property-footer-column strong,
+        .theme-property-profile .wpl-property-footer-links a,
+        .theme-property-profile .wpl-property-footer-contact span,
+        .theme-property-profile .wpl-property-footer-brand p,
+        .theme-property-profile .wpl-property-footer-meta span {
+          color: inherit;
+        }
+        .theme-property-profile .wpl-property-footer .wpl-brand strong,
+        .theme-property-profile .wpl-property-footer-column strong {
+          color: #fff;
+        }
+        .theme-property-profile .wpl-property-footer .wpl-brand span,
+        .theme-property-profile .wpl-property-footer-links a,
+        .theme-property-profile .wpl-property-footer-contact span,
+        .theme-property-profile .wpl-property-footer-brand p,
+        .theme-property-profile .wpl-property-footer-meta span {
+          color: rgba(255, 255, 255, 0.72);
+        }
+        .theme-property-profile .wpl-property-footer-meta {
+          border-top-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .theme-property-leasing .wpl-root {
+          background:
+            radial-gradient(circle at 100% 0%, ${withAlpha(accentColor, 0.18)}, transparent 24%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0)),
+            var(--wpl-bg-layer),
+            var(--wpl-bg-base);
+        }
+        .theme-property-leasing .wpl-property-nav {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.84), ${withAlpha(
+            accentColor,
+            0.18,
+          )});
+        }
+        .theme-property-leasing .wpl-property-hero {
+          border-radius: 56px 20px 56px 20px;
+          min-height: clamp(560px, 72vh, 760px);
+        }
+        .theme-property-leasing .wpl-highlight-pill {
+          background: rgba(255, 255, 255, 0.22);
+          border-color: rgba(255, 255, 255, 0.22);
+        }
+        .theme-property-leasing .wpl-listing-card {
+          border-radius: 28px 18px 28px 18px;
+        }
+        .theme-property-leasing .wpl-listing-card:nth-child(2n) {
+          transform: translateY(12px);
+        }
+        .theme-property-leasing .wpl-listing-badge {
+          background: rgba(255, 255, 255, 0.9);
+          color: #171914;
+        }
+        .theme-property-leasing .wpl-property-footer {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.72), ${withAlpha(
+            accentColor,
+            0.16,
+          )});
+        }
+
+        .theme-property-portfolio .wpl-root {
+          background:
+            radial-gradient(circle at 90% 8%, ${withAlpha(accentColor, 0.2)}, transparent 24%),
+            radial-gradient(circle at 0% 30%, ${withAlpha(primaryColor, 0.12)}, transparent 20%),
+            var(--wpl-bg-layer),
+            var(--wpl-bg-base);
+        }
+        .theme-property-portfolio .wpl-property-nav {
+          width: min(1220px, calc(100% - 54px));
+          border-radius: 999px;
+        }
+        .theme-property-portfolio .wpl-property-hero {
+          grid-template-columns: minmax(0, 0.92fr) minmax(380px, 1.08fr);
+          min-height: clamp(600px, 76vh, 820px);
+          border-radius: 50px;
+        }
+        .theme-property-portfolio .wpl-hero-media-shell {
+          padding: 18px;
+          border-radius: 40px;
+          transform: rotate(-3deg);
+        }
+        .theme-property-portfolio .wpl-hero-stack {
+          flex-direction: row;
+          align-items: stretch;
+        }
+        .theme-property-portfolio .wpl-hero-card,
+        .theme-property-portfolio .wpl-hero-metrics {
+          flex: 1;
+        }
+        .theme-property-portfolio .wpl-gallery-tile {
+          border-radius: 28px;
+        }
+        .theme-property-portfolio .wpl-property-footer {
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.8), rgba(250, 248, 244, 0.92));
+        }
+
+        .theme-property-corporate .wpl-root {
+          background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0)),
+            linear-gradient(${withAlpha(primaryColor, 0.06)} 1px, transparent 1px),
+            linear-gradient(90deg, ${withAlpha(primaryColor, 0.06)} 1px, transparent 1px),
+            var(--wpl-bg-base);
+          background-size: auto, 150px 150px, 150px 150px, auto;
+        }
+        .theme-property-corporate .wpl-property-nav {
+          border-radius: 18px;
+          box-shadow: 0 14px 34px rgba(18, 22, 16, 0.06);
+        }
+        .theme-property-corporate .wpl-property-nav-links a,
+        .theme-property-corporate .wpl-button,
+        .theme-property-corporate .wpl-hero-card,
+        .theme-property-corporate .wpl-hero-metric {
+          border-radius: 14px;
+        }
+        .theme-property-corporate .wpl-property-hero {
+          border-radius: 24px;
+        }
+        .theme-property-corporate .wpl-property-footer {
+          border-radius: 18px;
+          box-shadow: 0 18px 42px rgba(18, 22, 16, 0.08);
+        }
+
         @media (max-width: 1120px) {
+          .wpl-property-footer {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
           .wpl-estate-nav {
             flex-direction: column;
             align-items: flex-start;
@@ -3258,6 +3782,20 @@ export default function WorkspacePublicLanding({
           }
         }
         @media (max-width: 920px) {
+          .wpl-property-nav {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .wpl-property-nav-links {
+            justify-content: flex-start;
+          }
+          .wpl-property-footer-meta {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .theme-property-portfolio .wpl-hero-stack {
+            flex-direction: column;
+          }
           .wpl-hero {
             grid-template-columns: 1fr;
           }
@@ -3317,6 +3855,17 @@ export default function WorkspacePublicLanding({
           }
         }
         @media (max-width: 720px) {
+          .wpl-property-nav-links {
+            width: 100%;
+          }
+          .wpl-property-nav-links a {
+            min-height: 38px;
+            padding: 0 14px;
+          }
+          .wpl-property-footer {
+            grid-template-columns: 1fr;
+            padding: 28px 24px;
+          }
           .wpl-nav,
           .wpl-footer {
             flex-direction: column;

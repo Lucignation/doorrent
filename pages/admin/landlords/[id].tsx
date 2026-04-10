@@ -117,6 +117,9 @@ export default function AdminLandlordDetailPage() {
   const [detail, setDetail] = useState<LandlordDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [savingContact, setSavingContact] = useState(false);
   const [betaEndsAt, setBetaEndsAt] = useState("");
   const [betaNotes, setBetaNotes] = useState("");
   const [savingBeta, setSavingBeta] = useState(false);
@@ -144,9 +147,40 @@ export default function AdminLandlordDetailPage() {
   }, [id, adminSession?.token]);
 
   useEffect(() => {
+    setContactEmail(detail?.email ?? "");
+    setContactPhone(detail?.phone ?? "");
+  }, [detail?.email, detail?.phone]);
+
+  useEffect(() => {
     setBetaEndsAt(formatDateTimeInput(detail?.foundingBeta?.endsAt));
     setBetaNotes(detail?.foundingBeta?.note ?? "");
   }, [detail?.foundingBeta?.endsAt, detail?.foundingBeta?.note]);
+
+  async function handleSaveContactDetails() {
+    const token = adminSession?.token;
+    if (!token || !id || Array.isArray(id)) return;
+
+    setSavingContact(true);
+    try {
+      const response = await apiRequest<LandlordDetail>(`/admin/landlords/${id}`, {
+        token,
+        method: "PATCH",
+        body: {
+          email: contactEmail.trim(),
+          phone: contactPhone.trim(),
+        },
+      });
+      setDetail(response.data);
+      showToast("Account contact details updated.", "success");
+    } catch (requestError) {
+      showToast(
+        requestError instanceof Error ? requestError.message : "Could not update account details.",
+        "error",
+      );
+    } finally {
+      setSavingContact(false);
+    }
+  }
 
   async function handleSaveFoundingBeta() {
     const token = adminSession?.token;
@@ -340,9 +374,51 @@ export default function AdminLandlordDetailPage() {
                   <div style={{ fontWeight: 500 }}>{detail.workspaceModeLabel}</div>
                 </div>
                 <div>
-                  <div className="td-muted" style={{ fontSize: 12 }}>Phone</div>
-                  <div style={{ fontWeight: 500 }}>{detail.phone ?? "—"}</div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Joined</div>
+                  <div style={{ fontWeight: 500 }}>{detail.joinedAt}</div>
                 </div>
+              </div>
+              <div className="form-row" style={{ marginTop: 16 }}>
+                <div>
+                  <label className="form-label">Login Email</label>
+                  <input
+                    className="form-input"
+                    type="email"
+                    value={contactEmail}
+                    onChange={(event) => setContactEmail(event.target.value)}
+                    placeholder="name@company.com"
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Phone</label>
+                  <input
+                    className="form-input"
+                    type="tel"
+                    value={contactPhone}
+                    onChange={(event) => setContactPhone(event.target.value)}
+                    placeholder="+234 800 000 0000"
+                  />
+                </div>
+              </div>
+              <div className="form-help" style={{ marginTop: 8 }}>
+                Updates the contact and sign-in details for this landlord, company admin, or estate admin account.
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => void handleSaveContactDetails()}
+                  disabled={
+                    savingContact
+                    || !contactEmail.trim()
+                    || (
+                      contactEmail.trim().toLowerCase() === detail.email.toLowerCase()
+                      && contactPhone.trim() === (detail.phone ?? "")
+                    )
+                  }
+                >
+                  {savingContact ? "Saving..." : "Save Contact Details"}
+                </button>
               </div>
               <div className="form-row" style={{ marginTop: 16 }}>
                 <div>
@@ -350,18 +426,18 @@ export default function AdminLandlordDetailPage() {
                   <div style={{ fontWeight: 500 }}>{detail.workspaceSlug ?? "—"}</div>
                 </div>
                 <div>
-                  <div className="td-muted" style={{ fontSize: 12 }}>Joined</div>
-                  <div style={{ fontWeight: 500 }}>{detail.joinedAt}</div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Email Verified</div>
+                  <div style={{ fontWeight: 500 }}>{detail.emailVerifiedAt ?? "Not verified"}</div>
                 </div>
               </div>
               <div className="form-row" style={{ marginTop: 16 }}>
                 <div>
-                  <div className="td-muted" style={{ fontSize: 12 }}>Email Verified</div>
-                  <div style={{ fontWeight: 500 }}>{detail.emailVerifiedAt ?? "Not verified"}</div>
-                </div>
-                <div>
                   <div className="td-muted" style={{ fontSize: 12 }}>Billing Model</div>
                   <div style={{ fontWeight: 500 }}>{detail.subscriptionModel}</div>
+                </div>
+                <div>
+                  <div className="td-muted" style={{ fontSize: 12 }}>Current Phone</div>
+                  <div style={{ fontWeight: 500 }}>{detail.phone ?? "—"}</div>
                 </div>
               </div>
             </div>

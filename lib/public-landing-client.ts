@@ -66,6 +66,7 @@ export async function publishLandingDraft(input: {
   workspaceType: LandingBuilderWorkspace;
   draft: LandingBuilderDraft;
 }) {
+  const { editorType: _editorType, ...publishableDraft } = input.draft;
   const response = await fetch(buildPublishedLandingDraftPath(input.workspaceSlug), {
     method: "PUT",
     headers: {
@@ -74,7 +75,7 @@ export async function publishLandingDraft(input: {
     },
     body: JSON.stringify({
       workspaceType: input.workspaceType,
-      draft: input.draft,
+      draft: publishableDraft,
     }),
   });
 

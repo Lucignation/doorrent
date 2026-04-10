@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState, type DragEvent } from "react";
+import dynamic from "next/dynamic";
 import LandingTemplateThumbnail from "../estate/LandingTemplateThumbnail";
 import WorkspacePublicLanding from "../public/WorkspacePublicLanding";
 import {
+  LANDING_BUILDER_EDITORS,
   LANDING_BUILDER_SECTIONS,
   applyTemplateToDraft,
   createLandingBuilderDraft,
@@ -10,6 +12,7 @@ import {
   getLandingBuilderTemplates,
   mergeLandingBuilderDraft,
   type LandingBuilderDraft,
+  type LandingBuilderEditorType,
   type LandingBuilderProfile,
   type LandingBuilderSectionLayout,
   type LandingBuilderSectionKey,
@@ -21,6 +24,21 @@ import {
   sanitizeHexColor,
   sanitizeRemoteAssetUrl,
 } from "../../lib/frontend-security";
+
+const PuckLandingEditor = dynamic(() => import("./PuckLandingEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="lpb-mode-bridge-note">Loading the Puck editor canvas for this workspace...</div>
+  ),
+});
+const CraftLandingEditor = dynamic(() => import("./CraftLandingEditor"), {
+  ssr: false,
+  loading: () => (
+    <div className="lpb-mode-bridge-note">
+      Loading the Craft.js editor canvas for this workspace...
+    </div>
+  ),
+});
 
 interface LandingPageBuilderProps {
   workspace: LandingBuilderWorkspace;
@@ -47,6 +65,17 @@ function joinListInput(items: string[]) {
 
 function sectionMeta(sectionKey: LandingBuilderSectionKey) {
   return LANDING_BUILDER_SECTIONS.find((section) => section.key === sectionKey);
+}
+
+function editorMeta(editorType: LandingBuilderEditorType) {
+  return LANDING_BUILDER_EDITORS.find((editor) => editor.key === editorType);
+}
+
+function isEditorType(value: unknown): value is LandingBuilderEditorType {
+  return (
+    typeof value === "string" &&
+    LANDING_BUILDER_EDITORS.some((editor) => editor.key === value)
+  );
 }
 
 function renderPreviewList(items: string[], tone: "dark" | "light" = "dark") {
@@ -86,28 +115,58 @@ export default function LandingPageBuilder({
   const [dragOverSection, setDragOverSection] =
     useState<LandingBuilderSectionKey | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const [editorCanvasResetKey, setEditorCanvasResetKey] = useState(0);
+  const [workspaceDefaultEditor, setWorkspaceDefaultEditor] =
+    useState<LandingBuilderEditorType>(() => createLandingBuilderDraft(workspace, profile).editorType);
+  const editorPreferenceStorageKey = `${storageKey}.editor-default`;
 
   useEffect(() => {
     const baseDraft = mergeLandingBuilderDraft(workspace, profile, publishedDraft);
 
     if (typeof window === "undefined") {
       setDraft(baseDraft);
+      setWorkspaceDefaultEditor(baseDraft.editorType);
       return;
     }
 
     try {
+      const storedEditorPreference = window.localStorage.getItem(editorPreferenceStorageKey);
+      const nextWorkspaceDefaultEditor = isEditorType(storedEditorPreference)
+        ? storedEditorPreference
+        : baseDraft.editorType;
+      setWorkspaceDefaultEditor(nextWorkspaceDefaultEditor);
+
       const raw = window.localStorage.getItem(storageKey);
       if (!raw) {
-        setDraft(baseDraft);
+        setDraft({
+          ...baseDraft,
+          editorType: nextWorkspaceDefaultEditor,
+        });
+        setEditorCanvasResetKey((current) => current + 1);
         return;
       }
 
       const parsed = JSON.parse(raw) as Partial<LandingBuilderDraft>;
-      setDraft(mergeLandingBuilderDraft(workspace, profile, parsed));
+      setDraft({
+        ...mergeLandingBuilderDraft(workspace, profile, parsed),
+        editorType: nextWorkspaceDefaultEditor,
+      });
+      setEditorCanvasResetKey((current) => current + 1);
     } catch {
-      setDraft(baseDraft);
+      const fallbackEditor =
+        typeof window !== "undefined" &&
+        isEditorType(window.localStorage.getItem(editorPreferenceStorageKey))
+          ? (window.localStorage.getItem(editorPreferenceStorageKey) as LandingBuilderEditorType)
+          : baseDraft.editorType;
+
+      setDraft({
+        ...baseDraft,
+        editorType: fallbackEditor,
+      });
+      setWorkspaceDefaultEditor(fallbackEditor);
+      setEditorCanvasResetKey((current) => current + 1);
     }
-  }, [profile, publishedDraft, storageKey, workspace]);
+  }, [editorPreferenceStorageKey, profile, publishedDraft, storageKey, workspace]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -117,8 +176,19 @@ export default function LandingPageBuilder({
     window.localStorage.setItem(storageKey, JSON.stringify(draft));
   }, [draft, storageKey]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(editorPreferenceStorageKey, workspaceDefaultEditor);
+  }, [editorPreferenceStorageKey, workspaceDefaultEditor]);
+
   const selectedTemplate =
     getLandingBuilderTemplate(draft.templateId) ?? templates[0];
+  const selectedEditor = editorMeta(draft.editorType) ?? LANDING_BUILDER_EDITORS[0];
+  const defaultEditorMeta =
+    editorMeta(workspaceDefaultEditor) ?? selectedEditor;
   const primaryColor =
     sanitizeHexColor(draft.brandPrimaryColor) ??
     (workspace === "estate" ? "#1A5C42" : "#8A1538");
@@ -141,6 +211,11 @@ export default function LandingPageBuilder({
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
+  function updateEditorMode(editorType: LandingBuilderEditorType) {
+    setDraft((current) => ({ ...current, editorType }));
+    setWorkspaceDefaultEditor(editorType);
+  }
+
   function updateTemplate(templateId: LandingBuilderDraft["templateId"]) {
     const template = getLandingBuilderTemplate(templateId);
     if (!template) {
@@ -148,6 +223,7 @@ export default function LandingPageBuilder({
     }
 
     setDraft((current) => applyTemplateToDraft(current, template));
+    setEditorCanvasResetKey((current) => current + 1);
   }
 
   function toggleSection(sectionKey: LandingBuilderSectionKey) {
@@ -245,6 +321,7 @@ export default function LandingPageBuilder({
     }
 
     setDraft((current) => applyTemplateToDraft(current, template));
+    setEditorCanvasResetKey((current) => current + 1);
   }
 
   const previewWorkspace = useMemo<NonNullable<PublicWorkspaceContext["workspace"]>>(
@@ -715,19 +792,70 @@ export default function LandingPageBuilder({
       <section className="lpb-banner">
         <div>
           <div className="lpb-eyebrow">Landing Page Builder</div>
-          <h2>Pick an approved template, drag sections into place, and preview before publish.</h2>
+          <h2>Start in Puck, pick an approved template, and preview before publish.</h2>
           <p>
             This builder stays intentionally controlled: visual templates, reusable content blocks,
-            approved branding fields, and drag-and-drop section ordering instead of free-form page
-            design.
+            approved branding fields, and a saved editor preference for teams that want Puck by
+            default or prefer Controlled and Craft.js workflows.
           </p>
         </div>
         <div className="lpb-banner-meta">
+          <span className="lpb-pill">{selectedEditor.label} selected</span>
+          <span className="lpb-pill">Workspace default: {defaultEditorMeta.label}</span>
           <span className="lpb-pill">Visual snapshots</span>
           <span className="lpb-pill">Controlled sections</span>
           <span className="lpb-pill">
             {enterpriseEnabled ? "Enterprise publish enabled" : "Enterprise publish recommended"}
           </span>
+        </div>
+      </section>
+
+      <section className="card lpb-card">
+        <div className="card-header">
+          <div>
+            <div className="card-title">Editor mode</div>
+            <div className="card-subtitle">
+              Let each workspace choose the editing experience it wants to grow into.
+            </div>
+          </div>
+        </div>
+        <div className="card-body lpb-stack">
+          <div className="lpb-editor-mode-grid">
+            {LANDING_BUILDER_EDITORS.map((editor) => {
+              const isActive = editor.key === draft.editorType;
+
+              return (
+                <button
+                  key={editor.key}
+                  type="button"
+                  className={`lpb-editor-mode-card${isActive ? " is-active" : ""}`}
+                  onClick={() => updateEditorMode(editor.key)}
+                >
+                  <div className="lpb-editor-mode-topline">
+                    <strong>{editor.label}</strong>
+                    <span>
+                      {isActive
+                        ? "Selected"
+                        : editor.key === workspaceDefaultEditor
+                          ? "Workspace default"
+                          : editor.status}
+                    </span>
+                  </div>
+                  <p>{editor.description}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="lpb-mode-note">
+            <strong>{selectedEditor.label} mode</strong> is active in this landing-page draft.
+            {" "}This workspace now opens in <strong>{defaultEditorMeta.label}</strong> by default.
+            {draft.editorType === "controlled"
+              ? " The structured builder below is the active editing surface."
+              : draft.editorType === "puck"
+                ? " The live Puck canvas below now handles approved section ordering and field editing."
+                : " The live Craft.js canvas below now handles approved section ordering and field editing."}
+          </div>
         </div>
       </section>
 
@@ -902,59 +1030,92 @@ export default function LandingPageBuilder({
                 </div>
               </div>
             </div>
-            <div className="card-body lpb-stack">
-              {renderSectionEditor("hero")}
-              <div className="lpb-editor-grid">
-                <label className="lpb-field">
-                  <span>Primary CTA label</span>
-                  <input
-                    className="form-input"
-                    value={draft.ctaPrimaryLabel}
-                    onChange={(event) => updateDraft("ctaPrimaryLabel", event.target.value)}
-                  />
-                </label>
-                <label className="lpb-field">
-                  <span>Primary CTA URL</span>
-                  <input
-                    className="form-input"
-                    value={draft.ctaPrimaryUrl}
-                    onChange={(event) => updateDraft("ctaPrimaryUrl", event.target.value)}
-                    placeholder="/portal"
-                  />
-                </label>
-                <label className="lpb-field">
-                  <span>Secondary CTA label</span>
-                  <input
-                    className="form-input"
-                    value={draft.ctaSecondaryLabel}
-                    onChange={(event) => updateDraft("ctaSecondaryLabel", event.target.value)}
-                  />
-                </label>
-                <label className="lpb-field">
-                  <span>Secondary CTA URL</span>
-                  <input
-                    className="form-input"
-                    value={draft.ctaSecondaryUrl}
-                    onChange={(event) => updateDraft("ctaSecondaryUrl", event.target.value)}
-                    placeholder="mailto:support@workspace.com"
-                  />
-                </label>
+            {draft.editorType === "puck" || draft.editorType === "craft" ? (
+              <div className="card-body lpb-stack">
+                <div className="lpb-mode-bridge-note">
+                  Hero and CTA blocks are editable inside the {selectedEditor.label} canvas below,
+                  so this panel steps aside while you work in that drag-and-drop editor.
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="card-body lpb-stack">
+                {renderSectionEditor("hero")}
+                <div className="lpb-editor-grid">
+                  <label className="lpb-field">
+                    <span>Primary CTA label</span>
+                    <input
+                      className="form-input"
+                      value={draft.ctaPrimaryLabel}
+                      onChange={(event) => updateDraft("ctaPrimaryLabel", event.target.value)}
+                    />
+                  </label>
+                  <label className="lpb-field">
+                    <span>Primary CTA URL</span>
+                    <input
+                      className="form-input"
+                      value={draft.ctaPrimaryUrl}
+                      onChange={(event) => updateDraft("ctaPrimaryUrl", event.target.value)}
+                      placeholder="/portal"
+                    />
+                  </label>
+                  <label className="lpb-field">
+                    <span>Secondary CTA label</span>
+                    <input
+                      className="form-input"
+                      value={draft.ctaSecondaryLabel}
+                      onChange={(event) => updateDraft("ctaSecondaryLabel", event.target.value)}
+                    />
+                  </label>
+                  <label className="lpb-field">
+                    <span>Secondary CTA URL</span>
+                    <input
+                      className="form-input"
+                      value={draft.ctaSecondaryUrl}
+                      onChange={(event) => updateDraft("ctaSecondaryUrl", event.target.value)}
+                      placeholder="mailto:support@workspace.com"
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="card lpb-card">
             <div className="card-header">
               <div>
-                <div className="card-title">Section-based editor</div>
+                <div className="card-title">
+                  {draft.editorType === "controlled"
+                    ? "Section-based editor"
+                    : draft.editorType === "puck"
+                      ? "Puck editor"
+                      : "Craft.js editor"}
+                </div>
                 <div className="card-subtitle">
-                  Drag approved blocks with the handle, or use move controls for precise section
-                  ordering.
+                  {draft.editorType === "controlled"
+                    ? "Drag approved blocks with the handle, or use move controls for precise section ordering."
+                    : draft.editorType === "puck"
+                      ? "Use Puck to drag approved sections into order and edit their content from the sidebar."
+                      : "Use Craft.js to drag approved sections into order and edit the selected section from the properties panel."}
                 </div>
               </div>
             </div>
             <div className="card-body lpb-stack">
-              {draft.sectionOrder.map((sectionKey, index) => {
+              {draft.editorType === "puck" ? (
+                <PuckLandingEditor
+                  draft={draft}
+                  resetKey={editorCanvasResetKey}
+                  onChange={setDraft}
+                />
+              ) : null}
+              {draft.editorType === "craft" ? (
+                <CraftLandingEditor
+                  draft={draft}
+                  resetKey={editorCanvasResetKey}
+                  onChange={setDraft}
+                />
+              ) : null}
+              {draft.editorType === "controlled" &&
+                draft.sectionOrder.map((sectionKey, index) => {
                 const meta = sectionMeta(sectionKey);
                 const isHidden = draft.hiddenSectionKeys.includes(sectionKey);
 
@@ -1161,6 +1322,64 @@ export default function LandingPageBuilder({
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
           gap: 16px;
+        }
+        .lpb-editor-mode-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 14px;
+        }
+        .lpb-editor-mode-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 16px;
+          border-radius: 18px;
+          border: 1px solid rgba(44, 62, 49, 0.1);
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 242, 0.96));
+          text-align: left;
+          transition:
+            border-color 160ms ease,
+            box-shadow 160ms ease,
+            transform 160ms ease;
+        }
+        .lpb-editor-mode-card:hover {
+          transform: translateY(-1px);
+          border-color: rgba(26, 92, 66, 0.2);
+          box-shadow: 0 18px 36px rgba(31, 49, 35, 0.08);
+        }
+        .lpb-editor-mode-card.is-active {
+          border-color: rgba(26, 92, 66, 0.34);
+          box-shadow: 0 20px 40px rgba(26, 92, 66, 0.12);
+          background: linear-gradient(180deg, rgba(245, 251, 247, 0.98), rgba(236, 246, 239, 0.94));
+        }
+        .lpb-editor-mode-card p {
+          margin: 0;
+          color: var(--text-muted);
+        }
+        .lpb-editor-mode-topline {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .lpb-editor-mode-topline span {
+          font-size: 0.75rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(26, 92, 66, 0.78);
+        }
+        .lpb-mode-note,
+        .lpb-mode-bridge-note {
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid rgba(26, 92, 66, 0.12);
+          background: rgba(243, 248, 244, 0.92);
+          color: var(--text-muted);
+        }
+        .lpb-mode-note strong,
+        .lpb-mode-bridge-note strong {
+          color: var(--text);
         }
         .lpb-template-card {
           display: flex;
