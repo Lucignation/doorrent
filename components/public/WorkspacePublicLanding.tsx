@@ -474,6 +474,26 @@ function resolveLandingTemplateTheme(
       bodyFont: '"Avenir Next", "Segoe UI", sans-serif',
       muted: "#56606B",
     },
+    "estate-blank": {
+      backgroundBase: "#F9F9F8",
+      backgroundLayer: `radial-gradient(circle at 12% 0%, ${withAlpha(primaryColor, 0.1)}, transparent 30%)`,
+      navBg: "rgba(255, 255, 255, 0.82)",
+      surface: "rgba(255, 255, 255, 0.9)",
+      bandSurface: `linear-gradient(135deg, rgba(255, 255, 255, 0.98), ${withAlpha(primaryColor, 0.08)})`,
+      titleFont: '"Avenir Next", "Segoe UI", sans-serif',
+      bodyFont: '"Avenir Next", "Segoe UI", sans-serif',
+      muted: "#5E6560",
+    },
+    "property-blank": {
+      backgroundBase: "#F9F9F8",
+      backgroundLayer: `radial-gradient(circle at 12% 0%, ${withAlpha(primaryColor, 0.1)}, transparent 30%)`,
+      navBg: "rgba(255, 255, 255, 0.82)",
+      surface: "rgba(255, 255, 255, 0.9)",
+      bandSurface: `linear-gradient(135deg, rgba(255, 255, 255, 0.98), ${withAlpha(primaryColor, 0.08)})`,
+      titleFont: '"Avenir Next", "Segoe UI", sans-serif',
+      bodyFont: '"Avenir Next", "Segoe UI", sans-serif',
+      muted: "#5E6560",
+    },
   };
 
   const theme = themes[templateId];

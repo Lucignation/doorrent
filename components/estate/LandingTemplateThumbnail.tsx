@@ -5,10 +5,12 @@ export type LandingTemplateThumbnailId =
   | "estate-resident"
   | "estate-fees"
   | "estate-exco"
+  | "estate-blank"
   | "property-profile"
   | "property-leasing"
   | "property-portfolio"
   | "property-corporate"
+  | "property-blank"
   | "template-estate"
   | "template-company"
   | "template-operations";
@@ -391,6 +393,40 @@ function PropertyCorporateThumbnail({ color, accent, className }: ThumbProps) {
   );
 }
 
+// Blank Canvas — empty grid, dashed outlines, "start here" feel
+function BlankCanvasThumbnail({ color, accent, className }: ThumbProps) {
+  return (
+    <svg viewBox="0 0 320 200" xmlns="http://www.w3.org/2000/svg" className={className} aria-hidden>
+      <rect width="320" height="200" fill="#F8F8F7" />
+      {/* Nav — thin dashed outline */}
+      <rect width="320" height="20" fill="#FFFFFF" stroke="#E2E0DC" strokeWidth="0.5" />
+      <rect x="14" y="7" width="40" height="6" rx="3" fill="#E8E5DF" />
+      <rect x="260" y="7" width="46" height="6" rx="3" fill="#E8E5DF" />
+      {/* Hero — large dashed placeholder */}
+      <rect x="14" y="28" width="292" height="54" rx="6" fill="#FFFFFF" stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.35" />
+      <rect x="80" y="40" width="160" height="8" rx="4" fill="#E8E5DF" />
+      <rect x="100" y="54" width="120" height="5" rx="2.5" fill="#EEECE8" />
+      <rect x="118" y="65" width="84" height="9" rx="4" fill={color} opacity="0.14" />
+      {/* Section placeholders — 2 col */}
+      <rect x="14" y="92" width="140" height="44" rx="6" fill="#FFFFFF" stroke="#DEDBD4" strokeWidth="0.75" strokeDasharray="3 2.5" />
+      <rect x="30" y="104" width="60" height="5" rx="2.5" fill="#E8E5DF" />
+      <rect x="30" y="114" width="96" height="4" rx="2" fill="#EEECEA" />
+      <rect x="30" y="122" width="76" height="4" rx="2" fill="#EEECEA" />
+      <rect x="166" y="92" width="140" height="44" rx="6" fill="#FFFFFF" stroke="#DEDBD4" strokeWidth="0.75" strokeDasharray="3 2.5" />
+      <rect x="182" y="104" width="60" height="5" rx="2.5" fill="#E8E5DF" />
+      <rect x="182" y="114" width="96" height="4" rx="2" fill="#EEECEA" />
+      <rect x="182" y="122" width="76" height="4" rx="2" fill="#EEECEA" />
+      {/* Add section hint */}
+      <rect x="14" y="146" width="292" height="30" rx="6" fill="#FFFFFF" stroke={accent} strokeWidth="1" strokeDasharray="4 3" opacity="0.4" />
+      <rect x="130" y="157" width="60" height="8" rx="4" fill={accent} opacity="0.18" />
+      <rect x="196" y="157" width="4" height="8" rx="2" fill={accent} opacity="0.4" />
+      <rect x="128" y="159" width="8" height="4" rx="2" fill={accent} opacity="0.4" />
+      {/* Footer */}
+      <rect y="192" width="320" height="8" fill="#EEECEA" />
+    </svg>
+  );
+}
+
 const THUMBNAIL_MAP: Record<string, ComponentType<ThumbProps>> = {
   "estate-official": EstateOfficialThumbnail,
   "estate-resident": EstateResidentThumbnail,
@@ -400,6 +436,8 @@ const THUMBNAIL_MAP: Record<string, ComponentType<ThumbProps>> = {
   "property-leasing": PropertyLeasingThumbnail,
   "property-portfolio": PropertyPortfolioThumbnail,
   "property-corporate": PropertyCorporateThumbnail,
+  "estate-blank": BlankCanvasThumbnail,
+  "property-blank": BlankCanvasThumbnail,
   "template-estate": EstateOfficialThumbnail,
   "template-company": PropertyProfileThumbnail,
   "template-operations": EstateResidentThumbnail,

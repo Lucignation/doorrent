@@ -24,10 +24,12 @@ export type LandingBuilderTemplateId =
   | "estate-resident"
   | "estate-fees"
   | "estate-exco"
+  | "estate-blank"
   | "property-profile"
   | "property-leasing"
   | "property-portfolio"
-  | "property-corporate";
+  | "property-corporate"
+  | "property-blank";
 
 export interface LandingBuilderProfile {
   companyName: string;
@@ -619,6 +621,48 @@ const LANDING_TEMPLATES: LandingBuilderTemplate[] = [
   },
 
   {
+    id: "estate-blank",
+    workspace: "estate",
+    name: "Blank Canvas",
+    category: "Start from scratch",
+    summary: "An empty starting point. All sections are off by default — turn on what you need and fill in your own content.",
+    description:
+      "A blank slate for estates that want full control over their public page. No pre-filled copy, no opinionated structure. Enable the sections you want, write your own content, and build the page that fits your community.",
+    previewTemplateId: "estate-blank",
+    recommendedSections: ["hero", "cta"],
+    defaults: {
+      heroEyebrow: "",
+      heroTitle: "",
+      heroSubtitle: "",
+      aboutTitle: "",
+      aboutBody: "",
+      featuresTitle: "",
+      featuresBody: "",
+      featuresItems: [],
+      listingsTitle: "",
+      listingsBody: "",
+      listingItems: [],
+      teamTitle: "",
+      teamBody: "",
+      teamItems: [],
+      feesTitle: "",
+      feesBody: "",
+      feeItems: [],
+      noticesTitle: "",
+      noticesBody: "",
+      noticeItems: [],
+      contactTitle: "",
+      faqTitle: "",
+      faqItems: [],
+      galleryTitle: "",
+      galleryBody: "",
+      galleryImageUrls: [],
+      ctaPrimaryLabel: "Get started",
+      ctaSecondaryLabel: "Contact us",
+    },
+  },
+
+  {
     id: "property-corporate",
     workspace: "property",
     name: "Property Management SaaS Profile",
@@ -667,6 +711,47 @@ const LANDING_TEMPLATES: LandingBuilderTemplate[] = [
       contactTitle: "Book a management consultation",
       ctaPrimaryLabel: "Schedule a management review",
       ctaSecondaryLabel: "Download service brochure",
+    },
+  },
+  {
+    id: "property-blank",
+    workspace: "property",
+    name: "Blank Canvas",
+    category: "Start from scratch",
+    summary: "An empty starting point. All sections are off by default — turn on what you need and fill in your own content.",
+    description:
+      "A blank slate for property companies that want full control over their public page. No pre-filled copy, no opinionated layout. Enable the sections you need, write your own content, and build the profile that fits your brand.",
+    previewTemplateId: "property-blank",
+    recommendedSections: ["hero", "cta"],
+    defaults: {
+      heroEyebrow: "",
+      heroTitle: "",
+      heroSubtitle: "",
+      aboutTitle: "",
+      aboutBody: "",
+      featuresTitle: "",
+      featuresBody: "",
+      featuresItems: [],
+      listingsTitle: "",
+      listingsBody: "",
+      listingItems: [],
+      teamTitle: "",
+      teamBody: "",
+      teamItems: [],
+      feesTitle: "",
+      feesBody: "",
+      feeItems: [],
+      noticesTitle: "",
+      noticesBody: "",
+      noticeItems: [],
+      contactTitle: "",
+      faqTitle: "",
+      faqItems: [],
+      galleryTitle: "",
+      galleryBody: "",
+      galleryImageUrls: [],
+      ctaPrimaryLabel: "Get started",
+      ctaSecondaryLabel: "Contact us",
     },
   },
 ];
