@@ -272,6 +272,15 @@ function getOrderedSectionKeys(draft: LandingBuilderDraft) {
 }
 
 function createPuckDataFromDraft(draft: LandingBuilderDraft): LandingPuckData {
+  // Restore previously-saved Puck canvas (includes primitive blocks like ImageBlock)
+  if (
+    draft.puckData &&
+    typeof draft.puckData === "object" &&
+    Array.isArray((draft.puckData as { content?: unknown }).content)
+  ) {
+    return draft.puckData as LandingPuckData;
+  }
+
   const content = getOrderedSectionKeys(draft).map((sectionKey) =>
     createPuckSection(sectionKey, draft),
   );
@@ -544,10 +553,10 @@ function applyPuckDataToDraft(
 
 function renderSectionItems(
   sectionKey: LandingBuilderSectionKey,
-  itemsText: string,
+  itemsText: string | undefined,
   tone: "gold" | "green" = "green",
 ) {
-  const items = splitListInput(itemsText).slice(0, 4);
+  const items = splitListInput(itemsText ?? "").slice(0, 4);
 
   if (!items.length) {
     return renderEmptyPreviewState(sectionKey);
@@ -649,6 +658,7 @@ const puckConfig: Config = {
           label: "Hero subtitle",
         },
       },
+      defaultProps: { visibility: "visible", layout: "full", eyebrow: "", title: "Hero title", subtitle: "" },
       render: ({ puck, visibility, title, eyebrow, subtitle }) => (
         <SectionFrame
           puck={puck}
@@ -682,6 +692,7 @@ const puckConfig: Config = {
           label: "Summary",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "About us", body: "" },
       render: ({ puck, visibility, layout, title, body }) => (
         <SectionFrame
           puck={puck}
@@ -719,6 +730,7 @@ const puckConfig: Config = {
           label: "Feature items",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Features", body: "", itemsText: "" },
       render: ({ puck, visibility, layout, title, body, itemsText }) => (
         <SectionFrame
           puck={puck}
@@ -758,6 +770,7 @@ const puckConfig: Config = {
           label: "Listing highlights",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Listings", body: "", itemsText: "" },
       render: ({ puck, visibility, layout, title, body, itemsText }) => (
         <SectionFrame
           puck={puck}
@@ -797,6 +810,7 @@ const puckConfig: Config = {
           label: "Roles or highlights",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Our team", body: "", itemsText: "" },
       render: ({ puck, visibility, layout, title, body, itemsText }) => (
         <SectionFrame
           puck={puck}
@@ -836,6 +850,7 @@ const puckConfig: Config = {
           label: "Fee items",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Fees", body: "", itemsText: "" },
       render: ({ puck, visibility, layout, title, body, itemsText }) => (
         <SectionFrame
           puck={puck}
@@ -875,6 +890,7 @@ const puckConfig: Config = {
           label: "Notice items",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Notices", body: "", itemsText: "" },
       render: ({ puck, visibility, layout, title, body, itemsText }) => (
         <SectionFrame
           puck={puck}
@@ -906,6 +922,7 @@ const puckConfig: Config = {
           label: "Section title",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Contact us" },
       render: ({ puck, visibility, layout, title }) => (
         <SectionFrame
           puck={puck}
@@ -939,6 +956,7 @@ const puckConfig: Config = {
           label: "Questions or answers",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "FAQ", itemsText: "" },
       render: ({ puck, visibility, layout, title, itemsText }) => (
         <SectionFrame
           puck={puck}
@@ -977,6 +995,7 @@ const puckConfig: Config = {
           label: "Image URLs",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Gallery", body: "", imageUrlsText: "" },
       render: ({ puck, visibility, layout, title, body, imageUrlsText }) => (
         <SectionFrame
           puck={puck}
@@ -1020,6 +1039,7 @@ const puckConfig: Config = {
           label: "Secondary CTA URL",
         },
       },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Calls to action", primaryLabel: "Get started", primaryUrl: "/", secondaryLabel: "Learn more", secondaryUrl: "/" },
       render: ({
         puck,
         visibility,
