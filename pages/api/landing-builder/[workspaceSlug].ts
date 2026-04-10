@@ -11,6 +11,8 @@ type ApiResponse =
       message: string;
     };
 
+type LandingBuilderWorkspace = "estate" | "property";
+
 function getWorkspaceSlug(queryValue: string | string[] | undefined) {
   if (Array.isArray(queryValue)) {
     return queryValue[0] ?? "";
@@ -25,6 +27,10 @@ function getHeaderValue(value: string | string[] | undefined) {
   }
 
   return value;
+}
+
+function getWorkspaceType(value: unknown): LandingBuilderWorkspace {
+  return value === "estate" ? "estate" : "property";
 }
 
 async function relayUpstreamResponse(
@@ -83,7 +89,16 @@ export default async function handler(
   if (request.method === "PUT") {
     const authorization = getHeaderValue(request.headers.authorization);
     const workspaceHost = getHeaderValue(request.headers["x-workspace-host"]);
-    const upstream = await fetch(`${API_BASE_URL}/landlord/settings/landing-page`, {
+    const payload =
+      request.body && typeof request.body === "object"
+        ? (request.body as Record<string, unknown>)
+        : {};
+    const workspaceType = getWorkspaceType(payload.workspaceType);
+    const upstreamPath =
+      workspaceType === "estate"
+        ? `${API_BASE_URL}/estate/settings/landing-page`
+        : `${API_BASE_URL}/landlord/settings/landing-page`;
+    const upstream = await fetch(upstreamPath, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -91,7 +106,7 @@ export default async function handler(
         ...(workspaceHost ? { "x-workspace-host": workspaceHost } : {}),
       },
       body: JSON.stringify({
-        ...(request.body && typeof request.body === "object" ? request.body : {}),
+        ...payload,
         workspaceSlug,
       }),
     });
