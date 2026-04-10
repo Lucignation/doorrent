@@ -764,9 +764,29 @@ export default function WorkspacePublicLanding({
     const sectionId = getSectionAnchorId(sectionKey);
     const sectionClass = `wpl-section wpl-section-${sectionKey} wpl-estate-section wpl-layout-${layout}`;
     const mediaUrl = estateSectionMedia[sectionKey] ?? heroMediaUrl;
+    const isCompactLayout = layout === "half";
 
     switch (sectionKey) {
       case "about":
+        if (isCompactLayout) {
+          return (
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+              <div className="wpl-estate-compact-copy">
+                <span className="wpl-estate-pill">Why choose us</span>
+                <h2>{draft.aboutTitle}</h2>
+                <p>{draft.aboutBody}</p>
+              </div>
+              <WorkspacePublicSurfaceImage
+                imageUrl={mediaUrl}
+                alt={`${displayName} overview`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-compact"
+                imageClassName="wpl-estate-media-image"
+              />
+            </section>
+          );
+        }
+
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`}>
             <div className="wpl-estate-intro">
@@ -787,6 +807,42 @@ export default function WorkspacePublicLanding({
         );
 
       case "features":
+        if (isCompactLayout) {
+          return (
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+              <WorkspacePublicSurfaceImage
+                imageUrl={mediaUrl}
+                alt={`${displayName} features`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
+                imageClassName="wpl-estate-media-image"
+              />
+              <div className="wpl-estate-compact-copy">
+                <span className="wpl-estate-pill">Get started</span>
+                <h2>{draft.featuresTitle}</h2>
+                <p>{draft.featuresBody}</p>
+                <div className="wpl-estate-compact-list">
+                  {draft.featuresItems.slice(0, 4).map((item, index) => {
+                    const { title, detail } = splitLandingItem(item);
+
+                    return (
+                      <div key={`${item}-${index}`} className="wpl-estate-compact-list-item">
+                        <span className="wpl-estate-compact-list-index">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <div>
+                          <strong>{title}</strong>
+                          {detail ? <p>{detail}</p> : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          );
+        }
+
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-feature-section`}>
             <div className="wpl-estate-feature-copy">
@@ -825,6 +881,40 @@ export default function WorkspacePublicLanding({
         );
 
       case "listings":
+        if (isCompactLayout) {
+          return (
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+              <WorkspacePublicSurfaceImage
+                imageUrl={mediaUrl}
+                alt={`${displayName} listings`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
+                imageClassName="wpl-estate-media-image"
+              />
+              <div className="wpl-estate-compact-copy">
+                <span className="wpl-estate-pill">Our estates</span>
+                <h2>{draft.listingsTitle}</h2>
+                <p>{draft.listingsBody}</p>
+                <div className="wpl-estate-compact-links">
+                  {draft.listingItems.slice(0, 2).map((item) => {
+                    const { title, detail } = splitLandingItem(item);
+
+                    return (
+                      <div key={item} className="wpl-estate-link-item">
+                        <strong>{title}</strong>
+                        {detail ? <span>{detail}</span> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+                <Link href={primaryHref} className="wpl-estate-text-link">
+                  {draft.ctaPrimaryLabel}
+                </Link>
+              </div>
+            </section>
+          );
+        }
+
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-split-section`}>
             <WorkspacePublicSurfaceImage
@@ -859,6 +949,42 @@ export default function WorkspacePublicLanding({
 
       case "team": {
         const leadTeam = splitLandingItem(draft.teamItems[0] || "Leadership team");
+
+        if (isCompactLayout) {
+          return (
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+              <WorkspacePublicSurfaceImage
+                imageUrl={mediaUrl}
+                alt={`${displayName} leadership`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
+                imageClassName="wpl-estate-media-image"
+              >
+                <div className="wpl-estate-spotlight-caption">
+                  <strong>{leadTeam.title}</strong>
+                  {leadTeam.detail ? <span>{leadTeam.detail}</span> : null}
+                </div>
+              </WorkspacePublicSurfaceImage>
+              <div className="wpl-estate-compact-copy">
+                <span className="wpl-estate-pill">Leadership spotlight</span>
+                <h2>{draft.teamTitle}</h2>
+                <p>{draft.teamBody}</p>
+                <div className="wpl-estate-compact-team-list">
+                  {draft.teamItems.slice(1, 4).map((item) => {
+                    const { title, detail } = splitLandingItem(item);
+
+                    return (
+                      <div key={item} className="wpl-estate-compact-team-item">
+                        <strong>{title}</strong>
+                        {detail ? <span>{detail}</span> : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          );
+        }
 
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`}>
@@ -897,6 +1023,35 @@ export default function WorkspacePublicLanding({
       }
 
       case "fees":
+        if (isCompactLayout) {
+          return (
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+              <div className="wpl-estate-compact-copy">
+                <span className="wpl-estate-pill">Estate dues</span>
+                <h2>{draft.feesTitle}</h2>
+                <p>{draft.feesBody}</p>
+                <div className="wpl-estate-compact-stat-list">
+                  {draft.feeItems.slice(0, 4).map((item, index) => {
+                    const { title, detail } = splitLandingItem(item);
+
+                    return (
+                      <div key={`${item}-${index}`} className="wpl-estate-compact-stat-item">
+                        <span className="wpl-estate-compact-list-index">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <div>
+                          <strong>{title}</strong>
+                          {detail ? <p>{detail}</p> : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </section>
+          );
+        }
+
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-stat-section`}>
             <WorkspacePublicSurfaceImage
@@ -966,6 +1121,25 @@ export default function WorkspacePublicLanding({
       case "gallery": {
         const estateGalleryImages = galleryImages.length ? galleryImages : [null, null, null];
 
+        if (isCompactLayout) {
+          return (
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+              <div className="wpl-estate-compact-copy">
+                <span className="wpl-estate-pill">Visual preview</span>
+                <h2>{draft.galleryTitle}</h2>
+                <p>{draft.galleryBody}</p>
+              </div>
+              <WorkspacePublicSurfaceImage
+                imageUrl={estateGalleryImages[0]}
+                alt={`${displayName} gallery feature`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-compact"
+                imageClassName="wpl-estate-media-image"
+              />
+            </section>
+          );
+        }
+
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-gallery-section`}>
             <div className="wpl-estate-split-copy">
@@ -999,6 +1173,41 @@ export default function WorkspacePublicLanding({
       }
 
       case "contact":
+        if (isCompactLayout) {
+          return (
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+              <div className="wpl-estate-compact-copy">
+                <span className="wpl-estate-pill">Contact us</span>
+                <h2>{draft.contactTitle}</h2>
+                <p>
+                  Use the approved estate contact channels below for enquiries, notices, support,
+                  and resident-facing correspondence.
+                </p>
+              </div>
+              <div className="wpl-estate-contact-grid wpl-estate-contact-grid-compact">
+                {supportEmail ? (
+                  <a href={`mailto:${supportEmail}`} className="wpl-estate-contact-card">
+                    <strong>Email</strong>
+                    <span>{supportEmail}</span>
+                  </a>
+                ) : null}
+                {supportPhone && supportPhoneHref ? (
+                  <a href={supportPhoneHref} className="wpl-estate-contact-card">
+                    <strong>Phone</strong>
+                    <span>{supportPhone}</span>
+                  </a>
+                ) : null}
+                {supportAddress ? (
+                  <span className="wpl-estate-contact-card">
+                    <strong>Address</strong>
+                    <span>{supportAddress}</span>
+                  </span>
+                ) : null}
+              </div>
+            </section>
+          );
+        }
+
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-contact-section`}>
             <div className="wpl-estate-split-copy">
@@ -1033,6 +1242,29 @@ export default function WorkspacePublicLanding({
         );
 
       case "cta":
+        if (isCompactLayout) {
+          return (
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact wpl-estate-cta-card-compact`}>
+              <div className="wpl-estate-compact-copy">
+                <span className="wpl-estate-pill">Ready to continue?</span>
+                <h2>Continue with the official estate channels</h2>
+                <p>
+                  Open the workspace portal or contact the estate team directly using the approved
+                  public contact details.
+                </p>
+              </div>
+              <div className="wpl-actions wpl-estate-actions wpl-estate-actions-compact">
+                <Link href={primaryHref} className="wpl-button wpl-button-light">
+                  {draft.ctaPrimaryLabel}
+                </Link>
+                <a href={secondaryHref} className="wpl-button wpl-button-outline">
+                  {draft.ctaSecondaryLabel}
+                </a>
+              </div>
+            </section>
+          );
+        }
+
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-cta-section`}>
             <div className="wpl-estate-intro">
@@ -2017,6 +2249,23 @@ export default function WorkspacePublicLanding({
         /* ─── ESTATE EXPERIENCE ─── */
         .wpl-estate-nav {
           gap: 22px;
+          background: linear-gradient(135deg, ${withAlpha(primaryColor, 0.92)}, ${withAlpha(
+            primaryColor,
+            0.78,
+          )});
+          border-color: rgba(255, 255, 255, 0.1);
+          box-shadow: 0 24px 56px ${withAlpha(primaryColor, 0.18)};
+        }
+        .wpl-estate-nav .wpl-brand strong {
+          color: #fff;
+        }
+        .wpl-estate-nav .wpl-brand span {
+          color: rgba(255, 255, 255, 0.72);
+        }
+        .wpl-estate-nav .wpl-logo,
+        .wpl-estate-nav .wpl-brandmark {
+          box-shadow: none;
+          border: 1px solid rgba(255, 255, 255, 0.16);
         }
         .wpl-estate-nav-links {
           display: flex;
@@ -2068,8 +2317,12 @@ export default function WorkspacePublicLanding({
         }
         .wpl-estate-hero-overlay {
           background:
-            linear-gradient(180deg, rgba(26, 16, 52, 0.16), rgba(26, 16, 52, 0.22)),
-            radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.1), transparent 36%);
+            linear-gradient(180deg, ${withAlpha(primaryColor, 0.34)}, ${withAlpha(
+              primaryColor,
+              0.58,
+            )}),
+            linear-gradient(135deg, rgba(18, 16, 34, 0.14), rgba(18, 16, 34, 0.2)),
+            radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.08), transparent 36%);
           z-index: 0;
         }
         .wpl-estate-hero-copy {
@@ -2139,6 +2392,35 @@ export default function WorkspacePublicLanding({
           flex-direction: column;
           gap: 24px;
         }
+        .wpl-estate-section-compact {
+          padding: 26px;
+          border-radius: 28px;
+          background: rgba(255, 255, 255, 0.86);
+          border: 1px solid var(--wpl-border);
+          box-shadow: 0 16px 40px rgba(18, 22, 16, 0.08);
+        }
+        .wpl-estate-section-compact .wpl-estate-pill {
+          align-self: flex-start;
+        }
+        .wpl-estate-compact-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .wpl-estate-section-compact .wpl-estate-compact-copy h2 {
+          margin: 0;
+          font-family: var(--wpl-title-font);
+          font-size: clamp(28px, 3vw, 38px);
+          line-height: 1.06;
+          letter-spacing: -0.03em;
+          color: #171914;
+        }
+        .wpl-estate-section-compact .wpl-estate-compact-copy p {
+          margin: 0;
+          font-size: 15px;
+          line-height: 1.72;
+          color: var(--wpl-muted);
+        }
         .wpl-estate-section-centered {
           grid-template-columns: 1fr;
         }
@@ -2192,6 +2474,12 @@ export default function WorkspacePublicLanding({
         }
         .wpl-estate-media-tall {
           min-height: clamp(300px, 38vw, 470px);
+        }
+        .wpl-estate-media-compact {
+          min-height: 260px;
+        }
+        .wpl-estate-media-inline {
+          min-height: 220px;
         }
         .wpl-estate-media-sheen {
           position: absolute;
@@ -2291,6 +2579,11 @@ export default function WorkspacePublicLanding({
           gap: 14px;
           margin-top: 10px;
         }
+        .wpl-estate-compact-links {
+          display: grid;
+          gap: 10px;
+          margin-top: 4px;
+        }
         .wpl-estate-link-item {
           padding: 0 0 16px;
           border-bottom: 1px solid ${withAlpha(primaryColor, 0.12)};
@@ -2304,6 +2597,57 @@ export default function WorkspacePublicLanding({
           text-decoration: none;
           font-size: 15px;
           font-weight: 700;
+        }
+        .wpl-estate-compact-list,
+        .wpl-estate-compact-stat-list,
+        .wpl-estate-compact-team-list {
+          display: grid;
+          gap: 12px;
+          margin-top: 6px;
+        }
+        .wpl-estate-compact-list-item,
+        .wpl-estate-compact-stat-item,
+        .wpl-estate-compact-team-item {
+          display: grid;
+          grid-template-columns: auto minmax(0, 1fr);
+          gap: 12px;
+          align-items: start;
+          padding: 14px 0 0;
+          border-top: 1px solid ${withAlpha(primaryColor, 0.12)};
+        }
+        .wpl-estate-compact-team-item {
+          grid-template-columns: 1fr;
+          gap: 6px;
+          padding-top: 12px;
+        }
+        .wpl-estate-compact-list-item strong,
+        .wpl-estate-compact-stat-item strong,
+        .wpl-estate-compact-team-item strong {
+          display: block;
+          font-size: 16px;
+          line-height: 1.32;
+          color: #171914;
+        }
+        .wpl-estate-compact-list-item p,
+        .wpl-estate-compact-stat-item p,
+        .wpl-estate-compact-team-item span {
+          margin: 4px 0 0;
+          font-size: 14px;
+          line-height: 1.62;
+          color: var(--wpl-muted);
+        }
+        .wpl-estate-compact-list-index {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          background: ${withAlpha(primaryColor, 0.1)};
+          color: ${primaryColor};
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
         }
         .wpl-estate-video-button {
           position: absolute;
@@ -2455,6 +2799,9 @@ export default function WorkspacePublicLanding({
         .wpl-estate-contact-card {
           display: block;
         }
+        .wpl-estate-contact-grid-compact {
+          grid-template-columns: 1fr;
+        }
         .wpl-estate-cta-section {
           grid-column: 1 / -1;
           grid-template-columns: 1fr;
@@ -2476,6 +2823,12 @@ export default function WorkspacePublicLanding({
           background: rgba(255, 255, 255, 0.12);
           border-color: rgba(255, 255, 255, 0.18);
           color: rgba(255, 255, 255, 0.92);
+        }
+        .wpl-estate-cta-card-compact {
+          background: linear-gradient(135deg, ${withAlpha(primaryColor, 0.1)}, ${withAlpha(accentColor, 0.14)});
+        }
+        .wpl-estate-actions-compact {
+          justify-content: flex-start;
         }
         .wpl-estate-footer {
           display: grid;
@@ -2745,7 +3098,7 @@ export default function WorkspacePublicLanding({
 
         /* estate-resident: 3-col grid, service pill cards */
         .theme-estate-resident .wpl-main {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .theme-estate-resident .wpl-section.wpl-layout-full,
         .theme-estate-resident .wpl-section.wpl-layout-center {
@@ -2775,10 +3128,7 @@ export default function WorkspacePublicLanding({
 
         /* estate-fees: single wide column, fee-table focused */
         .theme-estate-fees .wpl-main {
-          grid-template-columns: 1fr;
-          max-width: 860px;
-          margin-left: auto;
-          margin-right: auto;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
         }
         .theme-estate-fees .wpl-section.wpl-layout-full {
           grid-column: auto;
