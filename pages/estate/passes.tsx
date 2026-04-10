@@ -4,7 +4,7 @@ import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
 import PageHeader from "../../components/ui/PageHeader";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
-import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import { convertRowsToCsv, type EstateDashboardData } from "../../lib/estate-preview";
 import type { TableColumn } from "../../types/app";
@@ -27,8 +27,8 @@ function downloadCsv(content: string, filename: string) {
 
 export default function EstatePassesPage() {
   const { showToast, dataRefreshVersion } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
-  const token = landlordSession?.token;
+  const { estateAdminSession } = useEstateAdminPortalSession();
+  const token = estateAdminSession?.token;
 
   const [passes, setPasses] = useState<PassRow[]>([]);
   const [residences, setResidences] = useState<ResidenceRow[]>([]);

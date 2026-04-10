@@ -96,6 +96,53 @@ function renderList(items: string[]) {
   );
 }
 
+function splitLandingItem(item: string) {
+  const separatorIndex = item.indexOf(" — ");
+
+  if (separatorIndex === -1) {
+    return {
+      title: item,
+      detail: "",
+    };
+  }
+
+  return {
+    title: item.slice(0, separatorIndex),
+    detail: item.slice(separatorIndex + 3),
+  };
+}
+
+function getSectionAnchorId(sectionKey: LandingBuilderSectionKey) {
+  return `section-${sectionKey}`;
+}
+
+function getEstateSectionLabel(sectionKey: LandingBuilderSectionKey) {
+  switch (sectionKey) {
+    case "about":
+      return "About us";
+    case "features":
+      return "Get started";
+    case "listings":
+      return "Our estates";
+    case "team":
+      return "Leadership";
+    case "fees":
+      return "Dues";
+    case "notices":
+      return "Notices";
+    case "faq":
+      return "FAQs";
+    case "gallery":
+      return "Gallery";
+    case "contact":
+      return "Contact us";
+    case "cta":
+      return "Get in touch";
+    default:
+      return "Overview";
+  }
+}
+
 function WorkspacePublicGalleryImage({
   imageUrl,
   alt,
@@ -165,6 +212,43 @@ function WorkspacePublicHeroMedia({
         referrerPolicy="no-referrer"
         onError={() => setFailed(true)}
       />
+    </div>
+  );
+}
+
+function WorkspacePublicSurfaceImage({
+  imageUrl,
+  alt,
+  fallbackBackground,
+  frameClassName,
+  imageClassName,
+  children,
+}: {
+  imageUrl?: string | null;
+  alt: string;
+  fallbackBackground: string;
+  frameClassName: string;
+  imageClassName: string;
+  children?: ReactNode;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <div className={frameClassName}>
+      {imageUrl && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt={alt}
+          className={imageClassName}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <div className={`${imageClassName} wpl-surface-fallback`} style={{ backgroundImage: fallbackBackground }} />
+      )}
+      {children}
     </div>
   );
 }
@@ -561,6 +645,56 @@ export default function WorkspacePublicLanding({
       label: workspaceType === "estate" ? "Public highlights" : "Portfolio highlights",
     },
   ];
+  const isEstateWorkspace = workspaceType === "estate";
+  const estateNavLinks = contentSections
+    .filter((sectionKey) => sectionKey !== "cta")
+    .slice(0, 5)
+    .map((sectionKey) => ({
+      key: sectionKey,
+      href: `#${getSectionAnchorId(sectionKey)}`,
+      label: getEstateSectionLabel(sectionKey),
+    }));
+  const estateFooterLinks = contentSections
+    .filter((sectionKey) => !["contact", "cta"].includes(sectionKey))
+    .slice(0, 4)
+    .map((sectionKey) => ({
+      key: sectionKey,
+      href: `#${getSectionAnchorId(sectionKey)}`,
+      label: getEstateSectionLabel(sectionKey),
+    }));
+  const estateSectionMedia: Partial<Record<LandingBuilderSectionKey, string | null>> = {
+    about: galleryImages[1] ?? galleryImages[0] ?? heroMediaUrl,
+    features: galleryImages[2] ?? galleryImages[0] ?? heroMediaUrl,
+    listings: galleryImages[0] ?? galleryImages[1] ?? heroMediaUrl,
+    team: galleryImages[1] ?? galleryImages[0] ?? heroMediaUrl,
+    fees: galleryImages[0] ?? galleryImages[2] ?? heroMediaUrl,
+    notices: galleryImages[2] ?? galleryImages[1] ?? heroMediaUrl,
+    faq: galleryImages[3] ?? galleryImages[0] ?? heroMediaUrl,
+    gallery: galleryImages[0] ?? heroMediaUrl,
+    contact: galleryImages[3] ?? galleryImages[1] ?? heroMediaUrl,
+    cta: galleryImages[0] ?? heroMediaUrl,
+  };
+  const estateStatCards = (draft.feeItems.length
+    ? draft.feeItems
+    : [
+        `Community features — ${String(Math.max(draft.featuresItems.length, 1)).padStart(2, "0")}`,
+        `Public notices — ${String(Math.max(draft.noticeItems.length, 1)).padStart(2, "0")}`,
+        `Leadership profiles — ${String(Math.max(draft.teamItems.length, 1)).padStart(2, "0")}`,
+        `Gallery highlights — ${String(Math.max(galleryImages.length, 1)).padStart(2, "0")}`,
+      ]
+  )
+    .slice(0, 4)
+    .map((item, index) => {
+      const { title, detail } = splitLandingItem(item);
+      const canPromoteDetail =
+        Boolean(detail) && (/[₦$€£]/.test(detail) || /^\d/.test(detail.trim()));
+
+      return {
+        value: canPromoteDetail ? detail : String(index + 1).padStart(2, "0"),
+        label: title,
+        caption: detail && !canPromoteDetail ? detail : "Approved public highlight",
+      };
+    });
   const templateTheme = useMemo(
     () => resolveLandingTemplateTheme(draft.templateId, primaryColor, accentColor),
     [accentColor, draft.templateId, primaryColor],
@@ -625,7 +759,311 @@ export default function WorkspacePublicLanding({
     );
   }
 
+  function renderEstateSection(sectionKey: LandingBuilderSectionKey) {
+    const layout = resolveSectionLayout(sectionKey);
+    const sectionId = getSectionAnchorId(sectionKey);
+    const sectionClass = `wpl-section wpl-section-${sectionKey} wpl-estate-section wpl-layout-${layout}`;
+    const mediaUrl = estateSectionMedia[sectionKey] ?? heroMediaUrl;
+
+    switch (sectionKey) {
+      case "about":
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`}>
+            <div className="wpl-estate-intro">
+              <span className="wpl-estate-pill">Why choose us</span>
+              <h2>{draft.aboutTitle}</h2>
+              <p>{draft.aboutBody}</p>
+            </div>
+            <WorkspacePublicSurfaceImage
+              imageUrl={mediaUrl}
+              alt={`${displayName} overview`}
+              fallbackBackground={heroBackground}
+              frameClassName="wpl-estate-media-frame wpl-estate-media-wide"
+              imageClassName="wpl-estate-media-image"
+            >
+              <div className="wpl-estate-media-sheen" />
+            </WorkspacePublicSurfaceImage>
+          </section>
+        );
+
+      case "features":
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-feature-section`}>
+            <div className="wpl-estate-feature-copy">
+              <span className="wpl-estate-pill">Get started</span>
+              <h2>{draft.featuresTitle}</h2>
+              <p>{draft.featuresBody}</p>
+              <div className="wpl-estate-feature-grid">
+                {draft.featuresItems.slice(0, 4).map((item, index) => {
+                  const { title, detail } = splitLandingItem(item);
+
+                  return (
+                    <div key={`${item}-${index}`} className="wpl-estate-feature-card">
+                      <span className="wpl-estate-feature-index">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <strong>{title}</strong>
+                      {detail ? <p>{detail}</p> : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <WorkspacePublicSurfaceImage
+              imageUrl={mediaUrl}
+              alt={`${displayName} features`}
+              fallbackBackground={heroBackground}
+              frameClassName="wpl-estate-media-frame wpl-estate-media-tall"
+              imageClassName="wpl-estate-media-image"
+            >
+              <div className="wpl-estate-media-caption-card">
+                <span>{displayName}</span>
+                <strong>{draft.heroEyebrow}</strong>
+              </div>
+            </WorkspacePublicSurfaceImage>
+          </section>
+        );
+
+      case "listings":
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-split-section`}>
+            <WorkspacePublicSurfaceImage
+              imageUrl={mediaUrl}
+              alt={`${displayName} listings`}
+              fallbackBackground={heroBackground}
+              frameClassName="wpl-estate-media-frame wpl-estate-media-tall"
+              imageClassName="wpl-estate-media-image"
+            />
+            <div className="wpl-estate-split-copy">
+              <span className="wpl-estate-pill">Our estates</span>
+              <h2>{draft.listingsTitle}</h2>
+              <p>{draft.listingsBody}</p>
+              <div className="wpl-estate-link-stack">
+                {draft.listingItems.slice(0, 4).map((item) => {
+                  const { title, detail } = splitLandingItem(item);
+
+                  return (
+                    <div key={item} className="wpl-estate-link-item">
+                      <strong>{title}</strong>
+                      {detail ? <span>{detail}</span> : null}
+                    </div>
+                  );
+                })}
+              </div>
+              <Link href={primaryHref} className="wpl-estate-text-link">
+                {draft.ctaPrimaryLabel}
+              </Link>
+            </div>
+          </section>
+        );
+
+      case "team": {
+        const leadTeam = splitLandingItem(draft.teamItems[0] || "Leadership team");
+
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`}>
+            <div className="wpl-estate-intro">
+              <span className="wpl-estate-pill">Leadership spotlight</span>
+              <h2>{draft.teamTitle}</h2>
+              <p>{draft.teamBody}</p>
+            </div>
+            <WorkspacePublicSurfaceImage
+              imageUrl={mediaUrl}
+              alt={`${displayName} leadership`}
+              fallbackBackground={heroBackground}
+              frameClassName="wpl-estate-media-frame wpl-estate-media-wide"
+              imageClassName="wpl-estate-media-image"
+            >
+              <div className="wpl-estate-video-button" aria-hidden="true" />
+              <div className="wpl-estate-spotlight-caption">
+                <strong>{leadTeam.title}</strong>
+                {leadTeam.detail ? <span>{leadTeam.detail}</span> : null}
+              </div>
+            </WorkspacePublicSurfaceImage>
+            <div className="wpl-estate-team-row">
+              {draft.teamItems.slice(0, 6).map((item) => {
+                const { title, detail } = splitLandingItem(item);
+
+                return (
+                  <div key={item} className="wpl-estate-team-pill">
+                    <strong>{title}</strong>
+                    {detail ? <span>{detail}</span> : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      }
+
+      case "fees":
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-stat-section`}>
+            <WorkspacePublicSurfaceImage
+              imageUrl={mediaUrl}
+              alt={`${displayName} highlights`}
+              fallbackBackground={heroBackground}
+              frameClassName="wpl-estate-media-frame wpl-estate-stat-frame"
+              imageClassName="wpl-estate-media-image"
+            >
+              <div className="wpl-estate-stat-overlay" />
+              <div className="wpl-estate-stat-grid">
+                {estateStatCards.map((item) => (
+                  <div key={`${item.label}-${item.value}`} className="wpl-estate-stat-card">
+                    <strong>{item.value}</strong>
+                    <span>{item.label}</span>
+                    <small>{item.caption}</small>
+                  </div>
+                ))}
+              </div>
+            </WorkspacePublicSurfaceImage>
+          </section>
+        );
+
+      case "notices":
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-notice-section`}>
+            <div className="wpl-estate-split-copy">
+              <span className="wpl-estate-pill">Community updates</span>
+              <h2>{draft.noticesTitle}</h2>
+              <p>{draft.noticesBody}</p>
+            </div>
+            <div className="wpl-estate-notice-grid">
+              {draft.noticeItems.slice(0, 4).map((item, index) => (
+                <article key={item} className="wpl-estate-notice-card">
+                  <span className="wpl-estate-notice-index">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <p>{item}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        );
+
+      case "faq":
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`}>
+            <div className="wpl-estate-intro">
+              <span className="wpl-estate-pill">Frequently asked</span>
+              <h2>{draft.faqTitle}</h2>
+            </div>
+            <div className="wpl-estate-faq-grid">
+              {draft.faqItems.slice(0, 6).map((item) => {
+                const { title, detail } = splitLandingItem(item);
+
+                return (
+                  <article key={item} className="wpl-estate-faq-card">
+                    <strong>{title}</strong>
+                    {detail ? <p>{detail}</p> : null}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        );
+
+      case "gallery": {
+        const estateGalleryImages = galleryImages.length ? galleryImages : [null, null, null];
+
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-gallery-section`}>
+            <div className="wpl-estate-split-copy">
+              <span className="wpl-estate-pill">Visual preview</span>
+              <h2>{draft.galleryTitle}</h2>
+              <p>{draft.galleryBody}</p>
+            </div>
+            <div className="wpl-estate-gallery-mosaic">
+              <WorkspacePublicSurfaceImage
+                imageUrl={estateGalleryImages[0]}
+                alt={`${displayName} gallery feature`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-gallery-primary"
+                imageClassName="wpl-estate-media-image"
+              />
+              <div className="wpl-estate-gallery-column">
+                {estateGalleryImages.slice(1, 3).map((image, index) => (
+                  <WorkspacePublicSurfaceImage
+                    key={`${image ?? "estate-gallery"}-${index}`}
+                    imageUrl={image}
+                    alt={`${displayName} gallery ${index + 2}`}
+                    fallbackBackground={heroBackground}
+                    frameClassName="wpl-estate-media-frame wpl-estate-gallery-secondary"
+                    imageClassName="wpl-estate-media-image"
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+      }
+
+      case "contact":
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-contact-section`}>
+            <div className="wpl-estate-split-copy">
+              <span className="wpl-estate-pill">Contact us</span>
+              <h2>{draft.contactTitle}</h2>
+              <p>
+                Use the approved estate contact channels below for enquiries, notices, support,
+                and resident-facing correspondence.
+              </p>
+            </div>
+            <div className="wpl-estate-contact-grid">
+              {supportEmail ? (
+                <a href={`mailto:${supportEmail}`} className="wpl-estate-contact-card">
+                  <strong>Email</strong>
+                  <span>{supportEmail}</span>
+                </a>
+              ) : null}
+              {supportPhone && supportPhoneHref ? (
+                <a href={supportPhoneHref} className="wpl-estate-contact-card">
+                  <strong>Phone</strong>
+                  <span>{supportPhone}</span>
+                </a>
+              ) : null}
+              {supportAddress ? (
+                <span className="wpl-estate-contact-card">
+                  <strong>Address</strong>
+                  <span>{supportAddress}</span>
+                </span>
+              ) : null}
+            </div>
+          </section>
+        );
+
+      case "cta":
+        return (
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-cta-section`}>
+            <div className="wpl-estate-intro">
+              <span className="wpl-estate-pill">Ready to continue?</span>
+              <h2>Continue with the official estate channels</h2>
+              <p>
+                Open the workspace portal or contact the estate team directly using the approved
+                public contact details.
+              </p>
+            </div>
+            <div className="wpl-actions wpl-estate-actions">
+              <Link href={primaryHref} className="wpl-button wpl-button-light">
+                {draft.ctaPrimaryLabel}
+              </Link>
+              <a href={secondaryHref} className="wpl-button wpl-button-outline">
+                {draft.ctaSecondaryLabel}
+              </a>
+            </div>
+          </section>
+        );
+
+      default:
+        return null;
+    }
+  }
+
   function renderSection(sectionKey: LandingBuilderSectionKey) {
+    if (isEstateWorkspace) {
+      return renderEstateSection(sectionKey);
+    }
+
     switch (sectionKey) {
       case "about":
         return renderSectionFrame({
@@ -649,7 +1087,7 @@ export default function WorkspacePublicLanding({
       case "listings":
         return renderSectionFrame({
           sectionKey,
-          topline: workspaceType === "estate" ? "Properties" : "Portfolio",
+          topline: "Portfolio",
           title: draft.listingsTitle,
           body: draft.listingsBody,
           className: "wpl-copy-card",
@@ -683,7 +1121,7 @@ export default function WorkspacePublicLanding({
       case "team":
         return renderSectionFrame({
           sectionKey,
-          topline: workspaceType === "estate" ? "Exco" : "Team",
+          topline: "Team",
           title: draft.teamTitle,
           body: draft.teamBody,
           className: "wpl-copy-card",
@@ -746,9 +1184,7 @@ export default function WorkspacePublicLanding({
           topline: "Contact",
           title: draft.contactTitle,
           body:
-            workspaceType === "estate"
-              ? "Use the approved estate contact channels below for enquiries, notices, and support."
-              : "Use the approved public contact channels below for leasing, portfolio, and support enquiries.",
+            "Use the approved public contact channels below for leasing, portfolio, and support enquiries.",
           className: "wpl-copy-card",
           children: (
             <div className="wpl-contact-grid">
@@ -841,107 +1277,215 @@ export default function WorkspacePublicLanding({
       ) : null}
 
       <div className={`wpl-root ${templateTheme.className}`} style={templateTheme.style}>
-        <nav className="wpl-nav">
-          <div className="wpl-brand">
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoUrl}
-                alt={`${displayName} logo`}
-                className="wpl-logo"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <span className="wpl-brandmark" style={{ background: primaryColor }}>
-                {displayName.slice(0, 2).toUpperCase()}
-              </span>
-            )}
-            <div>
-              <strong>{displayName}</strong>
-              <span>
-                {workspaceType === "estate" ? "Official community page" : "Official company page"}
-              </span>
-            </div>
-          </div>
-          <Link href={primaryHref} className="wpl-button wpl-button-primary">
-            {draft.ctaPrimaryLabel}
-          </Link>
-        </nav>
+        {isEstateWorkspace ? (
+          <>
+            <nav className="wpl-nav wpl-estate-nav">
+              <div className="wpl-brand">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt={`${displayName} logo`}
+                    className="wpl-logo"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="wpl-brandmark" style={{ background: primaryColor }}>
+                    {displayName.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+                <div>
+                  <strong>{displayName}</strong>
+                  <span>Official community page</span>
+                </div>
+              </div>
 
-        <header
-          className={`wpl-hero${heroMediaUrl ? " has-media" : ""}`}
-          style={{ backgroundImage: heroBackground }}
-        >
-          <div className="wpl-hero-copy">
-            <div className="wpl-eyebrow">{draft.heroEyebrow}</div>
-            <h1>{draft.heroTitle}</h1>
-            <p>{draft.heroSubtitle}</p>
-            <div className="wpl-actions">
-              <Link href={primaryHref} className="wpl-button wpl-button-light">
+              <div className="wpl-estate-nav-links">
+                {estateNavLinks.map((link) => (
+                  <a key={link.key} href={link.href}>
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            </nav>
+
+            <header className={`wpl-hero wpl-estate-hero${heroMediaUrl ? " has-media" : ""}`} style={{ backgroundImage: heroBackground }}>
+              {heroMediaUrl ? (
+                <WorkspacePublicSurfaceImage
+                  imageUrl={heroMediaUrl}
+                  alt={`${displayName} public preview`}
+                  fallbackBackground={heroBackground}
+                  frameClassName="wpl-estate-hero-backdrop"
+                  imageClassName="wpl-estate-hero-backdrop-image"
+                />
+              ) : null}
+              <div className="wpl-estate-hero-overlay" />
+              <div className="wpl-estate-hero-copy">
+                <span className="wpl-estate-pill wpl-estate-pill-inverse">{draft.heroEyebrow}</span>
+                <h1>{draft.heroTitle}</h1>
+                <p>{draft.heroSubtitle}</p>
+                <div className="wpl-actions wpl-estate-actions">
+                  <Link href={primaryHref} className="wpl-button wpl-button-light">
+                    {draft.ctaPrimaryLabel}
+                  </Link>
+                  <a href={secondaryHref} className="wpl-button wpl-button-outline">
+                    {draft.ctaSecondaryLabel}
+                  </a>
+                </div>
+              </div>
+            </header>
+
+            <main className="wpl-main">
+              {contentSections.map((sectionKey) => renderSection(sectionKey))}
+            </main>
+
+            <footer className="wpl-footer wpl-estate-footer">
+              <div className="wpl-estate-footer-brand">
+                <div className="wpl-brand">
+                  {logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={logoUrl}
+                      alt={`${displayName} logo`}
+                      className="wpl-logo"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <span className="wpl-brandmark" style={{ background: primaryColor }}>
+                      {displayName.slice(0, 2).toUpperCase()}
+                    </span>
+                  )}
+                  <div>
+                    <strong>{displayName}</strong>
+                    <span>{templateName}</span>
+                  </div>
+                </div>
+                <p>{draft.aboutBody || draft.heroSubtitle}</p>
+              </div>
+
+              <div className="wpl-estate-footer-column">
+                <strong>Quick Links</strong>
+                <div className="wpl-estate-footer-links">
+                  {estateFooterLinks.map((link) => (
+                    <a key={link.key} href={link.href}>
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+
+              <div className="wpl-estate-footer-column">
+                <strong>Contact</strong>
+                <div className="wpl-estate-footer-contact">
+                  {supportAddress ? <span>{supportAddress}</span> : null}
+                  {supportPhone ? <span>{supportPhone}</span> : null}
+                  {supportEmail ? <span>{supportEmail}</span> : null}
+                </div>
+              </div>
+
+              <div className="wpl-estate-footer-meta">
+                <span>Copyright © {new Date().getFullYear()} {displayName}. All rights reserved.</span>
+                <span>Powered by DoorRent</span>
+              </div>
+            </footer>
+          </>
+        ) : (
+          <>
+            <nav className="wpl-nav">
+              <div className="wpl-brand">
+                {logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={logoUrl}
+                    alt={`${displayName} logo`}
+                    className="wpl-logo"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span className="wpl-brandmark" style={{ background: primaryColor }}>
+                    {displayName.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+                <div>
+                  <strong>{displayName}</strong>
+                  <span>Official company page</span>
+                </div>
+              </div>
+              <Link href={primaryHref} className="wpl-button wpl-button-primary">
                 {draft.ctaPrimaryLabel}
               </Link>
-              <a href={secondaryHref} className="wpl-button wpl-button-outline">
-                {draft.ctaSecondaryLabel}
-              </a>
-            </div>
-            {heroHighlights.length ? (
-              <div className="wpl-highlight-row">
-                {heroHighlights.map((item) => (
-                  <span key={item} className="wpl-highlight-pill">
-                    {item}
-                  </span>
-                ))}
-              </div>
-            ) : null}
-          </div>
+            </nav>
 
-          <div className="wpl-hero-stage">
-            <div className="wpl-hero-media-shell">
-              <WorkspacePublicHeroMedia
-                imageUrl={heroMediaUrl}
-                alt={`${displayName} public preview`}
-                fallbackBackground={heroBackground}
-                fallbackLabel={displayName.slice(0, 2).toUpperCase()}
-              />
-              <div className="wpl-hero-media-caption">
-                <span>{templateName}</span>
-                <strong>
-                  {workspaceType === "estate"
-                    ? "Branded estate home"
-                    : "Branded public profile"}
-                </strong>
-              </div>
-            </div>
-            <div className="wpl-hero-stack">
-              <div className="wpl-hero-card">
-                <div className="wpl-section-topline">
-                  {workspaceType === "estate" ? "Community profile" : "Workspace profile"}
+            <header
+              className={`wpl-hero${heroMediaUrl ? " has-media" : ""}`}
+              style={{ backgroundImage: heroBackground }}
+            >
+              <div className="wpl-hero-copy">
+                <div className="wpl-eyebrow">{draft.heroEyebrow}</div>
+                <h1>{draft.heroTitle}</h1>
+                <p>{draft.heroSubtitle}</p>
+                <div className="wpl-actions">
+                  <Link href={primaryHref} className="wpl-button wpl-button-light">
+                    {draft.ctaPrimaryLabel}
+                  </Link>
+                  <a href={secondaryHref} className="wpl-button wpl-button-outline">
+                    {draft.ctaSecondaryLabel}
+                  </a>
                 </div>
-                <h3>{estate?.name || workspace.companyName}</h3>
-                {estate?.location ? <p>{estate.location}</p> : null}
-                {supportEmail ? <span>{supportEmail}</span> : null}
-                {supportPhone ? <span>{supportPhone}</span> : null}
-              </div>
-              <div className="wpl-hero-metrics">
-                {heroStats.map((stat) => (
-                  <div key={stat.label} className="wpl-hero-metric">
-                    <strong>{stat.value}</strong>
-                    <span>{stat.label}</span>
+                {heroHighlights.length ? (
+                  <div className="wpl-highlight-row">
+                    {heroHighlights.map((item) => (
+                      <span key={item} className="wpl-highlight-pill">
+                        {item}
+                      </span>
+                    ))}
                   </div>
-                ))}
+                ) : null}
               </div>
-            </div>
-          </div>
-        </header>
 
-        <main className="wpl-main">
-          {contentSections.map((sectionKey) => renderSection(sectionKey))}
-        </main>
+              <div className="wpl-hero-stage">
+                <div className="wpl-hero-media-shell">
+                  <WorkspacePublicHeroMedia
+                    imageUrl={heroMediaUrl}
+                    alt={`${displayName} public preview`}
+                    fallbackBackground={heroBackground}
+                    fallbackLabel={displayName.slice(0, 2).toUpperCase()}
+                  />
+                  <div className="wpl-hero-media-caption">
+                    <span>{templateName}</span>
+                    <strong>Branded public profile</strong>
+                  </div>
+                </div>
+                <div className="wpl-hero-stack">
+                  <div className="wpl-hero-card">
+                    <div className="wpl-section-topline">Workspace profile</div>
+                    <h3>{estate?.name || workspace.companyName}</h3>
+                    {estate?.location ? <p>{estate.location}</p> : null}
+                    {supportEmail ? <span>{supportEmail}</span> : null}
+                    {supportPhone ? <span>{supportPhone}</span> : null}
+                  </div>
+                  <div className="wpl-hero-metrics">
+                    {heroStats.map((stat) => (
+                      <div key={stat.label} className="wpl-hero-metric">
+                        <strong>{stat.value}</strong>
+                        <span>{stat.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </header>
 
-        <footer className="wpl-footer">
-          <span>{displayName}</span>
-          <span>Powered by DoorRent</span>
-        </footer>
+            <main className="wpl-main">
+              {contentSections.map((sectionKey) => renderSection(sectionKey))}
+            </main>
+
+            <footer className="wpl-footer">
+              <span>{displayName}</span>
+              <span>Powered by DoorRent</span>
+            </footer>
+          </>
+        )}
       </div>
 
       <style jsx>{`
@@ -1465,6 +2009,530 @@ export default function WorkspacePublicLanding({
           font-size: 13px;
           backdrop-filter: blur(12px);
         }
+        .wpl-surface-fallback {
+          background-size: cover;
+          background-position: center;
+        }
+
+        /* ─── ESTATE EXPERIENCE ─── */
+        .wpl-estate-nav {
+          gap: 22px;
+        }
+        .wpl-estate-nav-links {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+        .wpl-estate-nav-links a {
+          display: inline-flex;
+          align-items: center;
+          min-height: 42px;
+          padding: 0 16px;
+          border-radius: 999px;
+          color: rgba(255, 255, 255, 0.9);
+          text-decoration: none;
+          font-size: 14px;
+          font-weight: 600;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .wpl-estate-hero {
+          grid-template-columns: 1fr;
+          justify-items: center;
+          min-height: clamp(520px, 72vh, 760px);
+          padding: clamp(38px, 5vw, 72px);
+          text-align: center;
+          isolation: isolate;
+        }
+        .wpl-estate-hero::before,
+        .wpl-estate-hero::after {
+          display: none;
+        }
+        .wpl-estate-hero-backdrop,
+        .wpl-estate-hero-overlay {
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+        }
+        .wpl-estate-hero-backdrop {
+          overflow: hidden;
+          opacity: 0.24;
+        }
+        .wpl-estate-hero-backdrop-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .wpl-estate-hero-overlay {
+          background:
+            linear-gradient(180deg, rgba(26, 16, 52, 0.16), rgba(26, 16, 52, 0.22)),
+            radial-gradient(circle at 50% 24%, rgba(255, 255, 255, 0.1), transparent 36%);
+          z-index: 0;
+        }
+        .wpl-estate-hero-copy {
+          position: relative;
+          z-index: 1;
+          max-width: 860px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 16px;
+        }
+        .wpl-estate-hero h1 {
+          max-width: none;
+          margin: 0;
+          font-size: clamp(48px, 6vw, 84px);
+        }
+        .wpl-estate-hero p {
+          margin: 0;
+          max-width: 720px;
+          font-size: clamp(17px, 2vw, 22px);
+        }
+        .wpl-estate-actions {
+          justify-content: center;
+        }
+        .wpl-estate-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 40px;
+          padding: 0 18px;
+          border-radius: 999px;
+          border: 1px solid ${withAlpha(primaryColor, 0.18)};
+          background: rgba(255, 255, 255, 0.72);
+          color: ${primaryColor};
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .wpl-estate-pill-inverse {
+          border-color: rgba(255, 255, 255, 0.22);
+          background: rgba(255, 255, 255, 0.12);
+          color: rgba(255, 255, 255, 0.92);
+        }
+        .wpl-estate-section {
+          overflow: hidden;
+        }
+        .wpl-estate-section::before {
+          opacity: 0.26;
+        }
+        .wpl-estate-section.wpl-layout-full {
+          grid-template-columns: minmax(0, 1fr) minmax(320px, 0.92fr);
+          gap: 34px;
+          align-items: center;
+          min-height: 0;
+          padding: clamp(34px, 4vw, 54px);
+        }
+        .wpl-estate-section.wpl-layout-center {
+          width: min(1080px, 100%);
+          grid-template-columns: 1fr;
+          justify-self: center;
+          padding: clamp(34px, 4vw, 54px);
+        }
+        .wpl-estate-section.wpl-layout-half {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+        .wpl-estate-section-centered {
+          grid-template-columns: 1fr;
+        }
+        .wpl-estate-intro,
+        .wpl-estate-feature-copy,
+        .wpl-estate-split-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .wpl-estate-section-centered .wpl-estate-intro {
+          max-width: 760px;
+          margin: 0 auto;
+          align-items: center;
+          text-align: center;
+        }
+        .wpl-estate-intro h2,
+        .wpl-estate-feature-copy h2,
+        .wpl-estate-split-copy h2 {
+          margin: 0;
+          font-family: var(--wpl-title-font);
+          font-size: clamp(34px, 4vw, 58px);
+          line-height: 1.02;
+          letter-spacing: -0.04em;
+          color: #171914;
+        }
+        .wpl-estate-intro p,
+        .wpl-estate-feature-copy p,
+        .wpl-estate-split-copy p {
+          margin: 0;
+          font-size: 18px;
+          line-height: 1.74;
+          color: var(--wpl-muted);
+        }
+        .wpl-estate-media-frame {
+          position: relative;
+          overflow: hidden;
+          border-radius: 32px;
+          border: 1px solid var(--wpl-border);
+          background: rgba(255, 255, 255, 0.72);
+          box-shadow: 0 26px 60px rgba(18, 22, 16, 0.1);
+        }
+        .wpl-estate-media-image {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .wpl-estate-media-wide {
+          min-height: clamp(320px, 46vw, 520px);
+        }
+        .wpl-estate-media-tall {
+          min-height: clamp(300px, 38vw, 470px);
+        }
+        .wpl-estate-media-sheen {
+          position: absolute;
+          inset: auto -12% -22% auto;
+          width: 240px;
+          height: 240px;
+          border-radius: 999px;
+          background: linear-gradient(180deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.26));
+          transform: rotate(-18deg);
+          pointer-events: none;
+        }
+        .wpl-estate-media-caption-card {
+          position: absolute;
+          left: 22px;
+          right: 22px;
+          bottom: 22px;
+          padding: 16px 18px;
+          border-radius: 20px;
+          background: rgba(19, 20, 34, 0.48);
+          color: #fff;
+          backdrop-filter: blur(12px);
+        }
+        .wpl-estate-media-caption-card span,
+        .wpl-estate-media-caption-card strong,
+        .wpl-estate-spotlight-caption strong,
+        .wpl-estate-spotlight-caption span {
+          display: block;
+        }
+        .wpl-estate-media-caption-card span,
+        .wpl-estate-spotlight-caption span {
+          font-size: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.78);
+        }
+        .wpl-estate-media-caption-card strong,
+        .wpl-estate-spotlight-caption strong {
+          margin-top: 6px;
+          font-size: 18px;
+          line-height: 1.2;
+        }
+        .wpl-estate-feature-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+          margin-top: 12px;
+        }
+        .wpl-estate-feature-card {
+          padding: 24px 22px;
+          border-radius: 24px;
+          background: linear-gradient(180deg, rgba(250, 247, 255, 0.96), rgba(255, 255, 255, 0.9));
+          border: 1px solid ${withAlpha(primaryColor, 0.1)};
+          box-shadow: 0 14px 34px rgba(18, 22, 16, 0.06);
+        }
+        .wpl-estate-feature-index,
+        .wpl-estate-notice-index {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          background: ${withAlpha(primaryColor, 0.1)};
+          color: ${primaryColor};
+          font-size: 13px;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          margin-bottom: 16px;
+        }
+        .wpl-estate-feature-card strong,
+        .wpl-estate-link-item strong,
+        .wpl-estate-team-pill strong,
+        .wpl-estate-contact-card strong,
+        .wpl-estate-faq-card strong {
+          display: block;
+          font-family: var(--wpl-title-font);
+          font-size: 22px;
+          line-height: 1.12;
+          color: #1b1f19;
+        }
+        .wpl-estate-feature-card p,
+        .wpl-estate-link-item span,
+        .wpl-estate-team-pill span,
+        .wpl-estate-contact-card span,
+        .wpl-estate-faq-card p,
+        .wpl-estate-notice-card p {
+          margin: 10px 0 0;
+          font-size: 15px;
+          line-height: 1.68;
+          color: var(--wpl-muted);
+        }
+        .wpl-estate-split-section {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(accentColor, 0.12)});
+        }
+        .wpl-estate-link-stack {
+          display: grid;
+          gap: 14px;
+          margin-top: 10px;
+        }
+        .wpl-estate-link-item {
+          padding: 0 0 16px;
+          border-bottom: 1px solid ${withAlpha(primaryColor, 0.12)};
+        }
+        .wpl-estate-text-link {
+          display: inline-flex;
+          align-items: center;
+          justify-content: flex-start;
+          margin-top: 8px;
+          color: ${primaryColor};
+          text-decoration: none;
+          font-size: 15px;
+          font-weight: 700;
+        }
+        .wpl-estate-video-button {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 92px;
+          height: 92px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.92);
+          box-shadow: 0 20px 42px rgba(15, 17, 24, 0.16);
+          transform: translate(-50%, -50%);
+        }
+        .wpl-estate-video-button::before {
+          content: "";
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-42%, -50%);
+          border-top: 14px solid transparent;
+          border-bottom: 14px solid transparent;
+          border-left: 22px solid ${primaryColor};
+        }
+        .wpl-estate-spotlight-caption {
+          position: absolute;
+          left: 24px;
+          right: 24px;
+          bottom: 22px;
+          padding: 18px 20px;
+          border-radius: 20px;
+          background: linear-gradient(180deg, rgba(21, 22, 34, 0.18), rgba(21, 22, 34, 0.6));
+          color: #fff;
+        }
+        .wpl-estate-team-row {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 16px;
+          width: 100%;
+        }
+        .wpl-estate-team-pill {
+          padding: 20px 18px;
+          border-radius: 22px;
+          background: rgba(255, 255, 255, 0.84);
+          border: 1px solid var(--wpl-border);
+          text-align: center;
+        }
+        .wpl-estate-stat-section {
+          padding: 0;
+          border: none;
+          background: transparent;
+          box-shadow: none;
+        }
+        .wpl-estate-stat-section::before {
+          display: none;
+        }
+        .wpl-estate-stat-frame {
+          min-height: 280px;
+          border-radius: 0;
+          border: 0;
+          box-shadow: none;
+        }
+        .wpl-estate-stat-overlay {
+          position: absolute;
+          inset: 0;
+          background:
+            linear-gradient(0deg, rgba(49, 24, 96, 0.78), rgba(49, 24, 96, 0.68)),
+            radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.08), transparent 40%);
+        }
+        .wpl-estate-stat-grid {
+          position: absolute;
+          left: 24px;
+          right: 24px;
+          bottom: 22px;
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 16px;
+        }
+        .wpl-estate-stat-card {
+          padding: 18px 16px;
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          color: #fff;
+          text-align: center;
+          backdrop-filter: blur(14px);
+        }
+        .wpl-estate-stat-card strong,
+        .wpl-estate-stat-card span,
+        .wpl-estate-stat-card small {
+          display: block;
+        }
+        .wpl-estate-stat-card strong {
+          font-family: var(--wpl-title-font);
+          font-size: clamp(28px, 3vw, 48px);
+          line-height: 1;
+          letter-spacing: -0.04em;
+        }
+        .wpl-estate-stat-card span {
+          margin-top: 10px;
+          font-size: 15px;
+          font-weight: 700;
+        }
+        .wpl-estate-stat-card small {
+          margin-top: 8px;
+          font-size: 12px;
+          line-height: 1.5;
+          color: rgba(255, 255, 255, 0.76);
+        }
+        .wpl-estate-notice-section {
+          grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+        }
+        .wpl-estate-notice-grid,
+        .wpl-estate-faq-grid,
+        .wpl-estate-contact-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+        }
+        .wpl-estate-notice-card,
+        .wpl-estate-faq-card,
+        .wpl-estate-contact-card {
+          padding: 22px 20px;
+          border-radius: 24px;
+          background: rgba(255, 255, 255, 0.84);
+          border: 1px solid var(--wpl-border);
+          text-decoration: none;
+        }
+        .wpl-estate-gallery-section {
+          grid-template-columns: minmax(0, 0.74fr) minmax(0, 1.26fr);
+        }
+        .wpl-estate-gallery-mosaic {
+          display: grid;
+          grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr);
+          gap: 16px;
+          align-self: stretch;
+        }
+        .wpl-estate-gallery-primary {
+          min-height: 100%;
+        }
+        .wpl-estate-gallery-column {
+          display: grid;
+          gap: 16px;
+        }
+        .wpl-estate-gallery-secondary {
+          min-height: 220px;
+        }
+        .wpl-estate-contact-section {
+          background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(primaryColor, 0.08)}, ${withAlpha(accentColor, 0.12)});
+        }
+        .wpl-estate-contact-card {
+          display: block;
+        }
+        .wpl-estate-cta-section {
+          grid-column: 1 / -1;
+          grid-template-columns: 1fr;
+          justify-items: center;
+          text-align: center;
+          background: linear-gradient(135deg, ${primaryColor}, ${accentColor});
+          color: #fff;
+          box-shadow: 0 32px 72px ${withAlpha(primaryColor, 0.22)};
+        }
+        .wpl-estate-cta-section .wpl-estate-intro {
+          max-width: 760px;
+          align-items: center;
+        }
+        .wpl-estate-cta-section .wpl-estate-intro h2,
+        .wpl-estate-cta-section .wpl-estate-intro p {
+          color: #fff;
+        }
+        .wpl-estate-cta-section .wpl-estate-pill {
+          background: rgba(255, 255, 255, 0.12);
+          border-color: rgba(255, 255, 255, 0.18);
+          color: rgba(255, 255, 255, 0.92);
+        }
+        .wpl-estate-footer {
+          display: grid;
+          grid-template-columns: minmax(0, 1.2fr) repeat(2, minmax(0, 0.9fr));
+          gap: 34px;
+          padding: clamp(34px, 4vw, 46px);
+          background: #101726;
+          border: 0;
+          color: rgba(255, 255, 255, 0.82);
+          box-shadow: 0 24px 60px rgba(12, 16, 24, 0.2);
+        }
+        .wpl-estate-footer .wpl-brand strong,
+        .wpl-estate-footer .wpl-brand span,
+        .wpl-estate-footer-column strong,
+        .wpl-estate-footer-links a,
+        .wpl-estate-footer-contact span,
+        .wpl-estate-footer-brand p,
+        .wpl-estate-footer-meta span {
+          display: block;
+        }
+        .wpl-estate-footer .wpl-brand span,
+        .wpl-estate-footer-brand p,
+        .wpl-estate-footer-links a,
+        .wpl-estate-footer-contact span,
+        .wpl-estate-footer-meta span {
+          color: rgba(255, 255, 255, 0.72);
+        }
+        .wpl-estate-footer-brand p {
+          margin: 16px 0 0;
+          max-width: 34ch;
+          font-size: 15px;
+          line-height: 1.8;
+        }
+        .wpl-estate-footer-column strong {
+          margin-bottom: 18px;
+          font-family: var(--wpl-title-font);
+          font-size: 18px;
+          color: #fff;
+        }
+        .wpl-estate-footer-links,
+        .wpl-estate-footer-contact {
+          display: grid;
+          gap: 12px;
+        }
+        .wpl-estate-footer-links a {
+          text-decoration: none;
+        }
+        .wpl-estate-footer-meta {
+          grid-column: 1 / -1;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding-top: 22px;
+          margin-top: 8px;
+          border-top: 1px solid rgba(255, 255, 255, 0.12);
+        }
         .theme-estate-official .wpl-band-index,
         .theme-property-profile .wpl-band-index {
           letter-spacing: -0.08em;
@@ -1818,6 +2886,27 @@ export default function WorkspacePublicLanding({
           grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
+        @media (max-width: 1120px) {
+          .wpl-estate-nav {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .wpl-estate-nav-links {
+            justify-content: flex-start;
+          }
+          .wpl-estate-section.wpl-layout-full,
+          .wpl-estate-notice-section,
+          .wpl-estate-gallery-section {
+            grid-template-columns: 1fr;
+          }
+          .wpl-estate-team-row,
+          .wpl-estate-stat-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .wpl-estate-footer {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+        }
         @media (max-width: 920px) {
           .wpl-hero {
             grid-template-columns: 1fr;
@@ -1861,6 +2950,20 @@ export default function WorkspacePublicLanding({
           }
           .theme-property-leasing .wpl-section-listings .wpl-listings-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .wpl-estate-feature-grid,
+          .wpl-estate-notice-grid,
+          .wpl-estate-faq-grid,
+          .wpl-estate-contact-grid,
+          .wpl-estate-gallery-mosaic {
+            grid-template-columns: 1fr;
+          }
+          .wpl-estate-gallery-column {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .wpl-estate-footer-meta {
+            flex-direction: column;
+            align-items: flex-start;
           }
         }
         @media (max-width: 720px) {
@@ -1926,6 +3029,44 @@ export default function WorkspacePublicLanding({
           .wpl-listings-grid,
           .wpl-team-grid {
             grid-template-columns: 1fr;
+          }
+          .wpl-estate-hero {
+            min-height: 420px;
+          }
+          .wpl-estate-nav-links {
+            width: 100%;
+            gap: 8px;
+          }
+          .wpl-estate-nav-links a {
+            min-height: 38px;
+            padding: 0 14px;
+            font-size: 13px;
+          }
+          .wpl-estate-section,
+          .wpl-estate-section.wpl-layout-full,
+          .wpl-estate-section.wpl-layout-center,
+          .wpl-estate-section.wpl-layout-half {
+            grid-template-columns: 1fr;
+            width: auto;
+            justify-self: stretch;
+          }
+          .wpl-estate-feature-grid,
+          .wpl-estate-team-row,
+          .wpl-estate-stat-grid,
+          .wpl-estate-notice-grid,
+          .wpl-estate-faq-grid,
+          .wpl-estate-contact-grid,
+          .wpl-estate-gallery-column {
+            grid-template-columns: 1fr;
+          }
+          .wpl-estate-stat-grid {
+            left: 18px;
+            right: 18px;
+            bottom: 18px;
+          }
+          .wpl-estate-footer {
+            grid-template-columns: 1fr;
+            padding: 28px 24px;
           }
         }
       `}</style>

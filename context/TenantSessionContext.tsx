@@ -82,6 +82,10 @@ export interface LandlordPortalSession {
   landlord: LandlordPortalIdentity;
 }
 
+export type EstateAdminPortalIdentity = LandlordPortalIdentity;
+
+export type EstateAdminPortalSession = LandlordPortalSession;
+
 export interface AdminPortalIdentity {
   id: string;
   role: "super_admin";
@@ -146,12 +150,17 @@ interface TenantSessionValue {
   isHydrated: boolean;
   tenantSession: TenantPortalSession | null;
   landlordSession: LandlordPortalSession | null;
+  estateAdminSession: EstateAdminPortalSession | null;
   adminSession: AdminPortalSession | null;
   caretakerSession: CaretakerPortalSession | null;
   residentSession: ResidentPortalSession | null;
   saveTenantSession: (session: TenantPortalSession, options?: { persist?: boolean }) => void;
   saveLandlordSession: (
     session: LandlordPortalSession,
+    options?: { persist?: boolean },
+  ) => void;
+  saveEstateAdminSession: (
+    session: EstateAdminPortalSession,
     options?: { persist?: boolean },
   ) => void;
   saveAdminSession: (session: AdminPortalSession, options?: { persist?: boolean }) => void;
@@ -162,6 +171,7 @@ interface TenantSessionValue {
   saveResidentSession: (session: ResidentPortalSession, options?: { persist?: boolean }) => void;
   clearTenantSession: () => void;
   clearLandlordSession: () => void;
+  clearEstateAdminSession: () => void;
   clearAdminSession: () => void;
   clearCaretakerSession: () => void;
   clearResidentSession: () => void;
@@ -483,16 +493,19 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
       isHydrated,
       tenantSession,
       landlordSession,
+      estateAdminSession: landlordSession,
       adminSession,
       caretakerSession,
       residentSession,
       saveTenantSession,
       saveLandlordSession,
+      saveEstateAdminSession: saveLandlordSession,
       saveAdminSession,
       saveCaretakerSession,
       saveResidentSession,
       clearTenantSession,
       clearLandlordSession,
+      clearEstateAdminSession: clearLandlordSession,
       clearAdminSession,
       clearCaretakerSession,
       clearResidentSession,
@@ -571,6 +584,16 @@ export function useResidentPortalSession() {
 
   if (!context) {
     throw new Error("useResidentPortalSession must be used within TenantSessionProvider");
+  }
+
+  return context;
+}
+
+export function useEstateAdminPortalSession() {
+  const context = useContext(TenantSessionContext);
+
+  if (!context) {
+    throw new Error("useEstateAdminPortalSession must be used within TenantSessionProvider");
   }
 
   return context;

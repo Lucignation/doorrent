@@ -6,7 +6,7 @@ import IdentityCell from "../../components/ui/IdentityCell";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
-import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import type { BadgeTone, TableColumn } from "../../types/app";
 
@@ -57,7 +57,7 @@ function actorLabel(actorType: AuditLogRow["actorType"]) {
 }
 
 export default function EstateAuditPage() {
-  const { landlordSession } = useLandlordPortalSession();
+  const { estateAdminSession } = useEstateAdminPortalSession();
   const { dataRefreshVersion } = usePrototypeUI();
   const [auditData, setAuditData] = useState<AuditResponse | null>(null);
   const [query, setQuery] = useState("");
@@ -70,7 +70,7 @@ export default function EstateAuditPage() {
   useEffect(() => { setPage(1); }, [query, moduleFilter, actorTypeFilter]);
 
   useEffect(() => {
-    const token = landlordSession?.token;
+    const token = estateAdminSession?.token;
     if (!token) return;
     let cancelled = false;
 
@@ -84,7 +84,7 @@ export default function EstateAuditPage() {
         if (actorTypeFilter) search.set("actorType", actorTypeFilter);
         search.set("page", String(page));
         search.set("pageSize", "25");
-        const { data } = await apiRequest<AuditResponse>(`/landlord/audit?${search.toString()}`, { token });
+        const { data } = await apiRequest<AuditResponse>(`/estate/audit?${search.toString()}`, { token });
         if (!cancelled) setAuditData(data);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Could not load audit log.");
@@ -95,7 +95,7 @@ export default function EstateAuditPage() {
 
     void load();
     return () => { cancelled = true; };
-  }, [actorTypeFilter, dataRefreshVersion, landlordSession?.token, moduleFilter, page, query]);
+  }, [actorTypeFilter, dataRefreshVersion, estateAdminSession?.token, moduleFilter, page, query]);
 
   const columns = useMemo<TableColumn<AuditLogRow>[]>(() => [
     {

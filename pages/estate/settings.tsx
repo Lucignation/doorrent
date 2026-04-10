@@ -4,13 +4,13 @@ import PageMeta from "../../components/layout/PageMeta";
 import PageHeader from "../../components/ui/PageHeader";
 import StatusBadge from "../../components/ui/StatusBadge";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
-import { useLandlordPortalSession } from "../../context/TenantSessionContext";
+import { useEstateAdminPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
-import type { LandlordCapabilities } from "../../lib/landlord-access";
+import type { EstateAdminCapabilities } from "../../lib/estate-admin-access";
 import type { WorkspaceBranding } from "../../lib/branding";
 
 interface EstateSettingsResponse {
-  capabilities: LandlordCapabilities;
+  capabilities: EstateAdminCapabilities;
   profile: {
     id: string;
     companyName: string;
@@ -49,8 +49,8 @@ interface EstateSettingsResponse {
 
 export default function EstateSettingsPage() {
   const { showToast } = usePrototypeUI();
-  const { landlordSession } = useLandlordPortalSession();
-  const token = landlordSession?.token;
+  const { estateAdminSession, saveEstateAdminSession } = useEstateAdminPortalSession();
+  const token = estateAdminSession?.token;
 
   const [settings, setSettings] = useState<EstateSettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -86,7 +86,7 @@ export default function EstateSettingsPage() {
   useEffect(() => {
     if (!token) return;
     setLoading(true);
-    apiRequest<EstateSettingsResponse>("/landlord/settings", { token })
+    apiRequest<EstateSettingsResponse>("/estate/settings", { token })
       .then(({ data }) => {
         setSettings(data);
         const p = data.profile;
@@ -112,7 +112,7 @@ export default function EstateSettingsPage() {
     if (!token) return;
     setSavingProfile(true);
     try {
-      await apiRequest("/landlord/settings/profile", {
+      await apiRequest("/estate/settings/profile", {
         method: "PATCH",
         token,
         body: {
@@ -140,7 +140,7 @@ export default function EstateSettingsPage() {
     if (!token || !newEmail.trim()) return;
     setSavingEmail(true);
     try {
-      await apiRequest("/landlord/settings/email", {
+      await apiRequest("/estate/settings/email", {
         method: "PATCH",
         token,
         body: { email: newEmail.trim() },
@@ -148,8 +148,15 @@ export default function EstateSettingsPage() {
       showToast("Email updated. Check your inbox for a confirmation.", "success");
       setNewEmail("");
       // Reload settings to reflect new email
-      const { data } = await apiRequest<EstateSettingsResponse>("/landlord/settings", { token });
+      const { data } = await apiRequest<EstateSettingsResponse>("/estate/settings", { token });
       setSettings(data);
+      // Sync the new email into the stored session so login uses the correct email
+      if (estateAdminSession) {
+        saveEstateAdminSession({
+          ...estateAdminSession,
+          landlord: { ...estateAdminSession.landlord, email: newEmail.trim() },
+        });
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to update email.", "error");
     } finally {
@@ -170,7 +177,7 @@ export default function EstateSettingsPage() {
     }
     setSavingPassword(true);
     try {
-      await apiRequest("/landlord/settings/password", {
+      await apiRequest("/estate/settings/password", {
         method: "PATCH",
         token,
         body: { currentPassword, newPassword },
@@ -191,7 +198,7 @@ export default function EstateSettingsPage() {
     if (!token) return;
     setSavingInvite(true);
     try {
-      await apiRequest("/landlord/settings/team-members/invite", {
+      await apiRequest("/estate/settings/team-members/invite", {
         method: "POST",
         token,
         body: { name: teamInviteName, email: teamInviteEmail, roleKey: teamInviteRole },
@@ -199,7 +206,7 @@ export default function EstateSettingsPage() {
       showToast(`Invitation sent to ${teamInviteEmail}.`, "success");
       setTeamInviteName("");
       setTeamInviteEmail("");
-      const { data } = await apiRequest<EstateSettingsResponse>("/landlord/settings", { token });
+      const { data } = await apiRequest<EstateSettingsResponse>("/estate/settings", { token });
       setSettings(data);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to send invitation.", "error");
@@ -212,9 +219,9 @@ export default function EstateSettingsPage() {
     if (!token) return;
     if (!confirm(`Remove ${memberName} from the estate workspace?`)) return;
     try {
-      await apiRequest(`/landlord/settings/team-members/${memberId}`, { method: "DELETE", token });
+      await apiRequest(`/estate/settings/team-members/${memberId}`, { method: "DELETE", token });
       showToast(`${memberName} removed.`, "success");
-      const { data } = await apiRequest<EstateSettingsResponse>("/landlord/settings", { token });
+      const { data } = await apiRequest<EstateSettingsResponse>("/estate/settings", { token });
       setSettings(data);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Failed to remove team member.", "error");
