@@ -1098,6 +1098,7 @@ export default function PuckLandingEditor({
           }}
           overrides={{
             headerActions: () => <></>,
+            components: () => <></>,
           }}
           headerTitle="Puck Canvas"
           headerPath="Approved sections only"
