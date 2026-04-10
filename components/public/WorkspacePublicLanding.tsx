@@ -1562,6 +1562,117 @@ export default function WorkspacePublicLanding({
     }
   }
 
+  // ─── Puck primitive renderer (public page) ───────────────────────────────
+  function renderPuckPrimitive(
+    item: { type: string; props: Record<string, unknown> },
+    index: number,
+  ) {
+    const key = (item.props.id as string | undefined) ?? `puck-${item.type}-${index}`;
+
+    switch (item.type) {
+      case "HeadingBlock": {
+        const { text = "", level = "h2", align = "left" } = item.props as { text: string; level: string; align: string };
+        const Tag = level as "h1" | "h2" | "h3" | "h4";
+        return (
+          <div key={key} className="wpl-puck-block wpl-puck-heading">
+            <Tag style={{ textAlign: align as CSSProperties["textAlign"], margin: 0 }}>{text}</Tag>
+          </div>
+        );
+      }
+      case "TextBlock": {
+        const { text = "", align = "left", size = "medium" } = item.props as { text: string; align: string; size: string };
+        return (
+          <div key={key} className={`wpl-puck-block wpl-puck-text wpl-puck-text-${size}`} style={{ textAlign: align as CSSProperties["textAlign"] }}>
+            <p style={{ margin: 0 }}>{text}</p>
+          </div>
+        );
+      }
+      case "RichTextBlock": {
+        const { text = "" } = item.props as { text: string };
+        return (
+          <div key={key} className="wpl-puck-block wpl-puck-richtext">
+            <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{text}</p>
+          </div>
+        );
+      }
+      case "ButtonBlock": {
+        const { label = "Click here", url = "/", variant = "primary" } = item.props as { label: string; url: string; variant: string };
+        return (
+          <div key={key} className="wpl-puck-block wpl-puck-button-wrap">
+            <a href={renderActionHref(url, portalUrl)} className={`wpl-button wpl-puck-btn-${variant}`}>
+              {label}
+            </a>
+          </div>
+        );
+      }
+      case "CardBlock": {
+        const { title = "", body = "" } = item.props as { title: string; body: string };
+        return (
+          <div key={key} className="wpl-puck-block wpl-puck-card">
+            <strong>{title}</strong>
+            {body ? <p style={{ margin: "8px 0 0" }}>{body}</p> : null}
+          </div>
+        );
+      }
+      case "ImageBlock": {
+        const { url = "", alt = "", caption = "" } = item.props as { url: string; alt: string; caption: string };
+        const safeUrl = sanitizeRemoteAssetUrl(url);
+        if (!safeUrl) return null;
+        return (
+          <div key={key} className="wpl-puck-block wpl-puck-image">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={safeUrl} alt={alt} loading="lazy" referrerPolicy="no-referrer" style={{ width: "100%", borderRadius: 12, display: "block", objectFit: "cover" }} />
+            {caption ? <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--wpl-muted)", textAlign: "center" }}>{caption}</p> : null}
+          </div>
+        );
+      }
+      case "SpaceBlock": {
+        const { size = "medium" } = item.props as { size: string };
+        return <div key={key} className={`wpl-puck-space wpl-puck-space-${size}`} />;
+      }
+      default:
+        return null;
+    }
+  }
+
+  // Maps Puck section component names → section keys
+  const PUCK_SECTION_TYPE_MAP: Record<string, LandingBuilderSectionKey> = {
+    AboutSection: "about",
+    FeaturesSection: "features",
+    ListingsSection: "listings",
+    TeamSection: "team",
+    FeesSection: "fees",
+    NoticesSection: "notices",
+    ContactSection: "contact",
+    FaqSection: "faq",
+    GallerySection: "gallery",
+    CtaSection: "cta",
+  };
+
+  function renderMainContent() {
+    if (!draft.puckData) {
+      return contentSections.map((sectionKey) => renderSection(sectionKey));
+    }
+
+    type PuckItem = { type: string; props: Record<string, unknown> };
+    const content = ((draft.puckData as { content?: PuckItem[] }).content ?? []);
+
+    return content.map((item, index) => {
+      // Hero is rendered in <header>, skip here
+      if (item.type === "HeroSection") return null;
+
+      // Known section block
+      const sectionKey = PUCK_SECTION_TYPE_MAP[item.type];
+      if (sectionKey) {
+        if ((item.props as { visibility?: string }).visibility === "hidden") return null;
+        return renderSection(sectionKey);
+      }
+
+      // Primitive block
+      return renderPuckPrimitive(item, index);
+    });
+  }
+
   return (
     <>
       {!previewMode ? (
@@ -1631,7 +1742,7 @@ export default function WorkspacePublicLanding({
             </header>
 
             <main className="wpl-main">
-              {contentSections.map((sectionKey) => renderSection(sectionKey))}
+              {renderMainContent()}
             </main>
 
             <footer className="wpl-footer wpl-estate-footer">
@@ -1785,7 +1896,7 @@ export default function WorkspacePublicLanding({
             </header>
 
             <main className="wpl-main">
-              {contentSections.map((sectionKey) => renderSection(sectionKey))}
+              {renderMainContent()}
             </main>
 
             <footer className="wpl-footer wpl-property-footer">
@@ -3988,6 +4099,74 @@ export default function WorkspacePublicLanding({
             padding: 28px 24px;
           }
         }
+
+        /* ─── PUCK PRIMITIVE BLOCKS ─── */
+        .wpl-puck-block {
+          grid-column: 1 / -1;
+          padding: 20px 26px;
+          border-radius: 20px;
+          border: 1px solid var(--wpl-border);
+          background: var(--wpl-surface);
+        }
+        .wpl-puck-heading h1,
+        .wpl-puck-heading h2,
+        .wpl-puck-heading h3,
+        .wpl-puck-heading h4 {
+          font-family: var(--wpl-title-font);
+          letter-spacing: -0.02em;
+          line-height: 1.1;
+          color: #171914;
+        }
+        .wpl-puck-text p {
+          line-height: 1.74;
+          color: var(--wpl-muted);
+        }
+        .wpl-puck-text-small p { font-size: 14px; }
+        .wpl-puck-text-medium p { font-size: 17px; }
+        .wpl-puck-text-large p { font-size: 21px; }
+        .wpl-puck-richtext p {
+          font-size: 17px;
+          line-height: 1.74;
+          color: var(--wpl-muted);
+        }
+        .wpl-puck-button-wrap {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .wpl-puck-btn-primary {
+          background: var(--wpl-primary);
+          color: #fff;
+          box-shadow: var(--wpl-button-shadow);
+        }
+        .wpl-puck-btn-secondary {
+          background: var(--wpl-surface);
+          color: var(--wpl-primary);
+          border: 1px solid var(--wpl-border);
+        }
+        .wpl-puck-btn-outline {
+          background: transparent;
+          color: var(--wpl-primary);
+          border: 1.5px solid var(--wpl-primary);
+        }
+        .wpl-puck-card strong {
+          display: block;
+          font-size: 18px;
+          font-family: var(--wpl-title-font);
+          color: #171914;
+        }
+        .wpl-puck-card p {
+          font-size: 15px;
+          line-height: 1.7;
+          color: var(--wpl-muted);
+        }
+        .wpl-puck-image img {
+          max-height: 480px;
+        }
+        .wpl-puck-space-small  { height: 16px; }
+        .wpl-puck-space-medium { height: 32px; }
+        .wpl-puck-space-large  { height: 64px; }
+        .wpl-puck-space-xlarge { height: 96px; }
       `}</style>
     </>
   );

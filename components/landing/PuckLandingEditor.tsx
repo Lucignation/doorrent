@@ -1286,7 +1286,10 @@ export default function PuckLandingEditor({
           onChange={(nextData) => {
             const typedData = nextData as LandingPuckData;
             setEditorData(typedData);
-            onChange(applyPuckDataToDraft(draft, typedData));
+            onChange({
+              ...applyPuckDataToDraft(draft, typedData),
+              puckData: typedData as Record<string, unknown>,
+            });
           }}
           permissions={{
             delete: true,

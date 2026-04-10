@@ -60,6 +60,7 @@ export interface LandingBuilderTemplate {
 export interface LandingBuilderDraft {
   editorType: LandingBuilderEditorType;
   templateId: LandingBuilderTemplateId;
+  puckData?: Record<string, unknown> | null;
   hiddenSectionKeys: LandingBuilderSectionKey[];
   sectionOrder: LandingBuilderSectionKey[];
   sectionLayouts: Partial<Record<LandingBuilderSectionKey, LandingBuilderSectionLayout>>;
@@ -855,6 +856,7 @@ function buildDefaultDraft(
     ctaSecondaryLabel:
       workspace === "estate" ? "Contact admin office" : "View our services",
     ctaSecondaryUrl: supportEmail ? `mailto:${supportEmail}` : "",
+    puckData: null,
   };
 }
 
@@ -965,5 +967,6 @@ export function mergeLandingBuilderDraft(
     galleryImageUrls: Array.isArray(partialDraft?.galleryImageUrls)
       ? partialDraft.galleryImageUrls
       : baseDraft.galleryImageUrls,
+    puckData: partialDraft?.puckData !== undefined ? partialDraft.puckData : baseDraft.puckData,
   };
 }
