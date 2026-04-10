@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { Puck, type Config, type Data } from "@puckeditor/core";
+import { DropZone, Puck, type Config, type Data } from "@puckeditor/core";
 import {
   LANDING_BUILDER_SECTION_KEYS,
   type LandingBuilderDraft,
@@ -1142,9 +1142,7 @@ const puckConfig: Config = {
         <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ ...styles.primitiveBlock }}>
           <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: gap === "small" ? 8 : gap === "large" ? 24 : 16, minHeight: 48 }}>
             {Array.from({ length: Number(columns) }).map((_, i) => (
-              <div key={i} style={{ border: "1.5px dashed rgba(26,92,66,0.18)", borderRadius: 8, minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ fontSize: 11, color: "#aaa" }}>Column {i + 1}</span>
-              </div>
+              <DropZone key={i} zone={`col-${i}`} style={{ border: "1.5px dashed rgba(26,92,66,0.18)", borderRadius: 8, minHeight: 48 }} />
             ))}
           </div>
         </div>
@@ -1162,9 +1160,20 @@ const puckConfig: Config = {
       defaultProps: { direction: "row", align: "center", justify: "start", gap: "medium" },
       render: ({ puck, direction, align, justify, gap }) => (
         <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ ...styles.primitiveBlock }}>
-          <div style={{ display: "flex", flexDirection: direction, alignItems: align, justifyContent: justify === "between" ? "space-between" : justify, gap: gap === "small" ? 8 : gap === "large" ? 24 : 16, minHeight: 48, border: "1.5px dashed rgba(26,92,66,0.18)", borderRadius: 8, padding: 12 }}>
-            <span style={{ fontSize: 11, color: "#aaa" }}>Flex — {direction}</span>
-          </div>
+          <DropZone
+            zone="flex-content"
+            style={{
+              display: "flex",
+              flexDirection: direction,
+              alignItems: align,
+              justifyContent: justify === "between" ? "space-between" : justify,
+              gap: gap === "small" ? 8 : gap === "large" ? 24 : 16,
+              minHeight: 48,
+              border: "1.5px dashed rgba(26,92,66,0.18)",
+              borderRadius: 8,
+              padding: 12,
+            }}
+          />
         </div>
       ),
     },
