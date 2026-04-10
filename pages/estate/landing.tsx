@@ -189,7 +189,7 @@ export default function EstateLandingPage() {
       <PageMeta title="Landing Page Builder — Estate" />
       <PageHeader
         title="Landing Page Builder"
-        description="Choose approved estate templates, edit content blocks, and preview the public page before publishing."
+        description="Choose Controlled, Puck, or Craft.js, edit approved estate templates and content blocks, and preview the public page before publishing."
       />
 
       {error ? (

@@ -2,6 +2,8 @@ import type { LandingTemplateThumbnailId } from "../components/estate/LandingTem
 
 export type LandingBuilderWorkspace = "estate" | "property";
 
+export type LandingBuilderEditorType = "controlled" | "puck" | "craft";
+
 export type LandingBuilderSectionKey =
   | "hero"
   | "about"
@@ -54,6 +56,7 @@ export interface LandingBuilderTemplate {
 }
 
 export interface LandingBuilderDraft {
+  editorType: LandingBuilderEditorType;
   templateId: LandingBuilderTemplateId;
   hiddenSectionKeys: LandingBuilderSectionKey[];
   sectionOrder: LandingBuilderSectionKey[];
@@ -96,6 +99,32 @@ export interface LandingBuilderDraft {
   ctaSecondaryLabel: string;
   ctaSecondaryUrl: string;
 }
+
+export const LANDING_BUILDER_EDITORS: Array<{
+  key: LandingBuilderEditorType;
+  label: string;
+  description: string;
+  status: string;
+}> = [
+  {
+    key: "controlled",
+    label: "Controlled",
+    description: "Approved templates and section rails with the lowest publishing risk.",
+    status: "Available now",
+  },
+  {
+    key: "puck",
+    label: "Puck",
+    description: "Visual block editing for teams that want a more flexible page-builder feel.",
+    status: "Available now",
+  },
+  {
+    key: "craft",
+    label: "Craft.js",
+    description: "Custom canvas editing for advanced teams that want deeper layout control.",
+    status: "Available now",
+  },
+];
 
 export const LANDING_BUILDER_SECTIONS: Array<{
   key: LandingBuilderSectionKey;
@@ -162,6 +191,10 @@ export const LANDING_BUILDER_SECTIONS: Array<{
 export const LANDING_BUILDER_SECTION_KEYS = LANDING_BUILDER_SECTIONS.map(
   (section) => section.key,
 );
+
+function isLandingBuilderEditorType(value: unknown): value is LandingBuilderEditorType {
+  return value === "controlled" || value === "puck" || value === "craft";
+}
 
 const DEFAULT_FULL_WIDTH_SECTIONS: LandingBuilderSectionKey[] = [
   "hero",
@@ -680,6 +713,7 @@ function buildDefaultDraft(
   const supportAddress = profile.publicLegalAddress?.trim() || "";
 
   return {
+    editorType: "puck",
     templateId: fallbackTemplate.id,
     hiddenSectionKeys: [],
     sectionOrder: uniqueSectionOrder(fallbackTemplate.recommendedSections),
@@ -800,6 +834,9 @@ export function mergeLandingBuilderDraft(
   return {
     ...baseDraft,
     ...partialDraft,
+    editorType: isLandingBuilderEditorType(partialDraft?.editorType)
+      ? partialDraft.editorType
+      : baseDraft.editorType,
     hiddenSectionKeys: Array.isArray(partialDraft?.hiddenSectionKeys)
       ? partialDraft.hiddenSectionKeys.filter((key): key is LandingBuilderSectionKey =>
           LANDING_BUILDER_SECTION_KEYS.includes(key as LandingBuilderSectionKey),

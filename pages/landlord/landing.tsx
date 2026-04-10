@@ -198,7 +198,7 @@ export default function LandlordLandingPage() {
       <PageMeta title="Landing Page Builder — Workspace" />
       <PageHeader
         title="Landing Page Builder"
-        description="Preview approved landlord and property company templates, reorder sections with drag and drop, and publish the live landing page."
+        description="Choose Controlled, Puck, or Craft.js, preview approved landlord and property company templates, and publish the live landing page."
       />
 
       {error ? (
