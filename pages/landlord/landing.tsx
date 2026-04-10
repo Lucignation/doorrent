@@ -127,6 +127,7 @@ export default function LandlordLandingPage() {
       const record = await publishLandingDraft({
         token,
         workspaceSlug,
+        workspaceType: workspace,
         draft,
       });
 

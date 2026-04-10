@@ -1,5 +1,6 @@
 import type {
   LandingBuilderDraft,
+  LandingBuilderWorkspace,
 } from "./landing-builder";
 
 interface LandingBuilderApiEnvelope<T> {
@@ -62,6 +63,7 @@ export async function fetchPublishedLandingDraft(workspaceSlug: string) {
 export async function publishLandingDraft(input: {
   token: string;
   workspaceSlug: string;
+  workspaceType: LandingBuilderWorkspace;
   draft: LandingBuilderDraft;
 }) {
   const response = await fetch(buildPublishedLandingDraftPath(input.workspaceSlug), {
@@ -71,6 +73,7 @@ export async function publishLandingDraft(input: {
       Authorization: `Bearer ${input.token}`,
     },
     body: JSON.stringify({
+      workspaceType: input.workspaceType,
       draft: input.draft,
     }),
   });

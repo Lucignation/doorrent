@@ -143,7 +143,10 @@ export async function apiRequest<T>(
       payload?.message ?? issuesMessage ?? "We could not complete your request.";
 
     if (!response.ok) {
-      if (response.status === 401 && unauthorizedHandler) {
+      // Only treat 401s as session expiry when we actually sent an auth token.
+      // Login and password-reset endpoints can legitimately return 401 without
+      // meaning the current browser session should be cleared or redirected.
+      if (response.status === 401 && token && unauthorizedHandler) {
         unauthorizedHandler();
       }
       throw new ApiError(message, response.status);

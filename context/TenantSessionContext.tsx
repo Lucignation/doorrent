@@ -338,19 +338,28 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
       if (typeof window === "undefined") return;
 
       const path = window.location.pathname;
+      const hasEstateAdminSession =
+        landlordSession?.landlord.workspaceMode === "ESTATE_ADMIN";
+      const hasWorkspaceSession = Boolean(landlordSession);
 
-      if (path.startsWith("/estate")) {
+      if (path.startsWith("/estate") || hasEstateAdminSession) {
         setLandlordSession(null);
         setLandlordSessionPersistent(true);
         removeStoredKeyEverywhere(LANDLORD_SESSION_STORAGE_KEY);
         void clearOfflineMutationQueue();
-        window.location.href = "/estate/login";
-      } else if (path.startsWith("/landlord")) {
+        window.location.href = "/portal";
+      } else if (path.startsWith("/landlord") || hasWorkspaceSession) {
         setLandlordSession(null);
         setLandlordSessionPersistent(true);
         removeStoredKeyEverywhere(LANDLORD_SESSION_STORAGE_KEY);
         void clearOfflineMutationQueue();
-        window.location.href = "/landlord/login";
+        window.location.href = "/portal";
+      } else if (path.startsWith("/admin") || adminSession) {
+        setAdminSession(null);
+        setAdminSessionPersistent(true);
+        removeStoredKeyEverywhere(ADMIN_SESSION_STORAGE_KEY);
+        void clearOfflineMutationQueue();
+        window.location.href = "/admin/login";
       } else if (path.startsWith("/caretaker")) {
         setCaretakerSession(null);
         setCaretakerSessionPersistent(true);
@@ -368,7 +377,7 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
         setTenantSessionPersistent(true);
         removeStoredKeyEverywhere(TENANT_SESSION_STORAGE_KEY);
         void clearOfflineMutationQueue();
-        window.location.href = "/login";
+        window.location.href = "/portal";
       }
     }
 
@@ -377,7 +386,7 @@ export function TenantSessionProvider({ children }: { children: ReactNode }) {
     return () => {
       clearUnauthorizedHandler();
     };
-  }, []);
+  }, [adminSession, landlordSession]);
 
   const saveTenantSession = useCallback(
     (session: TenantPortalSession, options?: { persist?: boolean }) => {
