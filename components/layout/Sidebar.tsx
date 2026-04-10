@@ -1,3 +1,4 @@
+import { MenuIcon } from "../ui/Icons";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
@@ -21,6 +22,8 @@ interface SidebarProps {
   navSections: NavSection[];
   branding?: WorkspaceBranding | null;
   mobileOpen: boolean;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   onNavigate: () => void;
 }
 
@@ -29,6 +32,8 @@ export default function Sidebar({
   navSections,
   branding,
   mobileOpen,
+  collapsed,
+  onToggleCollapse,
   onNavigate,
 }: SidebarProps) {
   const router = useRouter();
@@ -94,9 +99,15 @@ export default function Sidebar({
   }
 
   return (
-    <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}`}>
+    <aside className={`sidebar ${mobileOpen ? "mobile-open" : ""}${collapsed ? " is-collapsed" : ""}`}>
       <div className="sidebar-header">
-        <Link href={homeHref} className="sidebar-logo" onClick={onNavigate}>
+        <Link
+          href={homeHref}
+          className="sidebar-logo"
+          onClick={onNavigate}
+          title={brandName}
+          aria-label={brandName}
+        >
           <span className="sidebar-logo-frame">
             {hasCustomLogo ? (
               <img
@@ -117,6 +128,15 @@ export default function Sidebar({
         </Link>
         <button
           type="button"
+          className="sidebar-collapse"
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          onClick={onToggleCollapse}
+        >
+          <MenuIcon />
+        </button>
+        <button
+          type="button"
           className="sidebar-close"
           aria-label="Close sidebar"
           onClick={onNavigate}
@@ -134,6 +154,8 @@ export default function Sidebar({
                 key={item.href}
                 href={item.href}
                 onClick={onNavigate}
+                title={item.label}
+                aria-label={item.label}
                 className={`nav-item ${
                   isActivePath(router.pathname, item.href) ? "active" : ""
                 }`}
@@ -141,7 +163,7 @@ export default function Sidebar({
                 <span className="nav-icon">
                   <NavIcon name={item.icon} />
                 </span>
-                {item.label}
+                <span className="nav-item-label">{item.label}</span>
                 {item.badge ? (
                   <span className={`nav-badge ${item.badgeClass || ""}`}>
                     {item.badge}
@@ -161,8 +183,14 @@ export default function Sidebar({
             <div className="user-role">{user.role}</div>
           </div>
         </div>
-        <Link href={signOutHref} className="sidebar-signout" onClick={handleSignOut}>
-          Sign out
+        <Link
+          href={signOutHref}
+          className="sidebar-signout"
+          onClick={handleSignOut}
+          aria-label="Sign out"
+          title="Sign out"
+        >
+          <span className="sidebar-signout-label">{collapsed ? "Out" : "Sign out"}</span>
         </Link>
       </div>
     </aside>

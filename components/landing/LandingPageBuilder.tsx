@@ -52,6 +52,8 @@ interface LandingPageBuilderProps {
   onPublishBranding: (draft: LandingBuilderDraft) => Promise<void>;
 }
 
+type BuilderCanvasMode = "split" | "editor" | "preview";
+
 function splitListInput(value: string) {
   return value
     .split(/\r?\n/)
@@ -118,6 +120,8 @@ export default function LandingPageBuilder({
   const [editorCanvasResetKey, setEditorCanvasResetKey] = useState(0);
   const [workspaceDefaultEditor, setWorkspaceDefaultEditor] =
     useState<LandingBuilderEditorType>(() => createLandingBuilderDraft(workspace, profile).editorType);
+  const [canvasMode, setCanvasMode] = useState<BuilderCanvasMode>("split");
+  const [setupPanelsCollapsed, setSetupPanelsCollapsed] = useState(false);
   const editorPreferenceStorageKey = `${storageKey}.editor-default`;
 
   useEffect(() => {
@@ -360,6 +364,8 @@ export default function LandingPageBuilder({
     [draft.aboutBody, draft.brandDisplayName, draft.publicLegalAddress, profile.companyName, publishDomain, workspace, workspaceLabel],
   );
   const previewPortalUrl = draft.ctaPrimaryUrl || "/portal";
+  const previewFocused = canvasMode === "preview";
+  const editorFocused = canvasMode === "editor";
 
   function renderSectionEditor(sectionKey: LandingBuilderSectionKey) {
     switch (sectionKey) {
@@ -789,115 +795,169 @@ export default function LandingPageBuilder({
 
   return (
     <div className="lpb-root">
-      <section className="lpb-banner">
-        <div>
-          <div className="lpb-eyebrow">Landing Page Builder</div>
-          <h2>Start in Puck, pick an approved template, and preview before publish.</h2>
-          <p>
-            This builder stays intentionally controlled: visual templates, reusable content blocks,
-            approved branding fields, and a saved editor preference for teams that want Puck by
-            default or prefer Controlled and Craft.js workflows.
-          </p>
-        </div>
-        <div className="lpb-banner-meta">
-          <span className="lpb-pill">{selectedEditor.label} selected</span>
-          <span className="lpb-pill">Workspace default: {defaultEditorMeta.label}</span>
-          <span className="lpb-pill">Visual snapshots</span>
-          <span className="lpb-pill">Controlled sections</span>
-          <span className="lpb-pill">
-            {enterpriseEnabled ? "Enterprise publish enabled" : "Enterprise publish recommended"}
-          </span>
+      {!setupPanelsCollapsed ? (
+        <section className="lpb-banner">
+          <div>
+            <div className="lpb-eyebrow">Landing Page Builder</div>
+            <h2>Start in Puck, pick an approved template, and preview before publish.</h2>
+            <p>
+              This builder stays intentionally controlled: visual templates, reusable content blocks,
+              approved branding fields, and a saved editor preference for teams that want Puck by
+              default or prefer Controlled and Craft.js workflows.
+            </p>
+          </div>
+          <div className="lpb-banner-meta">
+            <span className="lpb-pill">{selectedEditor.label} selected</span>
+            <span className="lpb-pill">Workspace default: {defaultEditorMeta.label}</span>
+            <span className="lpb-pill">Visual snapshots</span>
+            <span className="lpb-pill">Controlled sections</span>
+            <span className="lpb-pill">
+              {enterpriseEnabled ? "Enterprise publish enabled" : "Enterprise publish recommended"}
+            </span>
+          </div>
+        </section>
+      ) : null}
+
+      <section className="card lpb-card lpb-view-card">
+        <div className="card-body lpb-view-toolbar">
+          <div className="lpb-view-copy">
+            <div className="lpb-view-title">Canvas view</div>
+            <div className="lpb-view-subtitle">
+              {canvasMode === "split"
+                ? "Keep the editor and exact preview side by side."
+                : canvasMode === "editor"
+                  ? "Editing is taking the full canvas so you can work without the preview column."
+                  : "Preview is taking the full canvas so you can inspect the live page in detail."}
+            </div>
+          </div>
+          <div className="lpb-view-toggle" role="tablist" aria-label="Landing builder layout">
+            {[
+              { key: "split", label: "Split" },
+              { key: "editor", label: "Editor focus" },
+              { key: "preview", label: "Preview focus" },
+            ].map((mode) => (
+              <button
+                key={mode.key}
+                type="button"
+                className={`lpb-view-button${canvasMode === mode.key ? " is-active" : ""}`}
+                onClick={() => setCanvasMode(mode.key as BuilderCanvasMode)}
+              >
+                {mode.label}
+              </button>
+            ))}
+          </div>
+          <div className="lpb-view-actions">
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={() => setSetupPanelsCollapsed((current) => !current)}
+            >
+              {setupPanelsCollapsed ? "Show setup panels" : "Hide setup panels"}
+            </button>
+          </div>
         </div>
       </section>
 
-      <section className="card lpb-card">
-        <div className="card-header">
-          <div>
-            <div className="card-title">Editor mode</div>
-            <div className="card-subtitle">
-              Let each workspace choose the editing experience it wants to grow into.
-            </div>
-          </div>
+      {setupPanelsCollapsed ? (
+        <div className="lpb-collapsed-note">
+          Setup panels are hidden so you can focus on the canvas. Use{" "}
+          <strong>Show setup panels</strong> any time you want the intro, templates, branding, or
+          helper cards back.
         </div>
-        <div className="card-body lpb-stack">
-          <div className="lpb-editor-mode-grid">
-            {LANDING_BUILDER_EDITORS.map((editor) => {
-              const isActive = editor.key === draft.editorType;
+      ) : (
+        <>
+          <section className="card lpb-card">
+            <div className="card-header">
+              <div>
+                <div className="card-title">Editor mode</div>
+                <div className="card-subtitle">
+                  Let each workspace choose the editing experience it wants to grow into.
+                </div>
+              </div>
+            </div>
+            <div className="card-body lpb-stack">
+              <div className="lpb-editor-mode-grid">
+                {LANDING_BUILDER_EDITORS.map((editor) => {
+                  const isActive = editor.key === draft.editorType;
 
+                  return (
+                    <button
+                      key={editor.key}
+                      type="button"
+                      className={`lpb-editor-mode-card${isActive ? " is-active" : ""}`}
+                      onClick={() => updateEditorMode(editor.key)}
+                    >
+                      <div className="lpb-editor-mode-topline">
+                        <strong>{editor.label}</strong>
+                        <span>
+                          {isActive
+                            ? "Selected"
+                            : editor.key === workspaceDefaultEditor
+                              ? "Workspace default"
+                              : editor.status}
+                        </span>
+                      </div>
+                      <p>{editor.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="lpb-mode-note">
+                <strong>{selectedEditor.label} mode</strong> is active in this landing-page draft.
+                {" "}This workspace now opens in <strong>{defaultEditorMeta.label}</strong> by default.
+                {draft.editorType === "controlled"
+                  ? " The structured builder below is the active editing surface."
+                  : draft.editorType === "puck"
+                    ? " The live Puck canvas below now handles approved section ordering and field editing."
+                    : " The live Craft.js canvas below now handles approved section ordering and field editing."}
+              </div>
+            </div>
+          </section>
+
+          <section className="lpb-templates">
+            {templates.map((template) => {
+              const isActive = template.id === draft.templateId;
               return (
                 <button
-                  key={editor.key}
+                  key={template.id}
                   type="button"
-                  className={`lpb-editor-mode-card${isActive ? " is-active" : ""}`}
-                  onClick={() => updateEditorMode(editor.key)}
+                  className={`lpb-template-card${isActive ? " is-active" : ""}`}
+                  onClick={() => updateTemplate(template.id)}
                 >
-                  <div className="lpb-editor-mode-topline">
-                    <strong>{editor.label}</strong>
-                    <span>
-                      {isActive
-                        ? "Selected"
-                        : editor.key === workspaceDefaultEditor
-                          ? "Workspace default"
-                          : editor.status}
-                    </span>
+                  <div className="lpb-template-topline">
+                    <span>{template.category}</span>
+                    <strong>{isActive ? "Selected" : "Approved"}</strong>
                   </div>
-                  <p>{editor.description}</p>
+                  <LandingTemplateThumbnail
+                    templateId={template.previewTemplateId}
+                    primaryColor={primaryColor}
+                    accentColor={accentColor}
+                    className="lpb-template-thumb"
+                  />
+                  <div className="lpb-template-copy">
+                    <h3>{template.name}</h3>
+                    <p>{template.summary}</p>
+                    <div className="lpb-template-chips">
+                      {template.recommendedSections.map((sectionKey) => (
+                        <span key={sectionKey}>
+                          {sectionMeta(sectionKey)?.label ?? sectionKey}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </button>
               );
             })}
-          </div>
+          </section>
+        </>
+      )}
 
-          <div className="lpb-mode-note">
-            <strong>{selectedEditor.label} mode</strong> is active in this landing-page draft.
-            {" "}This workspace now opens in <strong>{defaultEditorMeta.label}</strong> by default.
-            {draft.editorType === "controlled"
-              ? " The structured builder below is the active editing surface."
-              : draft.editorType === "puck"
-                ? " The live Puck canvas below now handles approved section ordering and field editing."
-                : " The live Craft.js canvas below now handles approved section ordering and field editing."}
-          </div>
-        </div>
-      </section>
-
-      <section className="lpb-templates">
-        {templates.map((template) => {
-          const isActive = template.id === draft.templateId;
-          return (
-            <button
-              key={template.id}
-              type="button"
-              className={`lpb-template-card${isActive ? " is-active" : ""}`}
-              onClick={() => updateTemplate(template.id)}
-            >
-              <div className="lpb-template-topline">
-                <span>{template.category}</span>
-                <strong>{isActive ? "Selected" : "Approved"}</strong>
-              </div>
-              <LandingTemplateThumbnail
-                templateId={template.previewTemplateId}
-                primaryColor={primaryColor}
-                accentColor={accentColor}
-                className="lpb-template-thumb"
-              />
-              <div className="lpb-template-copy">
-                <h3>{template.name}</h3>
-                <p>{template.summary}</p>
-                <div className="lpb-template-chips">
-                  {template.recommendedSections.map((sectionKey) => (
-                    <span key={sectionKey}>
-                      {sectionMeta(sectionKey)?.label ?? sectionKey}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </button>
-          );
-        })}
-      </section>
-
-      <div className="lpb-main">
-        <div className="lpb-editor-column">
-          <section className="card lpb-card">
+      <div className={`lpb-main lpb-main-${canvasMode}`}>
+        {!previewFocused ? (
+          <div className="lpb-editor-column">
+            {!setupPanelsCollapsed ? (
+              <section className="card lpb-card">
             <div className="card-header">
               <div>
                 <div className="card-title">Branding and publishing</div>
@@ -1019,9 +1079,11 @@ export default function LandingPageBuilder({
                 </label>
               </div>
             </div>
-          </section>
+              </section>
+            ) : null}
 
-          <section className="card lpb-card">
+            {!setupPanelsCollapsed ? (
+              <section className="card lpb-card">
             <div className="card-header">
               <div>
                 <div className="card-title">Hero and CTA controls</div>
@@ -1078,9 +1140,10 @@ export default function LandingPageBuilder({
                 </div>
               </div>
             )}
-          </section>
+              </section>
+            ) : null}
 
-          <section className="card lpb-card">
+            <section className="card lpb-card">
             <div className="card-header">
               <div>
                 <div className="card-title">
@@ -1221,11 +1284,13 @@ export default function LandingPageBuilder({
                 );
               })}
             </div>
-          </section>
-        </div>
+            </section>
+          </div>
+        ) : null}
 
-        <aside className="lpb-preview-column">
-          <div className="lpb-preview-shell">
+        {!editorFocused ? (
+          <aside className="lpb-preview-column">
+            <div className={`lpb-preview-shell${previewFocused ? " is-preview-focus" : ""}`}>
             <div className="lpb-preview-top">
               <div>
                 <div className="lpb-preview-label">Exact preview</div>
@@ -1234,25 +1299,29 @@ export default function LandingPageBuilder({
               <span className="lpb-domain-chip">{publishDomain}</span>
             </div>
 
-            <LandingTemplateThumbnail
-              templateId={selectedTemplate?.previewTemplateId ?? draft.templateId}
-              primaryColor={primaryColor}
-              accentColor={accentColor}
-              className="lpb-preview-thumbnail"
-            />
+              {!previewFocused ? (
+                <>
+                  <LandingTemplateThumbnail
+                    templateId={selectedTemplate?.previewTemplateId ?? draft.templateId}
+                    primaryColor={primaryColor}
+                    accentColor={accentColor}
+                    className="lpb-preview-thumbnail"
+                  />
 
-            <div className="lpb-preview-note">
-              This preview uses the same public landing component rendered on the workspace
-              subdomain.
-            </div>
+                  <div className="lpb-preview-note">
+                    This preview uses the same public landing component rendered on the workspace
+                    subdomain.
+                  </div>
 
-            <div className="lpb-preview-note lpb-preview-note-layout">
-              Set neighboring sections to <strong>Side by side</strong> to place them on one row,
-              or switch a section to <strong>Full width</strong> to let it span the full content
-              area. Layout settings stay separate from the text, images, and CTA content.
-            </div>
+                  <div className="lpb-preview-note lpb-preview-note-layout">
+                    Set neighboring sections to <strong>Side by side</strong> to place them on one row,
+                    or switch a section to <strong>Full width</strong> to let it span the full content
+                    area. Layout settings stay separate from the text, images, and CTA content.
+                  </div>
+                </>
+              ) : null}
 
-            <div className="lpb-preview-live">
+              <div className={`lpb-preview-live${previewFocused ? " is-expanded" : ""}`}>
               <WorkspacePublicLanding
                 workspace={previewWorkspace}
                 estate={previewEstate}
@@ -1261,8 +1330,9 @@ export default function LandingPageBuilder({
                 previewMode
               />
             </div>
-          </div>
-        </aside>
+            </div>
+          </aside>
+        ) : null}
       </div>
 
       <style jsx>{`
@@ -1443,11 +1513,77 @@ export default function LandingPageBuilder({
           font-weight: 600;
           color: var(--ink2);
         }
+        .lpb-view-card :global(.card-body) {
+          padding-top: 20px;
+        }
+        .lpb-view-toolbar {
+          display: grid;
+          grid-template-columns: minmax(0, 1.1fr) auto auto;
+          gap: 16px;
+          align-items: center;
+        }
+        .lpb-view-copy {
+          min-width: 0;
+        }
+        .lpb-view-title {
+          font-size: 15px;
+          font-weight: 700;
+          color: var(--ink1);
+        }
+        .lpb-view-subtitle {
+          margin-top: 4px;
+          color: var(--ink3);
+          font-size: 13px;
+          line-height: 1.55;
+        }
+        .lpb-view-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px;
+          border-radius: 999px;
+          background: rgba(26, 92, 66, 0.08);
+          border: 1px solid rgba(26, 92, 66, 0.1);
+          flex-wrap: wrap;
+        }
+        .lpb-view-button {
+          border: none;
+          background: transparent;
+          color: var(--ink2);
+          font-size: 12px;
+          font-weight: 700;
+          padding: 10px 14px;
+          border-radius: 999px;
+          cursor: pointer;
+          transition: background 160ms ease, color 160ms ease, box-shadow 160ms ease;
+        }
+        .lpb-view-button.is-active {
+          background: #fff;
+          color: var(--ink1);
+          box-shadow: 0 8px 18px rgba(26, 92, 66, 0.12);
+        }
+        .lpb-view-actions {
+          display: flex;
+          justify-content: flex-end;
+        }
+        .lpb-collapsed-note {
+          padding: 12px 14px;
+          border-radius: 14px;
+          border: 1px dashed rgba(26, 92, 66, 0.22);
+          background: rgba(243, 248, 244, 0.88);
+          color: var(--ink2);
+          font-size: 13px;
+          line-height: 1.55;
+        }
         .lpb-main {
           display: grid;
           grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
           gap: 20px;
           align-items: start;
+        }
+        .lpb-main-editor,
+        .lpb-main-preview {
+          grid-template-columns: minmax(0, 1fr);
         }
         .lpb-editor-column,
         .lpb-preview-column {
@@ -1605,6 +1741,11 @@ export default function LandingPageBuilder({
             radial-gradient(circle at top right, rgba(210, 168, 90, 0.14), transparent 32%),
             #fbfaf7;
         }
+        .lpb-preview-shell.is-preview-focus {
+          position: static;
+          gap: 18px;
+          padding: 20px;
+        }
         .lpb-preview-note {
           padding: 10px 12px;
           border-radius: 12px;
@@ -1622,6 +1763,10 @@ export default function LandingPageBuilder({
           border-radius: 18px;
           border: 1px solid rgba(29, 37, 31, 0.08);
           background: #fff;
+        }
+        .lpb-preview-live.is-expanded {
+          max-height: calc(100vh - 180px);
+          min-height: 72vh;
         }
         .lpb-preview-live :global(a),
         .lpb-preview-live :global(button) {
@@ -1808,6 +1953,12 @@ export default function LandingPageBuilder({
           .lpb-banner-meta {
             justify-content: flex-start;
           }
+          .lpb-view-toolbar {
+            grid-template-columns: 1fr;
+          }
+          .lpb-view-actions {
+            justify-content: flex-start;
+          }
         }
         @media (max-width: 720px) {
           .lpb-editor-grid {
@@ -1822,6 +1973,12 @@ export default function LandingPageBuilder({
           }
           .lpb-gallery-grid {
             grid-template-columns: 1fr 1fr;
+          }
+          .lpb-view-toggle {
+            width: 100%;
+          }
+          .lpb-view-button {
+            flex: 1 1 100%;
           }
         }
       `}</style>

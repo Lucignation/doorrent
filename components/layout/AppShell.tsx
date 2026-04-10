@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { WorkspaceBranding } from "../../lib/branding";
 import { buildBrandShellStyle } from "../../lib/branding";
 import type { AppUser, NavSection } from "../../types/app";
@@ -24,15 +24,47 @@ export default function AppShell({
   children,
 }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const storedValue = window.localStorage.getItem("doorrent.app-shell.sidebar-collapsed");
+    setSidebarCollapsed(storedValue === "true");
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      "doorrent.app-shell.sidebar-collapsed",
+      sidebarCollapsed ? "true" : "false",
+    );
+  }, [sidebarCollapsed]);
+
+  function toggleSidebar() {
+    if (typeof window !== "undefined" && window.matchMedia("(max-width: 768px)").matches) {
+      setMobileOpen((open) => !open);
+      return;
+    }
+
+    setSidebarCollapsed((collapsed) => !collapsed);
+  }
 
   return (
     <div className="app-page" style={buildBrandShellStyle(branding)}>
-      <div className="app-layout">
+      <div className={`app-layout${sidebarCollapsed ? " sidebar-collapsed" : ""}`}>
         <Sidebar
           user={user}
           navSections={navSections}
           branding={branding}
           mobileOpen={mobileOpen}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed((collapsed) => !collapsed)}
           onNavigate={() => setMobileOpen(false)}
         />
         {mobileOpen && (
@@ -47,7 +79,8 @@ export default function AppShell({
             title={topbarTitle}
             breadcrumb={breadcrumb}
             initials={user.initials}
-            onToggleSidebar={() => setMobileOpen((open) => !open)}
+            sidebarCollapsed={sidebarCollapsed}
+            onToggleSidebar={toggleSidebar}
           />
           <main className="content-area">{children}</main>
         </div>
