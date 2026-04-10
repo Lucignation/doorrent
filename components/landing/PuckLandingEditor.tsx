@@ -24,7 +24,19 @@ type SectionComponentType =
   | "GallerySection"
   | "CtaSection";
 
+// Primitive block prop types
+interface HeadingBlockProps { text: string; level: "h1" | "h2" | "h3" | "h4"; align: "left" | "center" | "right"; }
+interface TextBlockProps { text: string; align: "left" | "center" | "right"; size: "small" | "medium" | "large"; }
+interface RichTextBlockProps { text: string; }
+interface ButtonBlockProps { label: string; url: string; variant: "primary" | "secondary" | "outline"; }
+interface GridBlockProps { columns: "1" | "2" | "3" | "4"; gap: "small" | "medium" | "large"; }
+interface FlexBlockProps { direction: "row" | "column"; align: "start" | "center" | "end"; justify: "start" | "center" | "end" | "between"; gap: "small" | "medium" | "large"; }
+interface SpaceBlockProps { size: "small" | "medium" | "large" | "xlarge"; }
+interface CardBlockProps { title: string; body: string; }
+interface ImageBlockProps { url: string; alt: string; caption: string; }
+
 type LandingPuckData = Data<{
+  // Sections
   HeroSection: HeroSectionProps;
   AboutSection: StandardSectionProps;
   FeaturesSection: ListSectionProps;
@@ -36,6 +48,16 @@ type LandingPuckData = Data<{
   FaqSection: ListSectionProps;
   GallerySection: GallerySectionProps;
   CtaSection: CtaSectionProps;
+  // Primitives
+  HeadingBlock: HeadingBlockProps;
+  TextBlock: TextBlockProps;
+  RichTextBlock: RichTextBlockProps;
+  ButtonBlock: ButtonBlockProps;
+  GridBlock: GridBlockProps;
+  FlexBlock: FlexBlockProps;
+  SpaceBlock: SpaceBlockProps;
+  CardBlock: CardBlockProps;
+  ImageBlock: ImageBlockProps;
 }>;
 
 interface PuckLandingEditorProps {
@@ -408,14 +430,16 @@ function applyPuckDataToDraft(
     seen.add(sectionKey);
     nextOrder.push(sectionKey);
 
-    if (item.props.visibility === "hidden") {
+    const sectionProps = item.props as BaseSectionProps & { id: string };
+
+    if (sectionProps.visibility === "hidden") {
       hiddenKeys.add(sectionKey);
     }
 
     nextLayouts[sectionKey] =
       sectionKey === "hero"
         ? "full"
-        : (item.props.layout as LandingBuilderSectionLayout) ?? getLayout(currentDraft, sectionKey);
+        : (sectionProps.layout as LandingBuilderSectionLayout) ?? getLayout(currentDraft, sectionKey);
 
     switch (sectionKey) {
       case "hero":
@@ -474,7 +498,7 @@ function applyPuckDataToDraft(
           break;
         }
       case "contact":
-        nextDraft.contactTitle = item.props.title ?? "";
+        nextDraft.contactTitle = (item.props as ContactSectionProps & { id: string }).title ?? "";
         break;
       case "faq":
         {
@@ -1024,6 +1048,183 @@ const puckConfig: Config = {
         </SectionFrame>
       ),
     },
+
+    // ─── PRIMITIVE BLOCKS ────────────────────────────────────────────────────
+
+    HeadingBlock: {
+      label: "Heading",
+      fields: {
+        text: { type: "text", label: "Text" },
+        level: { type: "select", label: "Level", options: [{ label: "H1", value: "h1" }, { label: "H2", value: "h2" }, { label: "H3", value: "h3" }, { label: "H4", value: "h4" }] },
+        align: { type: "select", label: "Align", options: [{ label: "Left", value: "left" }, { label: "Center", value: "center" }, { label: "Right", value: "right" }] },
+      },
+      defaultProps: { text: "Your heading", level: "h2", align: "left" },
+      render: ({ puck, text, level: Tag, align }) => (
+        <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ ...styles.primitiveBlock, textAlign: align }}>
+          <Tag style={styles.primitiveHeading}>{text || "Your heading"}</Tag>
+        </div>
+      ),
+    },
+
+    TextBlock: {
+      label: "Text",
+      fields: {
+        text: { type: "textarea", label: "Text" },
+        align: { type: "select", label: "Align", options: [{ label: "Left", value: "left" }, { label: "Center", value: "center" }, { label: "Right", value: "right" }] },
+        size: { type: "select", label: "Size", options: [{ label: "Small", value: "small" }, { label: "Medium", value: "medium" }, { label: "Large", value: "large" }] },
+      },
+      defaultProps: { text: "Your paragraph text goes here.", align: "left", size: "medium" },
+      render: ({ puck, text, align, size }) => (
+        <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ ...styles.primitiveBlock, textAlign: align }}>
+          <p style={{ margin: 0, fontSize: size === "small" ? 14 : size === "large" ? 20 : 16, lineHeight: 1.7, color: "#2f372f" }}>{text || "Your paragraph text goes here."}</p>
+        </div>
+      ),
+    },
+
+    RichTextBlock: {
+      label: "RichText",
+      fields: {
+        text: { type: "textarea", label: "Content" },
+      },
+      defaultProps: { text: "Add your rich content here." },
+      render: ({ puck, text }) => (
+        <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={styles.primitiveBlock}>
+          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.8, color: "#2f372f", whiteSpace: "pre-wrap" }}>{text || "Add your rich content here."}</p>
+        </div>
+      ),
+    },
+
+    ButtonBlock: {
+      label: "Button",
+      fields: {
+        label: { type: "text", label: "Button label" },
+        url: { type: "text", label: "URL" },
+        variant: { type: "select", label: "Style", options: [{ label: "Primary", value: "primary" }, { label: "Secondary", value: "secondary" }, { label: "Outline", value: "outline" }] },
+      },
+      defaultProps: { label: "Click here", url: "/", variant: "primary" },
+      render: ({ puck, label, variant }) => (
+        <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ ...styles.primitiveBlock, display: "flex" }}>
+          <div style={variant === "primary" ? styles.ctaButtonPrimary : variant === "outline" ? styles.ctaButtonSecondary : { ...styles.ctaButtonSecondary, background: "#e8f0e9" }}>
+            {label || "Click here"}
+          </div>
+        </div>
+      ),
+    },
+
+    GridBlock: {
+      label: "Grid",
+      fields: {
+        columns: { type: "select", label: "Columns", options: [{ label: "1", value: "1" }, { label: "2", value: "2" }, { label: "3", value: "3" }, { label: "4", value: "4" }] },
+        gap: { type: "select", label: "Gap", options: [{ label: "Small", value: "small" }, { label: "Medium", value: "medium" }, { label: "Large", value: "large" }] },
+      },
+      defaultProps: { columns: "2", gap: "medium" },
+      render: ({ puck, columns, gap }) => (
+        <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ ...styles.primitiveBlock }}>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gap: gap === "small" ? 8 : gap === "large" ? 24 : 16, minHeight: 48 }}>
+            {Array.from({ length: Number(columns) }).map((_, i) => (
+              <div key={i} style={{ border: "1.5px dashed rgba(26,92,66,0.18)", borderRadius: 8, minHeight: 48, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ fontSize: 11, color: "#aaa" }}>Column {i + 1}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ),
+    },
+
+    FlexBlock: {
+      label: "Flex",
+      fields: {
+        direction: { type: "select", label: "Direction", options: [{ label: "Row", value: "row" }, { label: "Column", value: "column" }] },
+        align: { type: "select", label: "Align items", options: [{ label: "Start", value: "start" }, { label: "Center", value: "center" }, { label: "End", value: "end" }] },
+        justify: { type: "select", label: "Justify", options: [{ label: "Start", value: "start" }, { label: "Center", value: "center" }, { label: "End", value: "end" }, { label: "Space between", value: "between" }] },
+        gap: { type: "select", label: "Gap", options: [{ label: "Small", value: "small" }, { label: "Medium", value: "medium" }, { label: "Large", value: "large" }] },
+      },
+      defaultProps: { direction: "row", align: "center", justify: "start", gap: "medium" },
+      render: ({ puck, direction, align, justify, gap }) => (
+        <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ ...styles.primitiveBlock }}>
+          <div style={{ display: "flex", flexDirection: direction, alignItems: align, justifyContent: justify === "between" ? "space-between" : justify, gap: gap === "small" ? 8 : gap === "large" ? 24 : 16, minHeight: 48, border: "1.5px dashed rgba(26,92,66,0.18)", borderRadius: 8, padding: 12 }}>
+            <span style={{ fontSize: 11, color: "#aaa" }}>Flex — {direction}</span>
+          </div>
+        </div>
+      ),
+    },
+
+    SpaceBlock: {
+      label: "Space",
+      fields: {
+        size: { type: "select", label: "Height", options: [{ label: "Small (16px)", value: "small" }, { label: "Medium (32px)", value: "medium" }, { label: "Large (64px)", value: "large" }, { label: "X-Large (96px)", value: "xlarge" }] },
+      },
+      defaultProps: { size: "medium" },
+      render: ({ puck, size }) => {
+        const height = size === "small" ? 16 : size === "large" ? 64 : size === "xlarge" ? 96 : 32;
+        return (
+          <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ width: "100%", height, border: "1.5px dashed rgba(26,92,66,0.14)", borderRadius: 6, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ fontSize: 11, color: "#bbb" }}>Space — {height}px</span>
+          </div>
+        );
+      },
+    },
+
+    CardBlock: {
+      label: "Card",
+      fields: {
+        title: { type: "text", label: "Title" },
+        body: { type: "textarea", label: "Body" },
+      },
+      defaultProps: { title: "Card title", body: "Card body text goes here." },
+      render: ({ puck, title, body }) => (
+        <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={{ ...styles.sectionCard, padding: 20 }}>
+          <strong style={{ display: "block", marginBottom: 8, fontSize: 16 }}>{title || "Card title"}</strong>
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: "#555" }}>{body || "Card body text goes here."}</p>
+        </div>
+      ),
+    },
+
+    ImageBlock: {
+      label: "Image",
+      fields: {
+        url: { type: "text", label: "Image URL (https://...)" },
+        alt: { type: "text", label: "Alt text" },
+        caption: { type: "text", label: "Caption" },
+      },
+      defaultProps: { url: "", alt: "", caption: "" },
+      render: ({ puck, url, alt, caption }) => (
+        <div ref={puck.dragRef as ((el: HTMLDivElement | null) => void)} style={styles.primitiveBlock}>
+          {url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt={alt} style={{ width: "100%", borderRadius: 10, display: "block", objectFit: "cover", maxHeight: 320 }} />
+          ) : (
+            <div style={{ width: "100%", height: 120, borderRadius: 10, background: "rgba(26,92,66,0.08)", border: "1.5px dashed rgba(26,92,66,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <span style={{ fontSize: 13, color: "#aaa" }}>Paste an image URL in the sidebar</span>
+            </div>
+          )}
+          {caption ? <p style={{ margin: "8px 0 0", fontSize: 13, color: "#888", textAlign: "center" }}>{caption}</p> : null}
+        </div>
+      ),
+    },
+  },
+
+  categories: {
+    layout: {
+      title: "Layout",
+      components: ["GridBlock", "FlexBlock", "SpaceBlock"],
+    },
+    typography: {
+      title: "Typography",
+      components: ["HeadingBlock", "TextBlock", "RichTextBlock"],
+    },
+    actions: {
+      title: "Actions",
+      components: ["ButtonBlock"],
+    },
+    other: {
+      title: "Other",
+      components: ["CardBlock", "ImageBlock"],
+    },
+    sections: {
+      title: "Sections",
+      components: ["HeroSection", "AboutSection", "FeaturesSection", "ListingsSection", "TeamSection", "FeesSection", "NoticesSection", "ContactSection", "FaqSection", "GallerySection", "CtaSection"],
+    },
   },
 };
 
@@ -1088,17 +1289,16 @@ export default function PuckLandingEditor({
             onChange(applyPuckDataToDraft(draft, typedData));
           }}
           permissions={{
-            delete: false,
+            delete: true,
             duplicate: false,
-            insert: false,
+            insert: true,
           }}
           ui={{
-            leftSideBarVisible: false,
+            leftSideBarVisible: true,
             rightSideBarVisible: true,
           }}
           overrides={{
             headerActions: () => <></>,
-            components: () => <></>,
           }}
           headerTitle="Puck Canvas"
           headerPath="Approved sections only"
@@ -1297,5 +1497,17 @@ const styles: Record<string, CSSProperties> = {
     gap: 6,
     color: "var(--text-muted)",
     fontSize: "0.88rem",
+  },
+  primitiveBlock: {
+    padding: "16px 18px",
+    borderRadius: 12,
+    border: "1px solid rgba(26, 92, 66, 0.1)",
+    background: "rgba(255, 255, 255, 0.9)",
+  },
+  primitiveHeading: {
+    margin: 0,
+    fontWeight: 700,
+    lineHeight: 1.15,
+    color: "#171914",
   },
 };
