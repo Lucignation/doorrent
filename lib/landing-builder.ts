@@ -18,6 +18,7 @@ export type LandingBuilderSectionKey =
   | "cta";
 
 export type LandingBuilderSectionLayout = "half" | "center" | "full";
+export type LandingBuilderGalleryImageSize = "small" | "medium" | "large";
 
 export type LandingBuilderTemplateId =
   | "estate-official"
@@ -64,6 +65,7 @@ export interface LandingBuilderDraft {
   hiddenSectionKeys: LandingBuilderSectionKey[];
   sectionOrder: LandingBuilderSectionKey[];
   sectionLayouts: Partial<Record<LandingBuilderSectionKey, LandingBuilderSectionLayout>>;
+  sectionBackgroundColors: Partial<Record<LandingBuilderSectionKey, string>>;
   brandDisplayName: string;
   brandLogoUrl: string;
   brandPrimaryColor: string;
@@ -99,6 +101,7 @@ export interface LandingBuilderDraft {
   galleryImageUrls: string[];
   galleryLayoutDirection: "rows" | "columns";
   galleryColumns: "1" | "2" | "3" | "4";
+  galleryImageSize: LandingBuilderGalleryImageSize;
   ctaPrimaryLabel: string;
   ctaPrimaryUrl: string;
   ctaSecondaryLabel: string;
@@ -201,6 +204,12 @@ function isLandingBuilderEditorType(value: unknown): value is LandingBuilderEdit
   return value === "controlled" || value === "puck" || value === "craft";
 }
 
+function isLandingBuilderGalleryImageSize(
+  value: unknown,
+): value is LandingBuilderGalleryImageSize {
+  return value === "small" || value === "medium" || value === "large";
+}
+
 const DEFAULT_FULL_WIDTH_SECTIONS: LandingBuilderSectionKey[] = [
   "hero",
   "about",
@@ -229,6 +238,26 @@ function createSectionLayouts(
     },
     {},
   );
+}
+
+function normalizeSectionBackgroundColors(
+  value: unknown,
+): Partial<Record<LandingBuilderSectionKey, string>> {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+
+  return LANDING_BUILDER_SECTION_KEYS.reduce<
+    Partial<Record<LandingBuilderSectionKey, string>>
+  >((accumulator, sectionKey) => {
+    const rawValue = (value as Record<string, unknown>)[sectionKey];
+
+    if (typeof rawValue === "string") {
+      accumulator[sectionKey] = rawValue;
+    }
+
+    return accumulator;
+  }, {});
 }
 
 const LANDING_TEMPLATES: LandingBuilderTemplate[] = [
@@ -808,6 +837,7 @@ function buildDefaultDraft(
     sectionLayouts: createSectionLayouts(
       uniqueSectionOrder(fallbackTemplate.recommendedSections),
     ),
+    sectionBackgroundColors: {},
     brandDisplayName,
     brandLogoUrl: profile.brandLogoUrl?.trim() || "",
     brandPrimaryColor:
@@ -854,6 +884,7 @@ function buildDefaultDraft(
     galleryImageUrls: [],
     galleryLayoutDirection: "rows",
     galleryColumns: "3",
+    galleryImageSize: "medium",
     ctaPrimaryLabel:
       workspace === "estate" ? "Open resident portal" : "Contact our team",
     ctaPrimaryUrl: "/portal",
@@ -905,6 +936,12 @@ export function applyTemplateToDraft(
     ),
     sectionOrder: uniqueSectionOrder(template.recommendedSections),
     sectionLayouts: createSectionLayouts(uniqueSectionOrder(template.recommendedSections)),
+    sectionBackgroundColors: normalizeSectionBackgroundColors(
+      template.defaults.sectionBackgroundColors,
+    ),
+    galleryImageSize: isLandingBuilderGalleryImageSize(template.defaults.galleryImageSize)
+      ? template.defaults.galleryImageSize
+      : "medium",
     // Clear stale puckData so the editor rebuilds from the template's fresh field values
     puckData: null,
   };
@@ -952,6 +989,9 @@ export function mergeLandingBuilderDraft(
         : baseDraft.sectionOrder,
       partialDraft?.sectionLayouts,
     ),
+    sectionBackgroundColors: normalizeSectionBackgroundColors(
+      partialDraft?.sectionBackgroundColors,
+    ),
     featuresItems: Array.isArray(partialDraft?.featuresItems)
       ? partialDraft.featuresItems
       : baseDraft.featuresItems,
@@ -982,6 +1022,9 @@ export function mergeLandingBuilderDraft(
       partialDraft?.galleryColumns === "3" || partialDraft?.galleryColumns === "4"
         ? partialDraft.galleryColumns
         : baseDraft.galleryColumns,
+    galleryImageSize: isLandingBuilderGalleryImageSize(partialDraft?.galleryImageSize)
+      ? partialDraft.galleryImageSize
+      : baseDraft.galleryImageSize,
     puckData: partialDraft?.puckData !== undefined ? partialDraft.puckData : baseDraft.puckData,
   };
 }

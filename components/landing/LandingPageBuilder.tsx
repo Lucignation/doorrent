@@ -704,6 +704,23 @@ export default function LandingPageBuilder({
                 <option value="4">4</option>
               </select>
             </label>
+            <label className="lpb-field">
+              <span>Image size</span>
+              <select
+                className="form-input"
+                value={draft.galleryImageSize}
+                onChange={(event) =>
+                  updateDraft(
+                    "galleryImageSize",
+                    event.target.value as LandingBuilderDraft["galleryImageSize"],
+                  )
+                }
+              >
+                <option value="small">Small thumbnail</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+              </select>
+            </label>
             <label className="lpb-field lpb-field-wide">
               <span>Image URLs</span>
               <textarea
