@@ -652,6 +652,34 @@ export default function LandingPageBuilder({
                 onChange={(event) => updateDraft("galleryBody", event.target.value)}
               />
             </label>
+            <label className="lpb-field">
+              <span>Layout direction</span>
+              <select
+                className="form-input"
+                value={draft.galleryLayoutDirection}
+                onChange={(event) =>
+                  updateDraft("galleryLayoutDirection", event.target.value as "rows" | "columns")
+                }
+              >
+                <option value="rows">Rows (left to right)</option>
+                <option value="columns">Columns (top to bottom)</option>
+              </select>
+            </label>
+            <label className="lpb-field">
+              <span>{draft.galleryLayoutDirection === "columns" ? "Number of columns" : "Images per row"}</span>
+              <select
+                className="form-input"
+                value={draft.galleryColumns}
+                onChange={(event) =>
+                  updateDraft("galleryColumns", event.target.value as "1" | "2" | "3" | "4")
+                }
+              >
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </label>
             <label className="lpb-field lpb-field-wide">
               <span>Image URLs</span>
               <textarea

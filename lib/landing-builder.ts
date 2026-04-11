@@ -97,6 +97,8 @@ export interface LandingBuilderDraft {
   galleryTitle: string;
   galleryBody: string;
   galleryImageUrls: string[];
+  galleryLayoutDirection: "rows" | "columns";
+  galleryColumns: "1" | "2" | "3" | "4";
   ctaPrimaryLabel: string;
   ctaPrimaryUrl: string;
   ctaSecondaryLabel: string;
@@ -850,6 +852,8 @@ function buildDefaultDraft(
     galleryTitle: "Gallery",
     galleryBody: "Add a few approved images that reflect the workspace brand.",
     galleryImageUrls: [],
+    galleryLayoutDirection: "rows",
+    galleryColumns: "3",
     ctaPrimaryLabel:
       workspace === "estate" ? "Open resident portal" : "Contact our team",
     ctaPrimaryUrl: "/portal",
@@ -901,6 +905,8 @@ export function applyTemplateToDraft(
     ),
     sectionOrder: uniqueSectionOrder(template.recommendedSections),
     sectionLayouts: createSectionLayouts(uniqueSectionOrder(template.recommendedSections)),
+    // Clear stale puckData so the editor rebuilds from the template's fresh field values
+    puckData: null,
   };
 
   return nextDraft;
@@ -967,6 +973,15 @@ export function mergeLandingBuilderDraft(
     galleryImageUrls: Array.isArray(partialDraft?.galleryImageUrls)
       ? partialDraft.galleryImageUrls
       : baseDraft.galleryImageUrls,
+    galleryLayoutDirection:
+      partialDraft?.galleryLayoutDirection === "rows" || partialDraft?.galleryLayoutDirection === "columns"
+        ? partialDraft.galleryLayoutDirection
+        : baseDraft.galleryLayoutDirection,
+    galleryColumns:
+      partialDraft?.galleryColumns === "1" || partialDraft?.galleryColumns === "2" ||
+      partialDraft?.galleryColumns === "3" || partialDraft?.galleryColumns === "4"
+        ? partialDraft.galleryColumns
+        : baseDraft.galleryColumns,
     puckData: partialDraft?.puckData !== undefined ? partialDraft.puckData : baseDraft.puckData,
   };
 }
