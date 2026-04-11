@@ -122,6 +122,7 @@ export default function LandingPageBuilder({
     useState<LandingBuilderEditorType>(() => createLandingBuilderDraft(workspace, profile).editorType);
   const [canvasMode, setCanvasMode] = useState<BuilderCanvasMode>("split");
   const [setupPanelsCollapsed, setSetupPanelsCollapsed] = useState(false);
+  const [mediaImageUrlsInput, setMediaImageUrlsInput] = useState("");
   const editorPreferenceStorageKey = `${storageKey}.editor-default`;
 
   useEffect(() => {
@@ -187,6 +188,10 @@ export default function LandingPageBuilder({
 
     window.localStorage.setItem(editorPreferenceStorageKey, workspaceDefaultEditor);
   }, [editorPreferenceStorageKey, workspaceDefaultEditor]);
+
+  useEffect(() => {
+    setMediaImageUrlsInput(joinListInput(draft.galleryImageUrls));
+  }, [draft.galleryImageUrls]);
 
   const selectedTemplate =
     getLandingBuilderTemplate(draft.templateId) ?? templates[0];
@@ -325,6 +330,25 @@ export default function LandingPageBuilder({
     }
 
     setDraft((current) => applyTemplateToDraft(current, template));
+    setEditorCanvasResetKey((current) => current + 1);
+  }
+
+  function applyVisualMedia() {
+    const nextImageUrls = splitListInput(mediaImageUrlsInput);
+
+    setDraft((current) => ({
+      ...current,
+      galleryImageUrls: nextImageUrls,
+    }));
+    setEditorCanvasResetKey((current) => current + 1);
+  }
+
+  function clearVisualMedia() {
+    setMediaImageUrlsInput("");
+    setDraft((current) => ({
+      ...current,
+      galleryImageUrls: [],
+    }));
     setEditorCanvasResetKey((current) => current + 1);
   }
 
@@ -1170,6 +1194,58 @@ export default function LandingPageBuilder({
             )}
               </section>
             ) : null}
+
+            <section className="card lpb-card">
+              <div className="card-header">
+                <div>
+                  <div className="card-title">Visual media</div>
+                  <div className="card-subtitle">
+                    Clear or replace the starter photos that came with an approved template.
+                  </div>
+                </div>
+                <div className="lpb-card-actions">
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    onClick={clearVisualMedia}
+                    disabled={draft.galleryImageUrls.length === 0 && !mediaImageUrlsInput.trim()}
+                  >
+                    Clear images
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={applyVisualMedia}
+                    disabled={mediaImageUrlsInput.trim() === joinListInput(draft.galleryImageUrls).trim()}
+                  >
+                    Apply media
+                  </button>
+                </div>
+              </div>
+              <div className="card-body lpb-stack">
+                <div className="lpb-mode-note">
+                  These image URLs feed the public gallery and any template-driven image surfaces
+                  while the Gallery section is visible. If starter template photos are still
+                  showing on the subdomain, clear or replace them here and publish again.
+                </div>
+                <div className="lpb-editor-grid">
+                  <label className="lpb-field lpb-field-wide">
+                    <span>Image URLs</span>
+                    <textarea
+                      className="form-input"
+                      rows={4}
+                      value={mediaImageUrlsInput}
+                      onChange={(event) => setMediaImageUrlsInput(event.target.value)}
+                      placeholder="One HTTPS image URL per line"
+                    />
+                  </label>
+                </div>
+                <div className="lpb-inline-note">
+                  The live subdomain shows the last published version, not just the current draft in
+                  your browser. After changing media here, publish the landing page to sync it.
+                </div>
+              </div>
+            </section>
 
             <section className="card lpb-card">
             <div className="card-header">

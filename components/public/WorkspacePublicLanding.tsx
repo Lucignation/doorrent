@@ -174,24 +174,26 @@ function WorkspacePublicGalleryImage({
   imageUrl,
   alt,
   fallbackBackground,
+  className = "wpl-gallery-tile",
 }: {
   imageUrl?: string | null;
   alt: string;
   fallbackBackground: string;
+  className?: string;
 }) {
   const [failed, setFailed] = useState(false);
 
   if (!imageUrl || failed) {
     return (
       <div
-        className="wpl-gallery-tile wpl-gallery-placeholder"
+        className={`${className} wpl-gallery-placeholder`}
         style={{ backgroundImage: fallbackBackground }}
       />
     );
   }
 
   return (
-    <div className="wpl-gallery-tile">
+    <div className={className}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageUrl}
@@ -203,6 +205,37 @@ function WorkspacePublicGalleryImage({
       />
     </div>
   );
+}
+
+function getSharedGalleryTileClassName(index: number, total: number) {
+  const classes = ["wpl-gallery-tile"];
+
+  if (total >= 4 && index === 0) {
+    classes.push("wpl-gallery-tile-featured");
+  } else if (total >= 6 && index % 5 === 3) {
+    classes.push("wpl-gallery-tile-tall");
+  }
+
+  return classes.join(" ");
+}
+
+function getEstateGalleryTileClassName(
+  index: number,
+  total: number,
+  layoutDirection: "rows" | "columns",
+  columnCount: number,
+) {
+  const classes = ["wpl-estate-media-frame", "wpl-estate-gallery-grid-item"];
+
+  if (total >= 4 && columnCount >= 2 && index === 0) {
+    classes.push("is-featured");
+  } else if (layoutDirection === "columns" && total >= 5 && columnCount >= 3 && index % 4 === 2) {
+    classes.push("is-tall");
+  } else if (layoutDirection === "rows" && total >= 6 && columnCount >= 3 && index % 5 === 3) {
+    classes.push("is-wide");
+  }
+
+  return classes.join(" ");
 }
 
 function WorkspacePublicHeroMedia({
@@ -659,12 +692,14 @@ export default function WorkspacePublicLanding({
   const visibleSections = draft.sectionOrder.filter(
     (sectionKey) => !draft.hiddenSectionKeys.includes(sectionKey),
   );
+  const gallerySectionVisible = visibleSections.includes("gallery");
+  const activeMediaImages = gallerySectionVisible ? galleryImages : [];
   const contentSections = visibleSections.filter((sectionKey) => sectionKey !== "hero");
   const primaryHref = renderActionHref(draft.ctaPrimaryUrl, portalUrl);
   const secondaryHref = supportEmail
     ? `mailto:${supportEmail}`
     : renderActionHref(draft.ctaSecondaryUrl, portalUrl);
-  const heroMediaUrl = galleryImages[0] ?? logoUrl ?? null;
+  const heroMediaUrl = activeMediaImages[0] ?? logoUrl ?? null;
   const heroHighlights = [
     draft.featuresItems[0],
     draft.noticeItems[0],
@@ -677,7 +712,7 @@ export default function WorkspacePublicLanding({
       label: "Live sections",
     },
     {
-      value: String(galleryImages.length || 0).padStart(2, "0"),
+      value: String(activeMediaImages.length || 0).padStart(2, "0"),
       label: "Gallery images",
     },
     {
@@ -726,16 +761,16 @@ export default function WorkspacePublicLanding({
       label: getPropertySectionLabel(sectionKey),
     }));
   const estateSectionMedia: Partial<Record<LandingBuilderSectionKey, string | null>> = {
-    about: galleryImages[1] ?? galleryImages[0] ?? heroMediaUrl,
-    features: galleryImages[2] ?? galleryImages[0] ?? heroMediaUrl,
-    listings: galleryImages[0] ?? galleryImages[1] ?? heroMediaUrl,
-    team: galleryImages[1] ?? galleryImages[0] ?? heroMediaUrl,
-    fees: galleryImages[0] ?? galleryImages[2] ?? heroMediaUrl,
-    notices: galleryImages[2] ?? galleryImages[1] ?? heroMediaUrl,
-    faq: galleryImages[3] ?? galleryImages[0] ?? heroMediaUrl,
-    gallery: galleryImages[0] ?? heroMediaUrl,
-    contact: galleryImages[3] ?? galleryImages[1] ?? heroMediaUrl,
-    cta: galleryImages[0] ?? heroMediaUrl,
+    about: activeMediaImages[1] ?? activeMediaImages[0] ?? heroMediaUrl,
+    features: activeMediaImages[2] ?? activeMediaImages[0] ?? heroMediaUrl,
+    listings: activeMediaImages[0] ?? activeMediaImages[1] ?? heroMediaUrl,
+    team: activeMediaImages[1] ?? activeMediaImages[0] ?? heroMediaUrl,
+    fees: activeMediaImages[0] ?? activeMediaImages[2] ?? heroMediaUrl,
+    notices: activeMediaImages[2] ?? activeMediaImages[1] ?? heroMediaUrl,
+    faq: activeMediaImages[3] ?? activeMediaImages[0] ?? heroMediaUrl,
+    gallery: activeMediaImages[0] ?? heroMediaUrl,
+    contact: activeMediaImages[3] ?? activeMediaImages[1] ?? heroMediaUrl,
+    cta: activeMediaImages[0] ?? heroMediaUrl,
   };
   const estateStatCards = (draft.feeItems.length
     ? draft.feeItems
@@ -743,7 +778,7 @@ export default function WorkspacePublicLanding({
         `Community features — ${String(Math.max(draft.featuresItems.length, 1)).padStart(2, "0")}`,
         `Public notices — ${String(Math.max(draft.noticeItems.length, 1)).padStart(2, "0")}`,
         `Leadership profiles — ${String(Math.max(draft.teamItems.length, 1)).padStart(2, "0")}`,
-        `Gallery highlights — ${String(Math.max(galleryImages.length, 1)).padStart(2, "0")}`,
+        `Gallery highlights — ${String(activeMediaImages.length).padStart(2, "0")}`,
       ]
   )
     .slice(0, 4)
@@ -1184,7 +1219,7 @@ export default function WorkspacePublicLanding({
       case "gallery": {
         const estateGalleryImages = galleryImages.length ? galleryImages : [null, null, null];
         const galleryDir = draft.galleryLayoutDirection ?? "rows";
-        const galleryCols = Number(draft.galleryColumns ?? "3");
+        const galleryCols = Math.max(1, Math.min(Number(draft.galleryColumns ?? "3"), 4));
 
         if (isCompactLayout) {
           return (
@@ -1205,9 +1240,9 @@ export default function WorkspacePublicLanding({
           );
         }
 
-        const gridStyle: React.CSSProperties = galleryDir === "columns"
-          ? { columnCount: galleryCols, columnGap: 16 }
-          : { display: "grid", gridTemplateColumns: `repeat(${galleryCols}, minmax(0, 1fr))`, gap: 16 };
+        const gridStyle = {
+          ["--wpl-estate-gallery-columns" as const]: String(galleryCols),
+        } as React.CSSProperties;
 
         return (
           <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-gallery-section wpl-estate-gallery-section--custom`}>
@@ -1223,7 +1258,12 @@ export default function WorkspacePublicLanding({
                   imageUrl={image}
                   alt={`${displayName} gallery ${index + 1}`}
                   fallbackBackground={heroBackground}
-                  frameClassName={`wpl-estate-media-frame wpl-estate-gallery-grid-item${galleryDir === "columns" ? " wpl-estate-gallery-col-item" : ""}`}
+                  frameClassName={getEstateGalleryTileClassName(
+                    index,
+                    estateGalleryImages.length,
+                    galleryDir,
+                    galleryCols,
+                  )}
                   imageClassName="wpl-estate-media-image"
                 />
               ))}
@@ -1390,7 +1430,8 @@ export default function WorkspacePublicLanding({
                 const headline = sep > -1 ? item.slice(0, sep) : item;
                 const detail = sep > -1 ? item.slice(sep + 3) : "";
                 const isPrice = /[₦$€£]/.test(headline) || /^\d[\d,]/.test(headline.trim());
-                const thumb = galleryImages[idx % Math.max(galleryImages.length, 1)] ?? null;
+                const thumb =
+                  activeMediaImages[idx % Math.max(activeMediaImages.length, 1)] ?? null;
                 return (
                   <div key={`${item}-${idx}`} className="wpl-listing-card">
                     <div className="wpl-listing-card-img" style={{ background: heroBackground }}>
@@ -1528,6 +1569,10 @@ export default function WorkspacePublicLanding({
                   imageUrl={image}
                   alt={`${displayName} gallery image ${index + 1}`}
                   fallbackBackground={heroBackground}
+                  className={getSharedGalleryTileClassName(
+                    index,
+                    (galleryImages.length ? galleryImages : [null, null, null]).length,
+                  )}
                 />
               ))}
             </div>
@@ -2361,23 +2406,32 @@ export default function WorkspacePublicLanding({
         .wpl-gallery-grid {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 14px;
+          gap: 16px;
           margin-top: 20px;
+          grid-auto-flow: dense;
+          align-items: stretch;
         }
         .wpl-gallery-tile {
           aspect-ratio: 1 / 1;
+          min-height: 0;
           border-radius: 22px;
           overflow: hidden;
           border: 1px solid var(--wpl-border);
           box-shadow: 0 12px 28px rgba(18, 22, 16, 0.08);
         }
-        .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid {
-          grid-template-columns: minmax(0, 1.35fr) repeat(2, minmax(0, 0.8fr));
-        }
-        .wpl-section-gallery.wpl-layout-full .wpl-gallery-tile:first-child {
+        .wpl-gallery-tile-featured {
+          grid-column: span 2;
           grid-row: span 2;
           aspect-ratio: auto;
-          min-height: 320px;
+          min-height: clamp(280px, 34vw, 420px);
+        }
+        .wpl-gallery-tile-tall {
+          grid-row: span 2;
+          aspect-ratio: auto;
+          min-height: clamp(240px, 28vw, 340px);
+        }
+        .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
         .wpl-gallery-placeholder {
           background-size: cover;
@@ -3120,15 +3174,31 @@ export default function WorkspacePublicLanding({
         }
         .wpl-estate-gallery-grid-wrap {
           align-self: start;
+          display: grid;
+          grid-template-columns: repeat(var(--wpl-estate-gallery-columns, 3), minmax(0, 1fr));
+          gap: 16px;
+          grid-auto-flow: dense;
+          align-items: stretch;
         }
         .wpl-estate-gallery-grid-item {
           aspect-ratio: 4 / 3;
-          min-height: 0;
+          min-height: 220px;
         }
-        .wpl-estate-gallery-col-item {
-          break-inside: avoid;
-          margin-bottom: 16px;
-          aspect-ratio: 4 / 3;
+        .wpl-estate-gallery-grid-item.is-featured {
+          grid-column: span 2;
+          grid-row: span 2;
+          aspect-ratio: auto;
+          min-height: clamp(300px, 36vw, 460px);
+        }
+        .wpl-estate-gallery-grid-item.is-tall {
+          grid-row: span 2;
+          aspect-ratio: auto;
+          min-height: clamp(260px, 28vw, 360px);
+        }
+        .wpl-estate-gallery-grid-item.is-wide {
+          grid-column: span 2;
+          aspect-ratio: auto;
+          min-height: clamp(220px, 24vw, 300px);
         }
         .wpl-estate-contact-section {
           background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), ${withAlpha(primaryColor, 0.08)}, ${withAlpha(accentColor, 0.12)});
@@ -3546,11 +3616,11 @@ export default function WorkspacePublicLanding({
           transform: rotate(-2deg);
         }
         .theme-property-portfolio .wpl-gallery-grid {
-          grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 0.7fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 16px;
         }
         .theme-property-portfolio .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid {
-          grid-template-columns: minmax(0, 1.6fr) repeat(2, minmax(0, 0.7fr));
+          grid-template-columns: repeat(3, minmax(0, 1fr));
         }
         .theme-property-portfolio .wpl-listings-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4002,6 +4072,17 @@ export default function WorkspacePublicLanding({
           .wpl-estate-gallery-secondary {
             min-height: 160px;
           }
+          .wpl-estate-gallery-grid-wrap {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+          .wpl-estate-gallery-grid-item.is-featured,
+          .wpl-estate-gallery-grid-item.is-tall,
+          .wpl-estate-gallery-grid-item.is-wide {
+            grid-column: auto;
+            grid-row: auto;
+            aspect-ratio: 4 / 3;
+            min-height: 220px;
+          }
           .wpl-estate-footer-meta {
             flex-direction: column;
             align-items: flex-start;
@@ -4059,7 +4140,11 @@ export default function WorkspacePublicLanding({
           .wpl-section-contact.wpl-layout-full .wpl-contact-grid {
             grid-template-columns: 1fr;
           }
-          .wpl-section-gallery.wpl-layout-full .wpl-gallery-tile:first-child {
+          .wpl-gallery-tile-featured,
+          .wpl-gallery-tile-tall {
+            grid-column: auto;
+            grid-row: auto;
+            aspect-ratio: 1 / 1;
             min-height: 220px;
           }
           .wpl-contact-grid {
@@ -4108,8 +4193,17 @@ export default function WorkspacePublicLanding({
           .wpl-estate-notice-grid,
           .wpl-estate-faq-grid,
           .wpl-estate-contact-grid,
-          .wpl-estate-gallery-column {
+          .wpl-estate-gallery-column,
+          .wpl-estate-gallery-grid-wrap {
             grid-template-columns: 1fr;
+          }
+          .wpl-estate-gallery-grid-item.is-featured,
+          .wpl-estate-gallery-grid-item.is-tall,
+          .wpl-estate-gallery-grid-item.is-wide {
+            grid-column: auto;
+            grid-row: auto;
+            aspect-ratio: 4 / 3;
+            min-height: 220px;
           }
           .wpl-estate-stat-grid {
             left: 18px;
