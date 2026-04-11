@@ -2236,7 +2236,7 @@ export default function WorkspacePublicLanding({
         )}
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         /* ─── BASE ─── */
         .wpl-root {
           min-height: 100vh;
