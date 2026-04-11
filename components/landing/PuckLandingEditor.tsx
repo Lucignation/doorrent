@@ -92,6 +92,8 @@ interface ContactSectionProps extends BaseSectionProps {
 
 interface GallerySectionProps extends StandardSectionProps {
   imageUrlsText: string;
+  layoutDirection: "rows" | "columns";
+  columns: "1" | "2" | "3" | "4";
 }
 
 interface CtaSectionProps extends BaseSectionProps {
@@ -272,13 +274,24 @@ function getOrderedSectionKeys(draft: LandingBuilderDraft) {
 }
 
 function createPuckDataFromDraft(draft: LandingBuilderDraft): LandingPuckData {
-  // Restore previously-saved Puck canvas (includes primitive blocks like ImageBlock)
+  // Restore previously-saved Puck canvas when available.
+  // Section block props (gallery images, text fields, etc.) are re-synced from the
+  // current draft fields so they never go stale after a template change or publish.
+  // Primitive blocks (ImageBlock, HeadingBlock, etc.) are preserved as-is.
   if (
     draft.puckData &&
     typeof draft.puckData === "object" &&
     Array.isArray((draft.puckData as { content?: unknown }).content)
   ) {
-    return draft.puckData as LandingPuckData;
+    const restored = draft.puckData as LandingPuckData;
+    const syncedContent = restored.content.map((item) => {
+      const sectionKey = SECTION_KEY_BY_TYPE[item.type as SectionComponentType];
+      if (sectionKey) {
+        return createPuckSection(sectionKey, draft);
+      }
+      return item;
+    });
+    return { ...restored, content: syncedContent };
   }
 
   const content = getOrderedSectionKeys(draft).map((sectionKey) =>
@@ -402,6 +415,8 @@ function createPuckSection(
           title: draft.galleryTitle,
           body: draft.galleryBody,
           imageUrlsText: joinListInput(draft.galleryImageUrls),
+          layoutDirection: draft.galleryLayoutDirection ?? "rows",
+          columns: draft.galleryColumns ?? "3",
         },
       };
     case "cta":
@@ -522,6 +537,8 @@ function applyPuckDataToDraft(
           nextDraft.galleryTitle = props.title ?? "";
           nextDraft.galleryBody = props.body ?? "";
           nextDraft.galleryImageUrls = splitListInput(props.imageUrlsText ?? "");
+          nextDraft.galleryLayoutDirection = props.layoutDirection ?? "rows";
+          nextDraft.galleryColumns = props.columns ?? "3";
           break;
         }
       case "cta":
@@ -994,20 +1011,44 @@ const puckConfig: Config = {
           type: "textarea",
           label: "Image URLs",
         },
+        layoutDirection: {
+          type: "radio",
+          label: "Layout direction",
+          options: [{ label: "Rows", value: "rows" }, { label: "Columns", value: "columns" }],
+        },
+        columns: {
+          type: "select",
+          label: "Columns",
+          options: [{ label: "1", value: "1" }, { label: "2", value: "2" }, { label: "3", value: "3" }, { label: "4", value: "4" }],
+        },
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Gallery", body: "", imageUrlsText: "" },
-      render: ({ puck, visibility, layout, title, body, imageUrlsText }) => (
-        <SectionFrame
-          puck={puck}
-          label="Gallery"
-          title={title}
-          subtitle={body}
-          layout={layout}
-          visibility={visibility}
-        >
-          {renderSectionItems("gallery", imageUrlsText, "gold")}
-        </SectionFrame>
-      ),
+      defaultProps: { visibility: "visible", layout: "contained", title: "Gallery", body: "", imageUrlsText: "", layoutDirection: "rows" as const, columns: "3" as const },
+      render: ({ puck, visibility, layout, title, body, imageUrlsText, layoutDirection, columns }) => {
+        const images = splitListInput(imageUrlsText ?? "").slice(0, 8);
+        const cols = Number(columns ?? "3");
+        const gridStyle = layoutDirection === "columns"
+          ? { columnCount: cols, columnGap: 6 }
+          : { display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 6 };
+        return (
+          <SectionFrame
+            puck={puck}
+            label="Gallery"
+            title={title}
+            subtitle={body}
+            layout={layout}
+            visibility={visibility}
+          >
+            {images.length ? (
+              <div style={{ ...gridStyle, marginTop: 8 }}>
+                {images.map((url) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img key={url} src={url} alt="gallery" style={{ width: "100%", height: 64, objectFit: "cover", borderRadius: 6, display: "block", marginBottom: layoutDirection === "columns" ? 6 : 0 }} />
+                ))}
+              </div>
+            ) : renderEmptyPreviewState("gallery")}
+          </SectionFrame>
+        );
+      },
     },
     CtaSection: {
       label: "CTA Buttons",
