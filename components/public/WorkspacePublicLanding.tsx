@@ -40,6 +40,13 @@ interface WorkspacePublicLandingProps {
   previewMode?: boolean;
 }
 
+type WorkspacePublicPuckItem = {
+  type: string;
+  props: Record<string, unknown>;
+};
+
+type WorkspacePublicPuckZones = Record<string, WorkspacePublicPuckItem[]>;
+
 function mapTemplateId(
   value: string | null | undefined,
 ): LandingBuilderTemplateId | undefined {
@@ -217,6 +224,41 @@ function getSharedGalleryTileClassName(index: number, total: number) {
   }
 
   return classes.join(" ");
+}
+
+function getWorkspacePuckItemId(item: WorkspacePublicPuckItem) {
+  const rawId = item.props.id;
+  return typeof rawId === "string" && rawId ? rawId : null;
+}
+
+function comparePuckZoneNames(left: string, right: string) {
+  const leftMatch = left.match(/^(.*?)-(\d+)$/);
+  const rightMatch = right.match(/^(.*?)-(\d+)$/);
+
+  if (leftMatch && rightMatch && leftMatch[1] === rightMatch[1]) {
+    return Number(leftMatch[2]) - Number(rightMatch[2]);
+  }
+
+  return left.localeCompare(right);
+}
+
+function getWorkspacePuckZoneEntries(
+  item: WorkspacePublicPuckItem,
+  zones: WorkspacePublicPuckZones,
+) {
+  const itemId = getWorkspacePuckItemId(item);
+
+  if (!itemId) {
+    return [];
+  }
+
+  return Object.entries(zones)
+    .filter(([zoneCompound]) => zoneCompound.startsWith(`${itemId}:`))
+    .map(([zoneCompound, content]) => ({
+      zoneName: zoneCompound.slice(itemId.length + 1),
+      content,
+    }))
+    .sort((left, right) => comparePuckZoneNames(left.zoneName, right.zoneName));
 }
 
 function WorkspacePublicHeroMedia({
@@ -1572,14 +1614,116 @@ export default function WorkspacePublicLanding({
     }
   }
 
-  // ─── Puck primitive renderer (public page) ───────────────────────────────
-  function renderPuckPrimitive(
-    item: { type: string; props: Record<string, unknown> },
+  function getPuckGapSize(size: unknown) {
+    return size === "small" ? 8 : size === "large" ? 24 : 16;
+  }
+
+  function renderPuckItems(
+    items: WorkspacePublicPuckItem[],
+    zones: WorkspacePublicPuckZones,
+  ) {
+    return items.map((item, index) => renderPuckItem(item, index, zones));
+  }
+
+  // ─── Puck renderer (public page) ─────────────────────────────────────────
+  function renderPuckItem(
+    item: WorkspacePublicPuckItem,
     index: number,
+    zones: WorkspacePublicPuckZones,
   ) {
     const key = (item.props.id as string | undefined) ?? `puck-${item.type}-${index}`;
 
+    if (item.type === "HeroSection") {
+      return null;
+    }
+
+    const sectionKey = PUCK_SECTION_TYPE_MAP[item.type];
+
+    if (sectionKey) {
+      if ((item.props as { visibility?: string }).visibility === "hidden") {
+        return null;
+      }
+
+      return renderSection(sectionKey);
+    }
+
     switch (item.type) {
+      case "GridBlock": {
+        const zoneContentByName = new Map(
+          getWorkspacePuckZoneEntries(item, zones).map((entry) => [entry.zoneName, entry.content]),
+        );
+        const columns = Math.max(1, Math.min(Number(item.props.columns ?? "2"), 4));
+        const gap = getPuckGapSize(item.props.gap);
+
+        return (
+          <div key={key} className="wpl-puck-block wpl-puck-grid-block">
+            <div
+              className="wpl-puck-grid"
+              style={{
+                gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+                gap,
+              }}
+            >
+              {Array.from({ length: columns }).map((_, columnIndex) => {
+                const zoneItems = zoneContentByName.get(`col-${columnIndex}`) ?? [];
+
+                return (
+                  <div key={`${key}-col-${columnIndex}`} className="wpl-puck-grid-col">
+                    {renderPuckItems(zoneItems, zones)}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      }
+      case "FlexBlock": {
+        const zoneContentByName = new Map(
+          getWorkspacePuckZoneEntries(item, zones).map((entry) => [entry.zoneName, entry.content]),
+        );
+        const direction = item.props.direction === "column" ? "column" : "row";
+        const align = item.props.align === "end"
+          ? "flex-end"
+          : item.props.align === "center"
+            ? "center"
+            : "flex-start";
+        const justify = item.props.justify === "between"
+          ? "space-between"
+          : item.props.justify === "end"
+            ? "flex-end"
+            : item.props.justify === "center"
+            ? "center"
+              : "flex-start";
+        const gap = getPuckGapSize(item.props.gap);
+        const zoneItems = zoneContentByName.get("flex-content") ?? [];
+
+        return (
+          <div key={key} className="wpl-puck-block wpl-puck-flex-block">
+            <div
+              className="wpl-puck-flex"
+              style={{
+                flexDirection: direction,
+                alignItems: align,
+                justifyContent: justify,
+                gap,
+              }}
+            >
+              {zoneItems.map((childItem, childIndex) => (
+                <div
+                  key={
+                    (childItem.props.id as string | undefined) ??
+                    `${key}-flex-child-${childIndex}`
+                  }
+                  className="wpl-puck-flex-item"
+                  style={direction === "row" ? { flex: "1 1 0", minWidth: 0 } : undefined}
+                >
+                  {renderPuckItem(childItem, childIndex, zones)}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      }
       case "HeadingBlock": {
         const { text = "", level = "h2", align = "left" } = item.props as { text: string; level: string; align: string };
         const Tag = level as "h1" | "h2" | "h3" | "h4";
@@ -1664,23 +1808,14 @@ export default function WorkspacePublicLanding({
       return contentSections.map((sectionKey) => renderSection(sectionKey));
     }
 
-    type PuckItem = { type: string; props: Record<string, unknown> };
-    const content = ((draft.puckData as { content?: PuckItem[] }).content ?? []);
+    const puckData = draft.puckData as {
+      content?: WorkspacePublicPuckItem[];
+      zones?: WorkspacePublicPuckZones;
+    };
+    const content = puckData.content ?? [];
+    const zones = puckData.zones ?? {};
 
-    return content.map((item, index) => {
-      // Hero is rendered in <header>, skip here
-      if (item.type === "HeroSection") return null;
-
-      // Known section block
-      const sectionKey = PUCK_SECTION_TYPE_MAP[item.type];
-      if (sectionKey) {
-        if ((item.props as { visibility?: string }).visibility === "hidden") return null;
-        return renderSection(sectionKey);
-      }
-
-      // Primitive block
-      return renderPuckPrimitive(item, index);
-    });
+    return renderPuckItems(content, zones);
   }
 
   return (
@@ -1971,6 +2106,7 @@ export default function WorkspacePublicLanding({
           color: #171914;
           font-family: var(--wpl-body-font);
           -webkit-font-smoothing: antialiased;
+          overflow-x: hidden;
         }
         .wpl-nav,
         .wpl-main,
@@ -2251,6 +2387,7 @@ export default function WorkspacePublicLanding({
           grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 26px;
           padding-bottom: 34px;
+          min-width: 0;
         }
         .wpl-section {
           grid-column: span 1;
@@ -2261,6 +2398,7 @@ export default function WorkspacePublicLanding({
           background: var(--wpl-surface);
           box-shadow: var(--wpl-card-shadow);
           overflow: hidden;
+          min-width: 0;
         }
         .wpl-section::before {
           content: "";
@@ -2712,6 +2850,7 @@ export default function WorkspacePublicLanding({
         }
         .wpl-estate-section {
           overflow: hidden;
+          min-width: 0;
         }
         .wpl-estate-section::before {
           opacity: 0.26;
@@ -4166,6 +4305,12 @@ export default function WorkspacePublicLanding({
           .wpl-estate-gallery-grid-wrap.is-columns {
             column-count: 1;
           }
+          .wpl-puck-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .wpl-puck-flex {
+            flex-direction: column !important;
+          }
           .wpl-estate-stat-grid {
             left: 18px;
             right: 18px;
@@ -4184,6 +4329,7 @@ export default function WorkspacePublicLanding({
           border-radius: 20px;
           border: 1px solid var(--wpl-border);
           background: var(--wpl-surface);
+          min-width: 0;
         }
         .wpl-puck-heading h1,
         .wpl-puck-heading h2,
@@ -4210,6 +4356,54 @@ export default function WorkspacePublicLanding({
           display: flex;
           flex-wrap: wrap;
           gap: 12px;
+        }
+        .wpl-puck-grid {
+          display: grid;
+          min-width: 0;
+        }
+        .wpl-puck-grid-col {
+          display: grid;
+          gap: 16px;
+          align-content: start;
+          min-width: 0;
+        }
+        .wpl-puck-flex {
+          display: flex;
+          flex-wrap: wrap;
+          min-width: 0;
+        }
+        .wpl-puck-flex-item {
+          min-width: 0;
+        }
+        .wpl-puck-grid-col > .wpl-section,
+        .wpl-puck-flex-item > .wpl-section,
+        .wpl-puck-grid-col > .wpl-estate-section,
+        .wpl-puck-flex-item > .wpl-estate-section {
+          grid-column: auto;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
+          justify-self: stretch;
+        }
+        .wpl-puck-grid-col > .wpl-section.wpl-layout-center,
+        .wpl-puck-flex-item > .wpl-section.wpl-layout-center,
+        .wpl-puck-grid-col > .wpl-estate-section.wpl-layout-center,
+        .wpl-puck-flex-item > .wpl-estate-section.wpl-layout-center {
+          width: 100%;
+          justify-self: stretch;
+        }
+        .wpl-puck-grid-col > .wpl-section.wpl-layout-full,
+        .wpl-puck-flex-item > .wpl-section.wpl-layout-full,
+        .wpl-puck-grid-col > .wpl-estate-section.wpl-layout-full,
+        .wpl-puck-flex-item > .wpl-estate-section.wpl-layout-full,
+        .wpl-puck-grid-col > .wpl-estate-gallery-section,
+        .wpl-puck-flex-item > .wpl-estate-gallery-section,
+        .wpl-puck-grid-col > .wpl-estate-notice-section,
+        .wpl-puck-flex-item > .wpl-estate-notice-section,
+        .wpl-puck-grid-col > .wpl-estate-contact-section,
+        .wpl-puck-flex-item > .wpl-estate-contact-section {
+          grid-template-columns: 1fr;
+          min-height: 0;
         }
         .wpl-puck-btn-primary {
           background: var(--wpl-primary);
