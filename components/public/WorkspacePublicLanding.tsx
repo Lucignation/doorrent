@@ -874,6 +874,7 @@ export default function WorkspacePublicLanding({
     const sectionId = getSectionAnchorId(sectionKey);
     const sectionClass = `wpl-section wpl-section-${sectionKey} wpl-estate-section wpl-layout-${layout}`;
     const mediaUrl = estateSectionMedia[sectionKey] ?? null;
+    const hasSectionMedia = Boolean(mediaUrl);
     const isCompactLayout = layout === "half";
 
     switch (sectionKey) {
@@ -886,33 +887,41 @@ export default function WorkspacePublicLanding({
                 <h2>{draft.aboutTitle}</h2>
                 <p>{draft.aboutBody}</p>
               </div>
-              <WorkspacePublicSurfaceImage
-                imageUrl={mediaUrl}
-                alt={`${displayName} overview`}
-                fallbackBackground={heroBackground}
-                frameClassName="wpl-estate-media-frame wpl-estate-media-compact"
-                imageClassName="wpl-estate-media-image"
-              />
+              {hasSectionMedia ? (
+                <WorkspacePublicSurfaceImage
+                  imageUrl={mediaUrl}
+                  alt={`${displayName} overview`}
+                  fallbackBackground={heroBackground}
+                  frameClassName="wpl-estate-media-frame wpl-estate-media-compact"
+                  imageClassName="wpl-estate-media-image"
+                />
+              ) : null}
             </section>
           );
         }
 
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`}>
+          <section
+            key={sectionKey}
+            id={sectionId}
+            className={`${sectionClass} wpl-estate-section-centered${hasSectionMedia ? "" : " wpl-estate-section--text-only"}`}
+          >
             <div className="wpl-estate-intro">
               <span className="wpl-estate-pill">Why choose us</span>
               <h2>{draft.aboutTitle}</h2>
               <p>{draft.aboutBody}</p>
             </div>
-            <WorkspacePublicSurfaceImage
-              imageUrl={mediaUrl}
-              alt={`${displayName} overview`}
-              fallbackBackground={heroBackground}
-              frameClassName="wpl-estate-media-frame wpl-estate-media-wide"
-              imageClassName="wpl-estate-media-image"
-            >
-              <div className="wpl-estate-media-sheen" />
-            </WorkspacePublicSurfaceImage>
+            {hasSectionMedia ? (
+              <WorkspacePublicSurfaceImage
+                imageUrl={mediaUrl}
+                alt={`${displayName} overview`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-wide"
+                imageClassName="wpl-estate-media-image"
+              >
+                <div className="wpl-estate-media-sheen" />
+              </WorkspacePublicSurfaceImage>
+            ) : null}
           </section>
         );
 
@@ -920,13 +929,15 @@ export default function WorkspacePublicLanding({
         if (isCompactLayout) {
           return (
             <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
-              <WorkspacePublicSurfaceImage
-                imageUrl={mediaUrl}
-                alt={`${displayName} features`}
-                fallbackBackground={heroBackground}
-                frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
-                imageClassName="wpl-estate-media-image"
-              />
+              {hasSectionMedia ? (
+                <WorkspacePublicSurfaceImage
+                  imageUrl={mediaUrl}
+                  alt={`${displayName} features`}
+                  fallbackBackground={heroBackground}
+                  frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
+                  imageClassName="wpl-estate-media-image"
+                />
+              ) : null}
               <div className="wpl-estate-compact-copy">
                 <span className="wpl-estate-pill">Get started</span>
                 <h2>{draft.featuresTitle}</h2>
@@ -954,7 +965,11 @@ export default function WorkspacePublicLanding({
         }
 
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-feature-section`}>
+          <section
+            key={sectionKey}
+            id={sectionId}
+            className={`${sectionClass} wpl-estate-feature-section${hasSectionMedia ? "" : " wpl-estate-section--text-only"}`}
+          >
             <div className="wpl-estate-feature-copy">
               <span className="wpl-estate-pill">Get started</span>
               <h2>{draft.featuresTitle}</h2>
@@ -975,18 +990,20 @@ export default function WorkspacePublicLanding({
                 })}
               </div>
             </div>
-            <WorkspacePublicSurfaceImage
-              imageUrl={mediaUrl}
-              alt={`${displayName} features`}
-              fallbackBackground={heroBackground}
-              frameClassName="wpl-estate-media-frame wpl-estate-media-tall"
-              imageClassName="wpl-estate-media-image"
-            >
-              <div className="wpl-estate-media-caption-card">
-                <span>{displayName}</span>
-                <strong>{draft.heroEyebrow}</strong>
-              </div>
-            </WorkspacePublicSurfaceImage>
+            {hasSectionMedia ? (
+              <WorkspacePublicSurfaceImage
+                imageUrl={mediaUrl}
+                alt={`${displayName} features`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-tall"
+                imageClassName="wpl-estate-media-image"
+              >
+                <div className="wpl-estate-media-caption-card">
+                  <span>{displayName}</span>
+                  <strong>{draft.heroEyebrow}</strong>
+                </div>
+              </WorkspacePublicSurfaceImage>
+            ) : null}
           </section>
         );
 
@@ -994,13 +1011,15 @@ export default function WorkspacePublicLanding({
         if (isCompactLayout) {
           return (
             <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
-              <WorkspacePublicSurfaceImage
-                imageUrl={mediaUrl}
-                alt={`${displayName} listings`}
-                fallbackBackground={heroBackground}
-                frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
-                imageClassName="wpl-estate-media-image"
-              />
+              {hasSectionMedia ? (
+                <WorkspacePublicSurfaceImage
+                  imageUrl={mediaUrl}
+                  alt={`${displayName} listings`}
+                  fallbackBackground={heroBackground}
+                  frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
+                  imageClassName="wpl-estate-media-image"
+                />
+              ) : null}
               <div className="wpl-estate-compact-copy">
                 <span className="wpl-estate-pill">Our estates</span>
                 <h2>{draft.listingsTitle}</h2>
@@ -1026,14 +1045,20 @@ export default function WorkspacePublicLanding({
         }
 
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-split-section`}>
-            <WorkspacePublicSurfaceImage
-              imageUrl={mediaUrl}
-              alt={`${displayName} listings`}
-              fallbackBackground={heroBackground}
-              frameClassName="wpl-estate-media-frame wpl-estate-media-tall"
-              imageClassName="wpl-estate-media-image"
-            />
+          <section
+            key={sectionKey}
+            id={sectionId}
+            className={`${sectionClass} wpl-estate-split-section${hasSectionMedia ? "" : " wpl-estate-section--text-only"}`}
+          >
+            {hasSectionMedia ? (
+              <WorkspacePublicSurfaceImage
+                imageUrl={mediaUrl}
+                alt={`${displayName} listings`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-tall"
+                imageClassName="wpl-estate-media-image"
+              />
+            ) : null}
             <div className="wpl-estate-split-copy">
               <span className="wpl-estate-pill">Our estates</span>
               <h2>{draft.listingsTitle}</h2>
@@ -1063,18 +1088,20 @@ export default function WorkspacePublicLanding({
         if (isCompactLayout) {
           return (
             <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
-              <WorkspacePublicSurfaceImage
-                imageUrl={mediaUrl}
-                alt={`${displayName} leadership`}
-                fallbackBackground={heroBackground}
-                frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
-                imageClassName="wpl-estate-media-image"
-              >
-                <div className="wpl-estate-spotlight-caption">
-                  <strong>{leadTeam.title}</strong>
-                  {leadTeam.detail ? <span>{leadTeam.detail}</span> : null}
-                </div>
-              </WorkspacePublicSurfaceImage>
+              {hasSectionMedia ? (
+                <WorkspacePublicSurfaceImage
+                  imageUrl={mediaUrl}
+                  alt={`${displayName} leadership`}
+                  fallbackBackground={heroBackground}
+                  frameClassName="wpl-estate-media-frame wpl-estate-media-inline"
+                  imageClassName="wpl-estate-media-image"
+                >
+                  <div className="wpl-estate-spotlight-caption">
+                    <strong>{leadTeam.title}</strong>
+                    {leadTeam.detail ? <span>{leadTeam.detail}</span> : null}
+                  </div>
+                </WorkspacePublicSurfaceImage>
+              ) : null}
               <div className="wpl-estate-compact-copy">
                 <span className="wpl-estate-pill">Leadership spotlight</span>
                 <h2>{draft.teamTitle}</h2>
@@ -1097,25 +1124,31 @@ export default function WorkspacePublicLanding({
         }
 
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`}>
+          <section
+            key={sectionKey}
+            id={sectionId}
+            className={`${sectionClass} wpl-estate-section-centered${hasSectionMedia ? "" : " wpl-estate-section--text-only"}`}
+          >
             <div className="wpl-estate-intro">
               <span className="wpl-estate-pill">Leadership spotlight</span>
               <h2>{draft.teamTitle}</h2>
               <p>{draft.teamBody}</p>
             </div>
-            <WorkspacePublicSurfaceImage
-              imageUrl={mediaUrl}
-              alt={`${displayName} leadership`}
-              fallbackBackground={heroBackground}
-              frameClassName="wpl-estate-media-frame wpl-estate-media-wide"
-              imageClassName="wpl-estate-media-image"
-            >
-              <div className="wpl-estate-video-button" aria-hidden="true" />
-              <div className="wpl-estate-spotlight-caption">
-                <strong>{leadTeam.title}</strong>
-                {leadTeam.detail ? <span>{leadTeam.detail}</span> : null}
-              </div>
-            </WorkspacePublicSurfaceImage>
+            {hasSectionMedia ? (
+              <WorkspacePublicSurfaceImage
+                imageUrl={mediaUrl}
+                alt={`${displayName} leadership`}
+                fallbackBackground={heroBackground}
+                frameClassName="wpl-estate-media-frame wpl-estate-media-wide"
+                imageClassName="wpl-estate-media-image"
+              >
+                <div className="wpl-estate-video-button" aria-hidden="true" />
+                <div className="wpl-estate-spotlight-caption">
+                  <strong>{leadTeam.title}</strong>
+                  {leadTeam.detail ? <span>{leadTeam.detail}</span> : null}
+                </div>
+              </WorkspacePublicSurfaceImage>
+            ) : null}
             <div className="wpl-estate-team-row">
               {draft.teamItems.slice(0, 6).map((item) => {
                 const { title, detail } = splitLandingItem(item);
@@ -1157,6 +1190,31 @@ export default function WorkspacePublicLanding({
                     );
                   })}
                 </div>
+              </div>
+            </section>
+          );
+        }
+
+        if (!hasSectionMedia) {
+          return (
+            <section
+              key={sectionKey}
+              id={sectionId}
+              className={`${sectionClass} wpl-estate-text-stat-section wpl-estate-section--text-only`}
+            >
+              <div className="wpl-estate-intro">
+                <span className="wpl-estate-pill">Estate dues</span>
+                <h2>{draft.feesTitle}</h2>
+                <p>{draft.feesBody}</p>
+              </div>
+              <div className="wpl-estate-stat-grid wpl-estate-stat-grid-inline">
+                {estateStatCards.map((item) => (
+                  <div key={`${item.label}-${item.value}`} className="wpl-estate-stat-card">
+                    <strong>{item.value}</strong>
+                    <span>{item.label}</span>
+                    <small>{item.caption}</small>
+                  </div>
+                ))}
               </div>
             </section>
           );
@@ -2873,6 +2931,10 @@ export default function WorkspacePublicLanding({
           flex-direction: column;
           gap: 24px;
         }
+        .wpl-estate-section--text-only {
+          grid-template-columns: 1fr !important;
+          min-height: 0;
+        }
         .wpl-estate-section-compact {
           padding: 26px;
           border-radius: 28px;
@@ -3208,6 +3270,14 @@ export default function WorkspacePublicLanding({
           grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 16px;
         }
+        .wpl-estate-stat-grid-inline {
+          position: static;
+          left: auto;
+          right: auto;
+          bottom: auto;
+          margin-top: 8px;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
         .wpl-estate-stat-card {
           padding: 18px 16px;
           border-radius: 24px;
@@ -3238,6 +3308,15 @@ export default function WorkspacePublicLanding({
           font-size: 12px;
           line-height: 1.5;
           color: rgba(255, 255, 255, 0.76);
+        }
+        .wpl-estate-stat-grid-inline .wpl-estate-stat-card {
+          background: rgba(255, 255, 255, 0.88);
+          border: 1px solid var(--wpl-border);
+          color: #171914;
+          backdrop-filter: none;
+        }
+        .wpl-estate-stat-grid-inline .wpl-estate-stat-card small {
+          color: var(--wpl-muted);
         }
         .wpl-estate-notice-section {
           grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
@@ -3293,7 +3372,7 @@ export default function WorkspacePublicLanding({
         .wpl-estate-gallery-grid-wrap.is-rows {
           display: grid;
           grid-template-columns: repeat(var(--wpl-estate-gallery-columns, 3), minmax(0, 1fr));
-          gap: 16px;
+          gap: 12px;
           align-items: stretch;
         }
         .wpl-estate-gallery-grid-wrap.is-columns {
@@ -3301,10 +3380,15 @@ export default function WorkspacePublicLanding({
           column-gap: 16px;
         }
         .wpl-estate-gallery-grid-item {
-          aspect-ratio: 4 / 3;
-          min-height: 220px;
+          width: 100%;
+        }
+        .wpl-estate-gallery-grid-wrap.is-rows .wpl-estate-gallery-grid-item {
+          aspect-ratio: 1.55 / 1;
+          min-height: clamp(88px, 12vw, 136px);
         }
         .wpl-estate-gallery-grid-wrap.is-columns .wpl-estate-gallery-grid-item {
+          aspect-ratio: 4 / 3;
+          min-height: 220px;
           break-inside: avoid;
           display: block;
           width: 100%;
@@ -4183,7 +4267,7 @@ export default function WorkspacePublicLanding({
             min-height: 160px;
           }
           .wpl-estate-gallery-grid-wrap.is-rows {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
           }
           .wpl-estate-gallery-grid-wrap.is-columns {
             column-count: 2;
@@ -4298,9 +4382,14 @@ export default function WorkspacePublicLanding({
           .wpl-estate-notice-grid,
           .wpl-estate-faq-grid,
           .wpl-estate-contact-grid,
-          .wpl-estate-gallery-column,
-          .wpl-estate-gallery-grid-wrap.is-rows {
+          .wpl-estate-gallery-column {
             grid-template-columns: 1fr;
+          }
+          .wpl-estate-gallery-grid-wrap.is-rows {
+            gap: 8px;
+          }
+          .wpl-estate-gallery-grid-wrap.is-rows .wpl-estate-gallery-grid-item {
+            min-height: 84px;
           }
           .wpl-estate-gallery-grid-wrap.is-columns {
             column-count: 1;
