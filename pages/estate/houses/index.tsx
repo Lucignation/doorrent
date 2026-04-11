@@ -146,13 +146,20 @@ export default function EstateHousesPage() {
       const { headers, rows } = parseCsvText(text);
       const idx = (col: string) => headers.findIndex((h) => h.toLowerCase() === col.toLowerCase());
       let created = 0;
-      for (const row of rows) {
+      for (const [rowIndex, row] of rows.entries()) {
         const fullName = row[idx("fullName")] ?? row[idx("full_name")] ?? "";
         const houseNumber = row[idx("houseNumber")] ?? row[idx("house_number")] ?? "";
+        const email = row[idx("email")]?.trim() ?? "";
         if (!fullName) continue;
+        if (!email) {
+          throw new Error(`Resident CSV row ${rowIndex + 2} is missing an email address.`);
+        }
         // Find residence by houseNumber
         const residence = residences.find((r) => r.houseNumber === houseNumber);
-        await apiRequest("/estate/residents", { method: "POST", token, body: { fullName, email: row[idx("email")] || undefined, phone: row[idx("phone")] || undefined, residenceId: residence?.id || undefined, residentType: row[idx("residentType")] || "TENANT", status: row[idx("status")] || "ACTIVE" } });
+        if (!residence?.id) {
+          throw new Error(`Resident CSV row ${rowIndex + 2} references house "${houseNumber}" which was not found.`);
+        }
+        await apiRequest("/estate/residents", { method: "POST", token, body: { fullName, email, phone: row[idx("phone")] || undefined, residenceId: residence.id, residentType: row[idx("residentType")] || "TENANT", status: row[idx("status")] || "ACTIVE" } });
         created++;
       }
       showToast(`Imported ${created} resident(s).`, "success");
@@ -272,7 +279,7 @@ export default function EstateHousesPage() {
           </span>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => residentFileRef.current?.click()} disabled={importing}>{importing ? "Importing…" : "Import Residents CSV"}</button>
           <input ref={residentFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportResidents} />
-          <span className="td-muted" style={{ fontSize: 12 }}>Houses CSV: houseNumber, block, label, ownerName, ownerPhone, billingBasis, status · Residents CSV: fullName, email, phone, houseNumber, residentType, status</span>
+          <span className="td-muted" style={{ fontSize: 12 }}>Houses CSV: houseNumber, block, label, ownerName, ownerPhone, billingBasis, status · Residents CSV: fullName, email, phone, houseNumber, residentType, status. Email is required for resident portal sign-in.</span>
         </div>
       </div>
 

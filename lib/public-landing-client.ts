@@ -2,6 +2,7 @@ import type {
   LandingBuilderDraft,
   LandingBuilderWorkspace,
 } from "./landing-builder";
+import { apiRequest } from "./api";
 
 interface LandingBuilderApiEnvelope<T> {
   success?: boolean;
@@ -13,6 +14,13 @@ export interface PublishedLandingDraftRecord {
   workspaceSlug: string;
   workspaceType: "estate" | "property";
   draft: Partial<LandingBuilderDraft> | LandingBuilderDraft;
+  updatedAt: string | null;
+}
+
+export interface SavedLandingDraftRecord {
+  workspaceSlug: string | null;
+  workspaceType: "estate" | "property";
+  draft: Partial<LandingBuilderDraft> | LandingBuilderDraft | null;
   updatedAt: string | null;
 }
 
@@ -83,4 +91,45 @@ export async function publishLandingDraft(input: {
     response,
     "Failed to publish the landing page.",
   );
+}
+
+function buildWorkspaceLandingDraftPath(workspaceType: LandingBuilderWorkspace) {
+  return workspaceType === "estate"
+    ? "/estate/settings/landing-page"
+    : "/landlord/settings/landing-page";
+}
+
+export async function fetchSavedLandingDraft(input: {
+  token: string;
+  workspaceType: LandingBuilderWorkspace;
+}) {
+  const { data } = await apiRequest<SavedLandingDraftRecord>(
+    buildWorkspaceLandingDraftPath(input.workspaceType),
+    {
+      token: input.token,
+    },
+  );
+
+  return data;
+}
+
+export async function saveLandingDraft(input: {
+  token: string;
+  workspaceSlug?: string | null;
+  workspaceType: LandingBuilderWorkspace;
+  draft: LandingBuilderDraft;
+}) {
+  const { data } = await apiRequest<SavedLandingDraftRecord>(
+    buildWorkspaceLandingDraftPath(input.workspaceType),
+    {
+      method: "PATCH",
+      token: input.token,
+      body: {
+        workspaceSlug: input.workspaceSlug ?? undefined,
+        draft: input.draft,
+      },
+    },
+  );
+
+  return data;
 }
