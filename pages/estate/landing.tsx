@@ -9,8 +9,9 @@ import { apiRequest } from "../../lib/api";
 import type { LandingBuilderDraft } from "../../lib/landing-builder";
 import type { EstateAdminCapabilities } from "../../lib/estate-admin-access";
 import {
-  fetchPublishedLandingDraft,
+  fetchSavedLandingDraft,
   publishLandingDraft,
+  saveLandingDraft,
 } from "../../lib/public-landing-client";
 
 interface EstateLandingSettingsResponse {
@@ -44,7 +45,7 @@ export default function EstateLandingPage() {
   const { estateAdminSession } = useEstateAdminPortalSession();
   const token = estateAdminSession?.token;
   const [settings, setSettings] = useState<EstateLandingSettingsResponse | null>(null);
-  const [publishedDraft, setPublishedDraft] = useState<Partial<LandingBuilderDraft> | null>(null);
+  const [persistedDraft, setPersistedDraft] = useState<Partial<LandingBuilderDraft> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -56,28 +57,27 @@ export default function EstateLandingPage() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    setPublishedDraft(null);
+    setPersistedDraft(null);
 
     void (async () => {
       try {
         const { data } = await apiRequest<EstateLandingSettingsResponse>("/estate/settings", {
           token,
         });
-        const workspaceSlug = data.profile.workspaceSlug?.trim();
-        let nextPublishedDraft: Partial<LandingBuilderDraft> | null = null;
-
-        if (workspaceSlug) {
-          try {
-            nextPublishedDraft =
-              (await fetchPublishedLandingDraft(workspaceSlug))?.draft ?? null;
-          } catch {
-            nextPublishedDraft = null;
-          }
+        let nextPersistedDraft: Partial<LandingBuilderDraft> | null = null;
+        try {
+          const landingDraft = await fetchSavedLandingDraft({
+            token,
+            workspaceType: "estate",
+          });
+          nextPersistedDraft = (landingDraft?.draft as Partial<LandingBuilderDraft> | null) ?? null;
+        } catch {
+          nextPersistedDraft = null;
         }
 
         if (!cancelled) {
           setSettings(data);
-          setPublishedDraft(nextPublishedDraft);
+          setPersistedDraft(nextPersistedDraft);
         }
       } catch (requestError) {
         if (!cancelled) {
@@ -122,7 +122,7 @@ export default function EstateLandingPage() {
         draft,
       });
 
-      setPublishedDraft(record.draft);
+      setPersistedDraft(record.draft);
 
       try {
         await apiRequest("/estate/settings/profile", {
@@ -184,6 +184,21 @@ export default function EstateLandingPage() {
     }
   }
 
+  async function saveDraft(draft: LandingBuilderDraft) {
+    if (!token) {
+      return;
+    }
+
+    const record = await saveLandingDraft({
+      token,
+      workspaceSlug: settings?.profile.workspaceSlug ?? null,
+      workspaceType: "estate",
+      draft,
+    });
+
+    return (record?.draft as Partial<LandingBuilderDraft> | null) ?? draft;
+  }
+
   return (
     <EstatePortalShell topbarTitle="Landing Page Builder" breadcrumb="Landing Page Builder">
       <PageMeta title="Landing Page Builder — Estate" />
@@ -219,7 +234,8 @@ export default function EstateLandingPage() {
             settings.capabilities.canUseBrandedSubdomain
           }
           enterpriseEnabled={settings.capabilities.isEnterprisePlan}
-          publishedDraft={publishedDraft}
+          persistedDraft={persistedDraft}
+          onSaveDraft={saveDraft}
           onPublishBranding={publishBranding}
         />
       )}

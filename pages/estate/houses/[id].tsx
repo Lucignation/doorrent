@@ -181,7 +181,20 @@ export default function EstateHouseDetailPage() {
               <form onSubmit={handleSaveResident} className="estate-form-grid">
                 <label>Full name <input className="form-input" value={residentForm.fullName} onChange={(e) => setResidentForm((f) => ({ ...f, fullName: e.target.value }))} required /></label>
                 <label>Phone <input className="form-input" type="tel" value={residentForm.phone} onChange={(e) => setResidentForm((f) => ({ ...f, phone: e.target.value }))} /></label>
-                <label>Email <input className="form-input" type="email" value={residentForm.email} onChange={(e) => setResidentForm((f) => ({ ...f, email: e.target.value }))} /></label>
+                <label>
+                  Email
+                  <input
+                    className="form-input"
+                    type="email"
+                    value={residentForm.email}
+                    onChange={(e) => setResidentForm((f) => ({ ...f, email: e.target.value }))}
+                    placeholder="resident@example.com"
+                    required
+                  />
+                  <div className="td-muted" style={{ fontSize: 12, marginTop: 6 }}>
+                    Residents sign in with a 6-digit email code or magic link, not a password.
+                  </div>
+                </label>
                 <label>Resident type
                   <select className="form-input" value={residentForm.residentType} onChange={(e) => setResidentForm((f) => ({ ...f, residentType: e.target.value }))}>
                     <option value="TENANT">Tenant</option>

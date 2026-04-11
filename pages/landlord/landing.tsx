@@ -9,8 +9,9 @@ import { apiRequest } from "../../lib/api";
 import type { LandingBuilderDraft, LandingBuilderWorkspace } from "../../lib/landing-builder";
 import type { LandlordCapabilities } from "../../lib/landlord-access";
 import {
-  fetchPublishedLandingDraft,
+  fetchSavedLandingDraft,
   publishLandingDraft,
+  saveLandingDraft,
 } from "../../lib/public-landing-client";
 
 interface LandlordLandingSettingsResponse {
@@ -45,7 +46,7 @@ export default function LandlordLandingPage() {
   const { landlordSession } = useLandlordPortalSession();
   const token = landlordSession?.token;
   const [settings, setSettings] = useState<LandlordLandingSettingsResponse | null>(null);
-  const [publishedDraft, setPublishedDraft] = useState<Partial<LandingBuilderDraft> | null>(null);
+  const [persistedDraft, setPersistedDraft] = useState<Partial<LandingBuilderDraft> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -57,28 +58,29 @@ export default function LandlordLandingPage() {
     let cancelled = false;
     setLoading(true);
     setError("");
-    setPublishedDraft(null);
+    setPersistedDraft(null);
 
     void (async () => {
       try {
         const { data } = await apiRequest<LandlordLandingSettingsResponse>("/landlord/settings", {
           token,
         });
-        const workspaceSlug = data.profile.workspaceSlug?.trim();
-        let nextPublishedDraft: Partial<LandingBuilderDraft> | null = null;
-
-        if (workspaceSlug) {
-          try {
-            nextPublishedDraft =
-              (await fetchPublishedLandingDraft(workspaceSlug))?.draft ?? null;
-          } catch {
-            nextPublishedDraft = null;
-          }
+        const nextWorkspace =
+          data.profile.workspaceMode === "ESTATE_ADMIN" ? "estate" : "property";
+        let nextPersistedDraft: Partial<LandingBuilderDraft> | null = null;
+        try {
+          const landingDraft = await fetchSavedLandingDraft({
+            token,
+            workspaceType: nextWorkspace,
+          });
+          nextPersistedDraft = (landingDraft?.draft as Partial<LandingBuilderDraft> | null) ?? null;
+        } catch {
+          nextPersistedDraft = null;
         }
 
         if (!cancelled) {
           setSettings(data);
-          setPublishedDraft(nextPublishedDraft);
+          setPersistedDraft(nextPersistedDraft);
         }
       } catch (requestError) {
         if (!cancelled) {
@@ -131,7 +133,7 @@ export default function LandlordLandingPage() {
         draft,
       });
 
-      setPublishedDraft(record.draft);
+      setPersistedDraft(record.draft);
 
       try {
         await apiRequest("/landlord/settings/profile", {
@@ -193,6 +195,21 @@ export default function LandlordLandingPage() {
     }
   }
 
+  async function saveDraft(draft: LandingBuilderDraft) {
+    if (!token) {
+      return;
+    }
+
+    const record = await saveLandingDraft({
+      token,
+      workspaceSlug: settings?.profile.workspaceSlug ?? null,
+      workspaceType: workspace,
+      draft,
+    });
+
+    return (record?.draft as Partial<LandingBuilderDraft> | null) ?? draft;
+  }
+
   return (
     <LandlordPortalShell topbarTitle="Landing Page Builder" breadcrumb="Landing Page Builder">
       <PageMeta title="Landing Page Builder — Workspace" />
@@ -230,7 +247,8 @@ export default function LandlordLandingPage() {
             settings.capabilities.canUseBrandedSubdomain
           }
           enterpriseEnabled={settings.capabilities.isEnterprisePlan}
-          publishedDraft={publishedDraft}
+          persistedDraft={persistedDraft}
+          onSaveDraft={saveDraft}
           onPublishBranding={publishBranding}
         />
       )}

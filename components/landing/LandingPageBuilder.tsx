@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import dynamic from "next/dynamic";
 import LandingTemplateThumbnail from "../estate/LandingTemplateThumbnail";
 import WorkspacePublicLanding from "../public/WorkspacePublicLanding";
@@ -48,11 +48,23 @@ interface LandingPageBuilderProps {
   publishDomain: string;
   canPublishBranding: boolean;
   enterpriseEnabled: boolean;
-  publishedDraft?: Partial<LandingBuilderDraft> | null;
+  persistedDraft?: Partial<LandingBuilderDraft> | null;
+  onSaveDraft?: (draft: LandingBuilderDraft) => Promise<Partial<LandingBuilderDraft> | LandingBuilderDraft | void>;
   onPublishBranding: (draft: LandingBuilderDraft) => Promise<void>;
 }
 
 type BuilderCanvasMode = "split" | "editor" | "preview";
+type DraftSaveState = "idle" | "saving" | "saved" | "error";
+
+interface StoredLandingBuilderDraftState {
+  draft: Partial<LandingBuilderDraft>;
+  updatedAt: string | null;
+}
+
+interface StoredLandingBuilderUiState {
+  canvasMode?: BuilderCanvasMode;
+  setupPanelsCollapsed?: boolean;
+}
 
 function splitListInput(value: string) {
   return value
@@ -63,6 +75,51 @@ function splitListInput(value: string) {
 
 function joinListInput(items: string[]) {
   return items.join("\n");
+}
+
+function readStoredLandingBuilderDraft(raw: string | null) {
+  if (!raw) {
+    return null;
+  }
+
+  const parsed = JSON.parse(raw) as
+    | Partial<LandingBuilderDraft>
+    | StoredLandingBuilderDraftState
+    | null;
+
+  if (
+    parsed &&
+    typeof parsed === "object" &&
+    "draft" in parsed &&
+    parsed.draft &&
+    typeof parsed.draft === "object"
+  ) {
+    return {
+      draft: parsed.draft as Partial<LandingBuilderDraft>,
+      updatedAt:
+        typeof parsed.updatedAt === "string" && parsed.updatedAt.trim()
+          ? parsed.updatedAt
+          : null,
+    } satisfies StoredLandingBuilderDraftState;
+  }
+
+  if (parsed && typeof parsed === "object") {
+    return {
+      draft: parsed as Partial<LandingBuilderDraft>,
+      updatedAt: null,
+    } satisfies StoredLandingBuilderDraftState;
+  }
+
+  return null;
+}
+
+function buildStoredLandingBuilderDraftState(
+  draft: LandingBuilderDraft,
+): StoredLandingBuilderDraftState {
+  return {
+    draft,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 function sectionMeta(sectionKey: LandingBuilderSectionKey) {
@@ -102,7 +159,8 @@ export default function LandingPageBuilder({
   publishDomain,
   canPublishBranding,
   enterpriseEnabled,
-  publishedDraft = null,
+  persistedDraft = null,
+  onSaveDraft,
   onPublishBranding,
 }: LandingPageBuilderProps) {
   const templates = useMemo(
@@ -123,14 +181,23 @@ export default function LandingPageBuilder({
   const [canvasMode, setCanvasMode] = useState<BuilderCanvasMode>("split");
   const [setupPanelsCollapsed, setSetupPanelsCollapsed] = useState(false);
   const [mediaImageUrlsInput, setMediaImageUrlsInput] = useState("");
+  const [draftSaveState, setDraftSaveState] = useState<DraftSaveState>("idle");
+  const [draftSaveMessage, setDraftSaveMessage] = useState("");
   const editorPreferenceStorageKey = `${storageKey}.editor-default`;
+  const draftUiStorageKey = `${storageKey}.ui`;
+  const hydratedDraftSnapshotRef = useRef("");
+  const lastServerSavedSnapshotRef = useRef("");
+  const hasHydratedDraftRef = useRef(false);
 
   useEffect(() => {
-    const baseDraft = mergeLandingBuilderDraft(workspace, profile, publishedDraft);
+    const baseDraft = mergeLandingBuilderDraft(workspace, profile, persistedDraft);
 
     if (typeof window === "undefined") {
       setDraft(baseDraft);
       setWorkspaceDefaultEditor(baseDraft.editorType);
+      hydratedDraftSnapshotRef.current = JSON.stringify(baseDraft);
+      lastServerSavedSnapshotRef.current = JSON.stringify(baseDraft);
+      hasHydratedDraftRef.current = true;
       return;
     }
 
@@ -141,21 +208,42 @@ export default function LandingPageBuilder({
         : baseDraft.editorType;
       setWorkspaceDefaultEditor(nextWorkspaceDefaultEditor);
 
-      const raw = window.localStorage.getItem(storageKey);
-      if (!raw) {
-        setDraft({
-          ...baseDraft,
-          editorType: nextWorkspaceDefaultEditor,
-        });
-        setEditorCanvasResetKey((current) => current + 1);
-        return;
+      const storedUiRaw = window.localStorage.getItem(draftUiStorageKey);
+      const storedUi = storedUiRaw
+        ? (JSON.parse(storedUiRaw) as StoredLandingBuilderUiState | null)
+        : null;
+
+      if (storedUi?.canvasMode === "split" || storedUi?.canvasMode === "editor" || storedUi?.canvasMode === "preview") {
+        setCanvasMode(storedUi.canvasMode);
       }
 
-      const parsed = JSON.parse(raw) as Partial<LandingBuilderDraft>;
-      setDraft({
-        ...mergeLandingBuilderDraft(workspace, profile, parsed),
+      if (typeof storedUi?.setupPanelsCollapsed === "boolean") {
+        setSetupPanelsCollapsed(storedUi.setupPanelsCollapsed);
+      }
+
+      const storedDraftState = readStoredLandingBuilderDraft(
+        window.localStorage.getItem(storageKey),
+      );
+      const resolvedDraft = mergeLandingBuilderDraft(
+        workspace,
+        profile,
+        storedDraftState?.draft ?? persistedDraft,
+      );
+      const nextDraft = {
+        ...resolvedDraft,
         editorType: nextWorkspaceDefaultEditor,
-      });
+      } satisfies LandingBuilderDraft;
+
+      setDraft(nextDraft);
+      hydratedDraftSnapshotRef.current = JSON.stringify(nextDraft);
+      lastServerSavedSnapshotRef.current =
+        storedDraftState?.draft && !persistedDraft
+          ? ""
+          : JSON.stringify({
+              ...mergeLandingBuilderDraft(workspace, profile, persistedDraft),
+              editorType: nextWorkspaceDefaultEditor,
+            });
+      hasHydratedDraftRef.current = true;
       setEditorCanvasResetKey((current) => current + 1);
     } catch {
       const fallbackEditor =
@@ -164,21 +252,29 @@ export default function LandingPageBuilder({
           ? (window.localStorage.getItem(editorPreferenceStorageKey) as LandingBuilderEditorType)
           : baseDraft.editorType;
 
-      setDraft({
+      const fallbackDraft = {
         ...baseDraft,
         editorType: fallbackEditor,
-      });
+      } satisfies LandingBuilderDraft;
+
+      setDraft(fallbackDraft);
       setWorkspaceDefaultEditor(fallbackEditor);
+      hydratedDraftSnapshotRef.current = JSON.stringify(fallbackDraft);
+      lastServerSavedSnapshotRef.current = JSON.stringify(fallbackDraft);
+      hasHydratedDraftRef.current = true;
       setEditorCanvasResetKey((current) => current + 1);
     }
-  }, [editorPreferenceStorageKey, profile, publishedDraft, storageKey, workspace]);
+  }, [draftUiStorageKey, editorPreferenceStorageKey, persistedDraft, profile, storageKey, workspace]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
 
-    window.localStorage.setItem(storageKey, JSON.stringify(draft));
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify(buildStoredLandingBuilderDraftState(draft)),
+    );
   }, [draft, storageKey]);
 
   useEffect(() => {
@@ -190,8 +286,71 @@ export default function LandingPageBuilder({
   }, [editorPreferenceStorageKey, workspaceDefaultEditor]);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    window.localStorage.setItem(
+      draftUiStorageKey,
+      JSON.stringify({
+        canvasMode,
+        setupPanelsCollapsed,
+      } satisfies StoredLandingBuilderUiState),
+    );
+  }, [canvasMode, draftUiStorageKey, setupPanelsCollapsed]);
+
+  useEffect(() => {
     setMediaImageUrlsInput(joinListInput(draft.galleryImageUrls));
   }, [draft.galleryImageUrls]);
+
+  useEffect(() => {
+    if (!onSaveDraft || !hasHydratedDraftRef.current) {
+      return;
+    }
+
+    const currentSnapshot = JSON.stringify(draft);
+
+    if (currentSnapshot === lastServerSavedSnapshotRef.current) {
+      if (draftSaveState !== "idle") {
+        setDraftSaveState("idle");
+        setDraftSaveMessage("");
+      }
+      return;
+    }
+
+    if (currentSnapshot === hydratedDraftSnapshotRef.current) {
+      return;
+    }
+
+    setDraftSaveState("saving");
+    setDraftSaveMessage("Saving draft...");
+
+    const timeoutId = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const nextPersistedDraft = await onSaveDraft(draft);
+          const normalizedSavedDraft = mergeLandingBuilderDraft(
+            workspace,
+            profile,
+            nextPersistedDraft ?? draft,
+          );
+          lastServerSavedSnapshotRef.current = JSON.stringify({
+            ...normalizedSavedDraft,
+            editorType: draft.editorType,
+          });
+          setDraftSaveState("saved");
+          setDraftSaveMessage("Draft saved");
+        } catch {
+          setDraftSaveState("error");
+          setDraftSaveMessage("Local draft saved. Server sync failed.");
+        }
+      })();
+    }, 900);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [draft, draftSaveState, onSaveDraft, profile, workspace]);
 
   const selectedTemplate =
     getLandingBuilderTemplate(draft.templateId) ?? templates[0];
@@ -916,6 +1075,19 @@ export default function LandingPageBuilder({
             ))}
           </div>
           <div className="lpb-view-actions">
+            <span
+              className={`lpb-save-indicator is-${draftSaveState}`}
+              aria-live="polite"
+            >
+              {draftSaveMessage ||
+                (draftSaveState === "saved"
+                  ? "Draft saved"
+                  : draftSaveState === "saving"
+                    ? "Saving draft..."
+                    : draftSaveState === "error"
+                      ? "Local draft only"
+                      : "Draft ready")}
+            </span>
             <button
               type="button"
               className="btn btn-ghost"
@@ -1685,7 +1857,38 @@ export default function LandingPageBuilder({
         }
         .lpb-view-actions {
           display: flex;
+          align-items: center;
+          gap: 10px;
           justify-content: flex-end;
+        }
+        .lpb-save-indicator {
+          display: inline-flex;
+          align-items: center;
+          min-height: 36px;
+          padding: 0 12px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+          border: 1px solid rgba(26, 92, 66, 0.12);
+          background: rgba(255, 255, 255, 0.86);
+          color: var(--ink2);
+          white-space: nowrap;
+        }
+        .lpb-save-indicator.is-saving {
+          background: rgba(255, 248, 226, 0.9);
+          border-color: rgba(210, 168, 90, 0.32);
+          color: #8a6420;
+        }
+        .lpb-save-indicator.is-saved {
+          background: rgba(236, 246, 240, 0.92);
+          border-color: rgba(26, 92, 66, 0.22);
+          color: #1a5c42;
+        }
+        .lpb-save-indicator.is-error {
+          background: rgba(255, 238, 236, 0.92);
+          border-color: rgba(180, 76, 56, 0.26);
+          color: #9c402f;
         }
         .lpb-collapsed-note {
           padding: 12px 14px;
