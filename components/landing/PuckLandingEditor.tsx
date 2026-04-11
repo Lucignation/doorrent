@@ -60,6 +60,9 @@ type LandingPuckData = Data<{
   ImageBlock: ImageBlockProps;
 }>;
 
+type LandingPuckItem = LandingPuckData["content"][number];
+type LandingPuckZones = NonNullable<LandingPuckData["zones"]>;
+
 interface PuckLandingEditorProps {
   draft: LandingBuilderDraft;
   resetKey: number;
@@ -273,6 +276,70 @@ function getOrderedSectionKeys(draft: LandingBuilderDraft) {
   return ordered;
 }
 
+function getPuckItemId(item: LandingPuckItem) {
+  const rawId = (item.props as { id?: unknown }).id;
+  return typeof rawId === "string" && rawId ? rawId : null;
+}
+
+function comparePuckZoneNames(left: string, right: string) {
+  const leftMatch = left.match(/^(.*?)-(\d+)$/);
+  const rightMatch = right.match(/^(.*?)-(\d+)$/);
+
+  if (leftMatch && rightMatch && leftMatch[1] === rightMatch[1]) {
+    return Number(leftMatch[2]) - Number(rightMatch[2]);
+  }
+
+  return left.localeCompare(right);
+}
+
+function getPuckZoneEntries(
+  item: LandingPuckItem,
+  zones?: LandingPuckZones | null,
+) {
+  const itemId = getPuckItemId(item);
+
+  if (!itemId || !zones) {
+    return [];
+  }
+
+  return Object.entries(zones)
+    .filter(([zoneCompound]) => zoneCompound.startsWith(`${itemId}:`))
+    .map(([zoneCompound, content]) => ({
+      zoneName: zoneCompound.slice(itemId.length + 1),
+      content,
+    }))
+    .sort((left, right) => comparePuckZoneNames(left.zoneName, right.zoneName));
+}
+
+function syncPuckItemsFromDraft(
+  items: LandingPuckItem[],
+  draft: LandingBuilderDraft,
+) {
+  return items.map((item) => {
+    const sectionKey = SECTION_KEY_BY_TYPE[item.type as SectionComponentType];
+
+    if (sectionKey) {
+      return createPuckSection(sectionKey, draft);
+    }
+
+    return item;
+  });
+}
+
+function visitPuckItems(
+  items: LandingPuckItem[],
+  zones: LandingPuckZones | undefined,
+  visit: (item: LandingPuckItem) => void,
+) {
+  for (const item of items) {
+    visit(item);
+
+    for (const zoneEntry of getPuckZoneEntries(item, zones)) {
+      visitPuckItems(zoneEntry.content as LandingPuckItem[], zones, visit);
+    }
+  }
+}
+
 function createPuckDataFromDraft(draft: LandingBuilderDraft): LandingPuckData {
   // Restore previously-saved Puck canvas when available.
   // Section block props (gallery images, text fields, etc.) are re-synced from the
@@ -284,14 +351,16 @@ function createPuckDataFromDraft(draft: LandingBuilderDraft): LandingPuckData {
     Array.isArray((draft.puckData as { content?: unknown }).content)
   ) {
     const restored = draft.puckData as LandingPuckData;
-    const syncedContent = restored.content.map((item) => {
-      const sectionKey = SECTION_KEY_BY_TYPE[item.type as SectionComponentType];
-      if (sectionKey) {
-        return createPuckSection(sectionKey, draft);
-      }
-      return item;
-    });
-    return { ...restored, content: syncedContent };
+    const syncedContent = syncPuckItemsFromDraft(restored.content, draft);
+    const syncedZones = restored.zones
+      ? Object.fromEntries(
+          Object.entries(restored.zones).map(([zoneCompound, content]) => [
+            zoneCompound,
+            syncPuckItemsFromDraft(content as LandingPuckItem[], draft),
+          ]),
+        ) as LandingPuckZones
+      : restored.zones;
+    return { ...restored, content: syncedContent, zones: syncedZones };
   }
 
   const content = getOrderedSectionKeys(draft).map((sectionKey) =>
@@ -444,11 +513,11 @@ function applyPuckDataToDraft(
   const nextLayouts: Partial<Record<LandingBuilderSectionKey, LandingBuilderSectionLayout>> = {};
   const seen = new Set<LandingBuilderSectionKey>();
 
-  for (const item of data.content ?? []) {
+  visitPuckItems(data.content ?? [], data.zones as LandingPuckZones | undefined, (item) => {
     const sectionKey = SECTION_KEY_BY_TYPE[item.type as SectionComponentType];
 
     if (!sectionKey || seen.has(sectionKey)) {
-      continue;
+      return;
     }
 
     seen.add(sectionKey);
@@ -551,7 +620,7 @@ function applyPuckDataToDraft(
           break;
         }
     }
-  }
+  });
 
   for (const sectionKey of LANDING_BUILDER_SECTION_KEYS) {
     if (!seen.has(sectionKey)) {
