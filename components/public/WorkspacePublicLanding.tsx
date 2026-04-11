@@ -7,6 +7,7 @@ import {
   getLandingBuilderTemplate,
   mergeLandingBuilderDraft,
   type LandingBuilderDraft,
+  type LandingBuilderGalleryImageSize,
   type LandingBuilderSectionKey,
   type LandingBuilderTemplateId,
   type LandingBuilderWorkspace,
@@ -817,12 +818,73 @@ export default function WorkspacePublicLanding({
     return draft.sectionLayouts?.[sectionKey] ?? getDefaultLandingBuilderSectionLayout(sectionKey);
   }
 
+  function getSectionSurfaceStyle(
+    sectionKey: LandingBuilderSectionKey,
+    extraStyles?: CSSProperties,
+  ) {
+    const tint = sanitizeHexColor(draft.sectionBackgroundColors?.[sectionKey] ?? "");
+
+    if (!tint && !extraStyles) {
+      return undefined;
+    }
+
+    return {
+      ...(tint
+        ? {
+            background: `linear-gradient(135deg, ${withAlpha(tint, 0.18)}, rgba(255, 255, 255, 0.96))`,
+            borderColor: withAlpha(tint, 0.28),
+            boxShadow: `0 20px 42px ${withAlpha(tint, 0.12)}`,
+          }
+        : null),
+      ...(extraStyles ?? null),
+    } as CSSProperties;
+  }
+
+  function getGallerySectionStyleVars(
+    imageSize: LandingBuilderGalleryImageSize,
+    columns: number,
+  ) {
+    const metrics =
+      imageSize === "small"
+        ? {
+            rowMinHeight: "92px",
+            rowAspectRatio: "1.9 / 1",
+            columnMinHeight: "156px",
+            compactHeight: "180px",
+          }
+        : imageSize === "large"
+          ? {
+              rowMinHeight: "220px",
+              rowAspectRatio: "1.35 / 1",
+              columnMinHeight: "280px",
+              compactHeight: "280px",
+            }
+          : {
+              rowMinHeight: "136px",
+              rowAspectRatio: "1.58 / 1",
+              columnMinHeight: "220px",
+              compactHeight: "220px",
+            };
+
+    return {
+      ["--wpl-estate-gallery-columns" as const]: String(columns),
+      ["--wpl-estate-gallery-row-min-height" as const]: metrics.rowMinHeight,
+      ["--wpl-estate-gallery-row-aspect" as const]: metrics.rowAspectRatio,
+      ["--wpl-estate-gallery-column-min-height" as const]: metrics.columnMinHeight,
+      ["--wpl-estate-gallery-compact-height" as const]: metrics.compactHeight,
+      ["--wpl-gallery-grid-columns" as const]: String(columns),
+      ["--wpl-gallery-tile-min-height" as const]: metrics.rowMinHeight,
+      ["--wpl-gallery-tile-aspect" as const]: metrics.rowAspectRatio,
+    } as CSSProperties;
+  }
+
   function renderSectionFrame({
     sectionKey,
     topline,
     title,
     body,
     className,
+    style,
     children,
   }: {
     sectionKey: LandingBuilderSectionKey;
@@ -830,10 +892,12 @@ export default function WorkspacePublicLanding({
     title: string;
     body?: string | null;
     className: string;
+    style?: CSSProperties;
     children?: ReactNode;
   }) {
     const layout = resolveSectionLayout(sectionKey);
     const sectionClass = `wpl-section wpl-section-${sectionKey} ${className} wpl-layout-${layout}`;
+    const sectionStyle = getSectionSurfaceStyle(sectionKey, style);
     const sectionPosition = contentSections.findIndex(
       (contentSectionKey) => contentSectionKey === sectionKey,
     );
@@ -844,7 +908,7 @@ export default function WorkspacePublicLanding({
 
     if (layout === "full") {
       return (
-        <section key={sectionKey} className={sectionClass}>
+        <section key={sectionKey} className={sectionClass} style={sectionStyle}>
           <div className="wpl-band-rail">
             <div className="wpl-section-topline">{topline}</div>
             <strong className="wpl-band-index">{sectionNumber}</strong>
@@ -860,7 +924,7 @@ export default function WorkspacePublicLanding({
     }
 
     return (
-      <section key={sectionKey} className={sectionClass}>
+      <section key={sectionKey} className={sectionClass} style={sectionStyle}>
         <div className="wpl-section-topline">{topline}</div>
         <h2>{title}</h2>
         {body ? <p>{body}</p> : null}
@@ -873,6 +937,7 @@ export default function WorkspacePublicLanding({
     const layout = resolveSectionLayout(sectionKey);
     const sectionId = getSectionAnchorId(sectionKey);
     const sectionClass = `wpl-section wpl-section-${sectionKey} wpl-estate-section wpl-layout-${layout}`;
+    const sectionStyle = getSectionSurfaceStyle(sectionKey);
     const mediaUrl = estateSectionMedia[sectionKey] ?? null;
     const hasSectionMedia = Boolean(mediaUrl);
     const isCompactLayout = layout === "half";
@@ -881,7 +946,7 @@ export default function WorkspacePublicLanding({
       case "about":
         if (isCompactLayout) {
           return (
-            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`} style={sectionStyle}>
               <div className="wpl-estate-compact-copy">
                 <span className="wpl-estate-pill">Why choose us</span>
                 <h2>{draft.aboutTitle}</h2>
@@ -905,6 +970,7 @@ export default function WorkspacePublicLanding({
             key={sectionKey}
             id={sectionId}
             className={`${sectionClass} wpl-estate-section-centered${hasSectionMedia ? "" : " wpl-estate-section--text-only"}`}
+            style={sectionStyle}
           >
             <div className="wpl-estate-intro">
               <span className="wpl-estate-pill">Why choose us</span>
@@ -928,7 +994,7 @@ export default function WorkspacePublicLanding({
       case "features":
         if (isCompactLayout) {
           return (
-            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`} style={sectionStyle}>
               {hasSectionMedia ? (
                 <WorkspacePublicSurfaceImage
                   imageUrl={mediaUrl}
@@ -969,6 +1035,7 @@ export default function WorkspacePublicLanding({
             key={sectionKey}
             id={sectionId}
             className={`${sectionClass} wpl-estate-feature-section${hasSectionMedia ? "" : " wpl-estate-section--text-only"}`}
+            style={sectionStyle}
           >
             <div className="wpl-estate-feature-copy">
               <span className="wpl-estate-pill">Get started</span>
@@ -1010,7 +1077,7 @@ export default function WorkspacePublicLanding({
       case "listings":
         if (isCompactLayout) {
           return (
-            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`} style={sectionStyle}>
               {hasSectionMedia ? (
                 <WorkspacePublicSurfaceImage
                   imageUrl={mediaUrl}
@@ -1049,6 +1116,7 @@ export default function WorkspacePublicLanding({
             key={sectionKey}
             id={sectionId}
             className={`${sectionClass} wpl-estate-split-section${hasSectionMedia ? "" : " wpl-estate-section--text-only"}`}
+            style={sectionStyle}
           >
             {hasSectionMedia ? (
               <WorkspacePublicSurfaceImage
@@ -1087,7 +1155,7 @@ export default function WorkspacePublicLanding({
 
         if (isCompactLayout) {
           return (
-            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`} style={sectionStyle}>
               {hasSectionMedia ? (
                 <WorkspacePublicSurfaceImage
                   imageUrl={mediaUrl}
@@ -1128,6 +1196,7 @@ export default function WorkspacePublicLanding({
             key={sectionKey}
             id={sectionId}
             className={`${sectionClass} wpl-estate-section-centered${hasSectionMedia ? "" : " wpl-estate-section--text-only"}`}
+            style={sectionStyle}
           >
             <div className="wpl-estate-intro">
               <span className="wpl-estate-pill">Leadership spotlight</span>
@@ -1168,7 +1237,7 @@ export default function WorkspacePublicLanding({
       case "fees":
         if (isCompactLayout) {
           return (
-            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`} style={sectionStyle}>
               <div className="wpl-estate-compact-copy">
                 <span className="wpl-estate-pill">Estate dues</span>
                 <h2>{draft.feesTitle}</h2>
@@ -1201,6 +1270,7 @@ export default function WorkspacePublicLanding({
               key={sectionKey}
               id={sectionId}
               className={`${sectionClass} wpl-estate-text-stat-section wpl-estate-section--text-only`}
+              style={sectionStyle}
             >
               <div className="wpl-estate-intro">
                 <span className="wpl-estate-pill">Estate dues</span>
@@ -1221,7 +1291,7 @@ export default function WorkspacePublicLanding({
         }
 
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-stat-section`}>
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-stat-section`} style={sectionStyle}>
             <WorkspacePublicSurfaceImage
               imageUrl={mediaUrl}
               alt={`${displayName} highlights`}
@@ -1245,7 +1315,7 @@ export default function WorkspacePublicLanding({
 
       case "notices":
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-notice-section`}>
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-notice-section`} style={sectionStyle}>
             <div className="wpl-estate-split-copy">
               <span className="wpl-estate-pill">Community updates</span>
               <h2>{draft.noticesTitle}</h2>
@@ -1266,7 +1336,7 @@ export default function WorkspacePublicLanding({
 
       case "faq":
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`}>
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-centered`} style={sectionStyle}>
             <div className="wpl-estate-intro">
               <span className="wpl-estate-pill">Frequently asked</span>
               <h2>{draft.faqTitle}</h2>
@@ -1290,10 +1360,14 @@ export default function WorkspacePublicLanding({
         const estateGalleryImages = galleryImages.length ? galleryImages : [null, null, null];
         const galleryDir = draft.galleryLayoutDirection ?? "rows";
         const galleryCols = Math.max(1, Math.min(Number(draft.galleryColumns ?? "3"), 4));
+        const gallerySectionStyle = getSectionSurfaceStyle(
+          sectionKey,
+          getGallerySectionStyleVars(draft.galleryImageSize ?? "medium", galleryCols),
+        );
 
         if (isCompactLayout) {
           return (
-            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`} style={gallerySectionStyle}>
               <div className="wpl-estate-compact-copy">
                 <span className="wpl-estate-pill">Visual preview</span>
                 <h2>{draft.galleryTitle}</h2>
@@ -1310,12 +1384,8 @@ export default function WorkspacePublicLanding({
           );
         }
 
-        const gridStyle = {
-          ["--wpl-estate-gallery-columns" as const]: String(galleryCols),
-        } as React.CSSProperties;
-
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-gallery-section wpl-estate-gallery-section--custom`}>
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-gallery-section wpl-estate-gallery-section--custom`} style={gallerySectionStyle}>
             <div className="wpl-estate-gallery-copy">
               <span className="wpl-estate-pill">Visual preview</span>
               <h2>{draft.galleryTitle}</h2>
@@ -1323,7 +1393,6 @@ export default function WorkspacePublicLanding({
             </div>
             <div
               className={`wpl-estate-gallery-grid-wrap ${galleryDir === "columns" ? "is-columns" : "is-rows"}`}
-              style={gridStyle}
             >
               {estateGalleryImages.map((image, index) => (
                 <WorkspacePublicSurfaceImage
@@ -1343,7 +1412,7 @@ export default function WorkspacePublicLanding({
       case "contact":
         if (isCompactLayout) {
           return (
-            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`}>
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact`} style={sectionStyle}>
               <div className="wpl-estate-compact-copy">
                 <span className="wpl-estate-pill">Contact us</span>
                 <h2>{draft.contactTitle}</h2>
@@ -1377,7 +1446,7 @@ export default function WorkspacePublicLanding({
         }
 
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-contact-section`}>
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-contact-section`} style={sectionStyle}>
             <div className="wpl-estate-split-copy">
               <span className="wpl-estate-pill">Contact us</span>
               <h2>{draft.contactTitle}</h2>
@@ -1412,7 +1481,7 @@ export default function WorkspacePublicLanding({
       case "cta":
         if (isCompactLayout) {
           return (
-            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact wpl-estate-cta-card-compact`}>
+            <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-section-compact wpl-estate-cta-card-compact`} style={sectionStyle}>
               <div className="wpl-estate-compact-copy">
                 <span className="wpl-estate-pill">Ready to continue?</span>
                 <h2>Continue with the official estate channels</h2>
@@ -1434,7 +1503,7 @@ export default function WorkspacePublicLanding({
         }
 
         return (
-          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-cta-section`}>
+          <section key={sectionKey} id={sectionId} className={`${sectionClass} wpl-estate-cta-section`} style={sectionStyle}>
             <div className="wpl-estate-intro">
               <span className="wpl-estate-pill">Ready to continue?</span>
               <h2>Continue with the official estate channels</h2>
@@ -1623,29 +1692,41 @@ export default function WorkspacePublicLanding({
         });
 
       case "gallery":
+        {
+          const galleryDir = draft.galleryLayoutDirection ?? "rows";
+          const galleryCols = Math.max(1, Math.min(Number(draft.galleryColumns ?? "3"), 4));
+          const galleryItems = galleryImages.length ? galleryImages : [null, null, null];
+          const galleryStyle = getGallerySectionStyleVars(
+            draft.galleryImageSize ?? "medium",
+            galleryCols,
+          );
+
         return renderSectionFrame({
           sectionKey,
           topline: "Gallery",
           title: draft.galleryTitle,
           body: draft.galleryBody,
           className: "wpl-copy-card",
+          style: galleryStyle,
           children: (
-            <div className="wpl-gallery-grid">
-              {(galleryImages.length ? galleryImages : [null, null, null]).map((image, index) => (
+            <div className={`wpl-gallery-grid ${galleryDir === "columns" ? "is-columns" : "is-rows"}`}>
+              {galleryItems.map((image, index) => (
                 <WorkspacePublicGalleryImage
                   key={`${image ?? "placeholder"}-${index}`}
                   imageUrl={image}
                   alt={`${displayName} gallery image ${index + 1}`}
                   fallbackBackground={heroBackground}
-                  className={getSharedGalleryTileClassName(
-                    index,
-                    (galleryImages.length ? galleryImages : [null, null, null]).length,
-                  )}
+                  className={
+                    galleryDir === "columns"
+                      ? getSharedGalleryTileClassName(index, galleryItems.length)
+                      : "wpl-gallery-tile"
+                  }
                 />
               ))}
             </div>
           ),
         });
+        }
 
       case "cta":
         return renderSectionFrame({
@@ -2568,34 +2649,46 @@ export default function WorkspacePublicLanding({
           line-height: 1.62;
         }
         .wpl-gallery-grid {
-          display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 16px;
           margin-top: 20px;
-          grid-auto-flow: dense;
+          width: 100%;
+        }
+        .wpl-gallery-grid.is-rows {
+          display: grid;
+          grid-template-columns: repeat(var(--wpl-gallery-grid-columns, 3), minmax(0, 1fr));
+          gap: 16px;
           align-items: stretch;
         }
+        .wpl-gallery-grid.is-columns {
+          column-count: var(--wpl-gallery-grid-columns, 3);
+          column-gap: 16px;
+        }
         .wpl-gallery-tile {
-          aspect-ratio: 1 / 1;
-          min-height: 0;
+          aspect-ratio: var(--wpl-gallery-tile-aspect, 1 / 1);
+          min-height: var(--wpl-gallery-tile-min-height, 0);
           border-radius: 22px;
           overflow: hidden;
           border: 1px solid var(--wpl-border);
           box-shadow: 0 12px 28px rgba(18, 22, 16, 0.08);
         }
+        .wpl-gallery-grid.is-columns .wpl-gallery-tile {
+          display: block;
+          width: 100%;
+          margin-bottom: 16px;
+          break-inside: avoid;
+        }
         .wpl-gallery-tile-featured {
           grid-column: span 2;
           grid-row: span 2;
           aspect-ratio: auto;
-          min-height: clamp(280px, 34vw, 420px);
+          min-height: max(calc(var(--wpl-gallery-tile-min-height, 140px) * 2.15), clamp(220px, 28vw, 380px));
         }
         .wpl-gallery-tile-tall {
           grid-row: span 2;
           aspect-ratio: auto;
-          min-height: clamp(240px, 28vw, 340px);
+          min-height: max(calc(var(--wpl-gallery-tile-min-height, 140px) * 1.75), clamp(180px, 22vw, 300px));
         }
-        .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+        .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid.is-rows {
+          grid-template-columns: repeat(var(--wpl-gallery-grid-columns, 3), minmax(0, 1fr));
         }
         .wpl-gallery-placeholder {
           background-size: cover;
@@ -3341,6 +3434,9 @@ export default function WorkspacePublicLanding({
           grid-template-columns: 1fr;
           align-items: stretch;
         }
+        .wpl-estate-gallery-section .wpl-estate-media-compact {
+          min-height: var(--wpl-estate-gallery-compact-height, 260px);
+        }
         .wpl-estate-gallery-section--custom {
           gap: 24px;
           align-items: start;
@@ -3383,12 +3479,12 @@ export default function WorkspacePublicLanding({
           width: 100%;
         }
         .wpl-estate-gallery-grid-wrap.is-rows .wpl-estate-gallery-grid-item {
-          aspect-ratio: 1.55 / 1;
-          min-height: clamp(88px, 12vw, 136px);
+          aspect-ratio: var(--wpl-estate-gallery-row-aspect, 1.55 / 1);
+          min-height: var(--wpl-estate-gallery-row-min-height, clamp(88px, 12vw, 136px));
         }
         .wpl-estate-gallery-grid-wrap.is-columns .wpl-estate-gallery-grid-item {
           aspect-ratio: 4 / 3;
-          min-height: 220px;
+          min-height: var(--wpl-estate-gallery-column-min-height, 220px);
           break-inside: avoid;
           display: block;
           width: 100%;
@@ -3809,12 +3905,12 @@ export default function WorkspacePublicLanding({
         .theme-property-portfolio .wpl-hero-media-shell {
           transform: rotate(-2deg);
         }
-        .theme-property-portfolio .wpl-gallery-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+        .theme-property-portfolio .wpl-gallery-grid.is-rows {
+          grid-template-columns: repeat(var(--wpl-gallery-grid-columns, 3), minmax(0, 1fr));
           gap: 16px;
         }
-        .theme-property-portfolio .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid {
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+        .theme-property-portfolio .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid.is-rows {
+          grid-template-columns: repeat(var(--wpl-gallery-grid-columns, 3), minmax(0, 1fr));
         }
         .theme-property-portfolio .wpl-listings-grid {
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4231,7 +4327,12 @@ export default function WorkspacePublicLanding({
           .wpl-band-note {
             max-width: none;
           }
-          .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid,
+          .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid.is-rows {
+            gap: 14px;
+          }
+          .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid.is-columns {
+            column-gap: 14px;
+          }
           .wpl-section-contact.wpl-layout-full .wpl-contact-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
@@ -4322,10 +4423,12 @@ export default function WorkspacePublicLanding({
             padding: 22px;
             border-radius: 24px;
           }
-          .wpl-gallery-grid {
-            grid-template-columns: 1fr 1fr;
+          .wpl-gallery-grid.is-rows {
+            gap: 12px;
           }
-          .wpl-section-gallery.wpl-layout-full .wpl-gallery-grid,
+          .wpl-gallery-grid.is-columns {
+            column-gap: 12px;
+          }
           .wpl-section-contact.wpl-layout-full .wpl-contact-grid {
             grid-template-columns: 1fr;
           }
@@ -4334,7 +4437,7 @@ export default function WorkspacePublicLanding({
             grid-column: auto;
             grid-row: auto;
             aspect-ratio: 1 / 1;
-            min-height: 220px;
+            min-height: calc(var(--wpl-gallery-tile-min-height, 110px) * 2);
           }
           .wpl-contact-grid {
             grid-template-columns: 1fr;
@@ -4420,6 +4523,11 @@ export default function WorkspacePublicLanding({
           background: var(--wpl-surface);
           min-width: 0;
         }
+        .wpl-puck-grid-block,
+        .wpl-puck-flex-block {
+          width: 100%;
+          justify-self: stretch;
+        }
         .wpl-puck-heading h1,
         .wpl-puck-heading h2,
         .wpl-puck-heading h3,
@@ -4449,20 +4557,26 @@ export default function WorkspacePublicLanding({
         .wpl-puck-grid {
           display: grid;
           min-width: 0;
+          width: 100%;
+          align-items: start;
         }
         .wpl-puck-grid-col {
           display: grid;
           gap: 16px;
           align-content: start;
           min-width: 0;
+          width: 100%;
+          justify-items: stretch;
         }
         .wpl-puck-flex {
           display: flex;
           flex-wrap: wrap;
           min-width: 0;
+          width: 100%;
         }
         .wpl-puck-flex-item {
           min-width: 0;
+          width: 100%;
         }
         .wpl-puck-grid-col > .wpl-section,
         .wpl-puck-flex-item > .wpl-section,
@@ -4473,6 +4587,7 @@ export default function WorkspacePublicLanding({
           max-width: 100%;
           min-width: 0;
           justify-self: stretch;
+          margin: 0;
         }
         .wpl-puck-grid-col > .wpl-section.wpl-layout-center,
         .wpl-puck-flex-item > .wpl-section.wpl-layout-center,
@@ -4493,6 +4608,53 @@ export default function WorkspacePublicLanding({
         .wpl-puck-flex-item > .wpl-estate-contact-section {
           grid-template-columns: 1fr;
           min-height: 0;
+        }
+        .wpl-puck-grid-col > .wpl-estate-section-centered,
+        .wpl-puck-flex-item > .wpl-estate-section-centered,
+        .wpl-puck-grid-col > .wpl-estate-feature-section,
+        .wpl-puck-flex-item > .wpl-estate-feature-section,
+        .wpl-puck-grid-col > .wpl-estate-split-section,
+        .wpl-puck-flex-item > .wpl-estate-split-section,
+        .wpl-puck-grid-col > .wpl-estate-cta-section,
+        .wpl-puck-flex-item > .wpl-estate-cta-section,
+        .wpl-puck-grid-col > .wpl-estate-text-stat-section,
+        .wpl-puck-flex-item > .wpl-estate-text-stat-section {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          align-items: stretch;
+          min-height: 0;
+        }
+        .wpl-puck-grid-col > .wpl-estate-section-centered .wpl-estate-intro,
+        .wpl-puck-flex-item > .wpl-estate-section-centered .wpl-estate-intro,
+        .wpl-puck-grid-col > .wpl-estate-feature-section .wpl-estate-feature-copy,
+        .wpl-puck-flex-item > .wpl-estate-feature-section .wpl-estate-feature-copy,
+        .wpl-puck-grid-col > .wpl-estate-split-section .wpl-estate-split-copy,
+        .wpl-puck-flex-item > .wpl-estate-split-section .wpl-estate-split-copy,
+        .wpl-puck-grid-col > .wpl-estate-gallery-section .wpl-estate-gallery-copy,
+        .wpl-puck-flex-item > .wpl-estate-gallery-section .wpl-estate-gallery-copy {
+          max-width: none;
+          margin: 0;
+          align-items: flex-start;
+          text-align: left;
+        }
+        .wpl-puck-grid-col > .wpl-estate-section .wpl-estate-pill,
+        .wpl-puck-flex-item > .wpl-estate-section .wpl-estate-pill {
+          align-self: flex-start;
+        }
+        .wpl-puck-grid-col > .wpl-estate-section .wpl-estate-feature-grid,
+        .wpl-puck-flex-item > .wpl-estate-section .wpl-estate-feature-grid,
+        .wpl-puck-grid-col > .wpl-estate-section .wpl-estate-team-row,
+        .wpl-puck-flex-item > .wpl-estate-section .wpl-estate-team-row,
+        .wpl-puck-grid-col > .wpl-estate-section .wpl-estate-faq-grid,
+        .wpl-puck-flex-item > .wpl-estate-section .wpl-estate-faq-grid,
+        .wpl-puck-grid-col > .wpl-estate-section .wpl-estate-notice-grid,
+        .wpl-puck-flex-item > .wpl-estate-section .wpl-estate-notice-grid,
+        .wpl-puck-grid-col > .wpl-estate-section .wpl-estate-contact-grid,
+        .wpl-puck-flex-item > .wpl-estate-section .wpl-estate-contact-grid,
+        .wpl-puck-grid-col > .wpl-estate-section .wpl-estate-stat-grid-inline,
+        .wpl-puck-flex-item > .wpl-estate-section .wpl-estate-stat-grid-inline {
+          grid-template-columns: 1fr;
         }
         .wpl-puck-btn-primary {
           background: var(--wpl-primary);

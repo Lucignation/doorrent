@@ -5,9 +5,11 @@ import { DropZone, Puck, type Config, type Data } from "@puckeditor/core";
 import {
   LANDING_BUILDER_SECTION_KEYS,
   type LandingBuilderDraft,
+  type LandingBuilderGalleryImageSize,
   type LandingBuilderSectionKey,
   type LandingBuilderSectionLayout,
 } from "../../lib/landing-builder";
+import { sanitizeHexColor } from "../../lib/frontend-security";
 
 type PuckVisibility = "visible" | "hidden";
 
@@ -72,6 +74,7 @@ interface PuckLandingEditorProps {
 interface BaseSectionProps {
   visibility: PuckVisibility;
   layout: LandingBuilderSectionLayout;
+  backgroundColor?: string;
 }
 
 interface HeroSectionProps extends BaseSectionProps {
@@ -97,6 +100,7 @@ interface GallerySectionProps extends StandardSectionProps {
   imageUrlsText: string;
   layoutDirection: "rows" | "columns";
   columns: "1" | "2" | "3" | "4";
+  imageSize: LandingBuilderGalleryImageSize;
 }
 
 interface CtaSectionProps extends BaseSectionProps {
@@ -146,6 +150,17 @@ const LAYOUT_OPTIONS = [
   { label: "Full width", value: "full" },
 ] as const;
 
+const SECTION_BACKGROUND_FIELD = {
+  type: "text",
+  label: "Background tint (#hex or blank)",
+} as const;
+
+const GALLERY_SIZE_OPTIONS = [
+  { label: "Small", value: "small" },
+  { label: "Medium", value: "medium" },
+  { label: "Large", value: "large" },
+] as const;
+
 function splitListInput(value: string) {
   return value
     .split(/\r?\n/)
@@ -159,6 +174,61 @@ function joinListInput(items: string[]) {
 
 function hasText(value?: string) {
   return Boolean(value?.trim());
+}
+
+function withAlpha(value: string, alpha: number) {
+  const sanitized = sanitizeHexColor(value);
+
+  if (!sanitized) {
+    return `rgba(26, 92, 66, ${alpha})`;
+  }
+
+  const compact = sanitized.slice(1);
+  const normalized =
+    compact.length === 3
+      ? compact
+          .split("")
+          .map((character) => `${character}${character}`)
+          .join("")
+      : compact;
+  const red = Number.parseInt(normalized.slice(0, 2), 16);
+  const green = Number.parseInt(normalized.slice(2, 4), 16);
+  const blue = Number.parseInt(normalized.slice(4, 6), 16);
+
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+function getSectionBackgroundColor(
+  draft: LandingBuilderDraft,
+  sectionKey: LandingBuilderSectionKey,
+) {
+  return draft.sectionBackgroundColors?.[sectionKey] ?? "";
+}
+
+function getSectionSurfaceStyles(backgroundColor?: string): CSSProperties | null {
+  const tint = sanitizeHexColor(backgroundColor ?? "");
+
+  if (!tint) {
+    return null;
+  }
+
+  return {
+    background: `linear-gradient(135deg, ${withAlpha(tint, 0.18)}, rgba(255, 255, 255, 0.98))`,
+    borderColor: withAlpha(tint, 0.3),
+    boxShadow: `0 18px 36px ${withAlpha(tint, 0.12)}`,
+  };
+}
+
+function getGalleryPreviewMetrics(imageSize: LandingBuilderGalleryImageSize) {
+  switch (imageSize) {
+    case "small":
+      return { height: 56, gap: 6 };
+    case "large":
+      return { height: 108, gap: 8 };
+    case "medium":
+    default:
+      return { height: 78, gap: 7 };
+  }
 }
 
 function getEmptyStateCopy(sectionKey: LandingBuilderSectionKey) {
@@ -406,6 +476,7 @@ function createPuckSection(
           ...baseProps,
           title: draft.aboutTitle,
           body: draft.aboutBody,
+          backgroundColor: getSectionBackgroundColor(draft, "about"),
         },
       };
     case "features":
@@ -416,6 +487,7 @@ function createPuckSection(
           title: draft.featuresTitle,
           body: draft.featuresBody,
           itemsText: joinListInput(draft.featuresItems),
+          backgroundColor: getSectionBackgroundColor(draft, "features"),
         },
       };
     case "listings":
@@ -426,6 +498,7 @@ function createPuckSection(
           title: draft.listingsTitle,
           body: draft.listingsBody,
           itemsText: joinListInput(draft.listingItems),
+          backgroundColor: getSectionBackgroundColor(draft, "listings"),
         },
       };
     case "team":
@@ -436,6 +509,7 @@ function createPuckSection(
           title: draft.teamTitle,
           body: draft.teamBody,
           itemsText: joinListInput(draft.teamItems),
+          backgroundColor: getSectionBackgroundColor(draft, "team"),
         },
       };
     case "fees":
@@ -446,6 +520,7 @@ function createPuckSection(
           title: draft.feesTitle,
           body: draft.feesBody,
           itemsText: joinListInput(draft.feeItems),
+          backgroundColor: getSectionBackgroundColor(draft, "fees"),
         },
       };
     case "notices":
@@ -456,6 +531,7 @@ function createPuckSection(
           title: draft.noticesTitle,
           body: draft.noticesBody,
           itemsText: joinListInput(draft.noticeItems),
+          backgroundColor: getSectionBackgroundColor(draft, "notices"),
         },
       };
     case "contact":
@@ -464,6 +540,7 @@ function createPuckSection(
         props: {
           ...baseProps,
           title: draft.contactTitle,
+          backgroundColor: getSectionBackgroundColor(draft, "contact"),
         },
       };
     case "faq":
@@ -474,6 +551,7 @@ function createPuckSection(
           title: draft.faqTitle,
           body: "",
           itemsText: joinListInput(draft.faqItems),
+          backgroundColor: getSectionBackgroundColor(draft, "faq"),
         },
       };
     case "gallery":
@@ -486,6 +564,8 @@ function createPuckSection(
           imageUrlsText: joinListInput(draft.galleryImageUrls),
           layoutDirection: draft.galleryLayoutDirection ?? "rows",
           columns: draft.galleryColumns ?? "3",
+          imageSize: draft.galleryImageSize ?? "medium",
+          backgroundColor: getSectionBackgroundColor(draft, "gallery"),
         },
       };
     case "cta":
@@ -498,6 +578,7 @@ function createPuckSection(
           primaryUrl: draft.ctaPrimaryUrl,
           secondaryLabel: draft.ctaSecondaryLabel,
           secondaryUrl: draft.ctaSecondaryUrl,
+          backgroundColor: getSectionBackgroundColor(draft, "cta"),
         },
       };
   }
@@ -511,6 +592,7 @@ function applyPuckDataToDraft(
   const nextOrder: LandingBuilderSectionKey[] = [];
   const hiddenKeys = new Set<LandingBuilderSectionKey>();
   const nextLayouts: Partial<Record<LandingBuilderSectionKey, LandingBuilderSectionLayout>> = {};
+  const nextBackgroundColors: Partial<Record<LandingBuilderSectionKey, string>> = {};
   const seen = new Set<LandingBuilderSectionKey>();
 
   visitPuckItems(data.content ?? [], data.zones as LandingPuckZones | undefined, (item) => {
@@ -533,6 +615,17 @@ function applyPuckDataToDraft(
       sectionKey === "hero"
         ? "full"
         : (sectionProps.layout as LandingBuilderSectionLayout) ?? getLayout(currentDraft, sectionKey);
+
+    if (sectionKey !== "hero") {
+      const backgroundColor =
+        typeof sectionProps.backgroundColor === "string"
+          ? sectionProps.backgroundColor.trim()
+          : "";
+
+      if (backgroundColor) {
+        nextBackgroundColors[sectionKey] = backgroundColor;
+      }
+    }
 
     switch (sectionKey) {
       case "hero":
@@ -608,6 +701,7 @@ function applyPuckDataToDraft(
           nextDraft.galleryImageUrls = splitListInput(props.imageUrlsText ?? "");
           nextDraft.galleryLayoutDirection = props.layoutDirection ?? "rows";
           nextDraft.galleryColumns = props.columns ?? "3";
+          nextDraft.galleryImageSize = props.imageSize ?? "medium";
           break;
         }
       case "cta":
@@ -627,12 +721,17 @@ function applyPuckDataToDraft(
       nextOrder.push(sectionKey);
       nextLayouts[sectionKey] = getLayout(currentDraft, sectionKey);
       hiddenKeys.add(sectionKey);
+      const currentBackgroundColor = currentDraft.sectionBackgroundColors?.[sectionKey];
+      if (typeof currentBackgroundColor === "string" && currentBackgroundColor.trim()) {
+        nextBackgroundColors[sectionKey] = currentBackgroundColor;
+      }
     }
   }
 
   nextDraft.sectionOrder = nextOrder;
   nextDraft.hiddenSectionKeys = Array.from(hiddenKeys);
   nextDraft.sectionLayouts = nextLayouts;
+  nextDraft.sectionBackgroundColors = nextBackgroundColors;
 
   return nextDraft;
 }
@@ -675,6 +774,7 @@ function SectionFrame({
   subtitle,
   layout,
   visibility,
+  backgroundColor,
   children,
 }: {
   puck: { dragRef: ((element: Element | null) => void) | null };
@@ -683,15 +783,18 @@ function SectionFrame({
   subtitle?: string;
   layout: LandingBuilderSectionLayout;
   visibility: PuckVisibility;
+  backgroundColor?: string;
   children?: ReactNode;
 }) {
   const isHidden = visibility === "hidden";
+  const surfaceStyles = getSectionSurfaceStyles(backgroundColor);
 
   return (
     <div
       ref={puck.dragRef as ((element: HTMLDivElement | null) => void) | null}
       style={{
         ...styles.sectionCard,
+        ...(surfaceStyles ?? null),
         ...(isHidden ? styles.sectionCardHidden : null),
       }}
     >
@@ -777,9 +880,10 @@ const puckConfig: Config = {
           type: "textarea",
           label: "Summary",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "About us", body: "" },
-      render: ({ puck, visibility, layout, title, body }) => (
+      defaultProps: { visibility: "visible", layout: "contained", title: "About us", body: "", backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, body, backgroundColor }) => (
         <SectionFrame
           puck={puck}
           label="About"
@@ -787,6 +891,7 @@ const puckConfig: Config = {
           subtitle={body}
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         />
       ),
     },
@@ -815,9 +920,10 @@ const puckConfig: Config = {
           type: "textarea",
           label: "Feature items",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Features", body: "", itemsText: "" },
-      render: ({ puck, visibility, layout, title, body, itemsText }) => (
+      defaultProps: { visibility: "visible", layout: "contained", title: "Features", body: "", itemsText: "", backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, body, itemsText, backgroundColor }) => (
         <SectionFrame
           puck={puck}
           label="Services / Features"
@@ -825,6 +931,7 @@ const puckConfig: Config = {
           subtitle={body}
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         >
           {renderSectionItems("features", itemsText)}
         </SectionFrame>
@@ -855,9 +962,10 @@ const puckConfig: Config = {
           type: "textarea",
           label: "Listing highlights",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Listings", body: "", itemsText: "" },
-      render: ({ puck, visibility, layout, title, body, itemsText }) => (
+      defaultProps: { visibility: "visible", layout: "contained", title: "Listings", body: "", itemsText: "", backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, body, itemsText, backgroundColor }) => (
         <SectionFrame
           puck={puck}
           label="Listings Highlight"
@@ -865,6 +973,7 @@ const puckConfig: Config = {
           subtitle={body}
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         >
           {renderSectionItems("listings", itemsText, "gold")}
         </SectionFrame>
@@ -895,9 +1004,10 @@ const puckConfig: Config = {
           type: "textarea",
           label: "Roles or highlights",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Our team", body: "", itemsText: "" },
-      render: ({ puck, visibility, layout, title, body, itemsText }) => (
+      defaultProps: { visibility: "visible", layout: "contained", title: "Our team", body: "", itemsText: "", backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, body, itemsText, backgroundColor }) => (
         <SectionFrame
           puck={puck}
           label="Team / Exco"
@@ -905,6 +1015,7 @@ const puckConfig: Config = {
           subtitle={body}
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         >
           {renderSectionItems("team", itemsText)}
         </SectionFrame>
@@ -935,9 +1046,10 @@ const puckConfig: Config = {
           type: "textarea",
           label: "Fee items",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Fees", body: "", itemsText: "" },
-      render: ({ puck, visibility, layout, title, body, itemsText }) => (
+      defaultProps: { visibility: "visible", layout: "contained", title: "Fees", body: "", itemsText: "", backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, body, itemsText, backgroundColor }) => (
         <SectionFrame
           puck={puck}
           label="Fees / Payment Info"
@@ -945,6 +1057,7 @@ const puckConfig: Config = {
           subtitle={body}
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         >
           {renderSectionItems("fees", itemsText, "gold")}
         </SectionFrame>
@@ -975,9 +1088,10 @@ const puckConfig: Config = {
           type: "textarea",
           label: "Notice items",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Notices", body: "", itemsText: "" },
-      render: ({ puck, visibility, layout, title, body, itemsText }) => (
+      defaultProps: { visibility: "visible", layout: "contained", title: "Notices", body: "", itemsText: "", backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, body, itemsText, backgroundColor }) => (
         <SectionFrame
           puck={puck}
           label="Notices"
@@ -985,6 +1099,7 @@ const puckConfig: Config = {
           subtitle={body}
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         >
           {renderSectionItems("notices", itemsText)}
         </SectionFrame>
@@ -1007,9 +1122,10 @@ const puckConfig: Config = {
           type: "text",
           label: "Section title",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Contact us" },
-      render: ({ puck, visibility, layout, title }) => (
+      defaultProps: { visibility: "visible", layout: "contained", title: "Contact us", backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, backgroundColor }) => (
         <SectionFrame
           puck={puck}
           label="Contact Details"
@@ -1017,6 +1133,7 @@ const puckConfig: Config = {
           subtitle="Support email, phone, and legal address still flow from the branding panel above."
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         />
       ),
     },
@@ -1041,15 +1158,17 @@ const puckConfig: Config = {
           type: "textarea",
           label: "Questions or answers",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "FAQ", itemsText: "" },
-      render: ({ puck, visibility, layout, title, itemsText }) => (
+      defaultProps: { visibility: "visible", layout: "contained", title: "FAQ", itemsText: "", backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, itemsText, backgroundColor }) => (
         <SectionFrame
           puck={puck}
           label="FAQ"
           title={title}
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         >
           {renderSectionItems("faq", itemsText)}
         </SectionFrame>
@@ -1090,14 +1209,21 @@ const puckConfig: Config = {
           label: "Columns",
           options: [{ label: "1", value: "1" }, { label: "2", value: "2" }, { label: "3", value: "3" }, { label: "4", value: "4" }],
         },
+        imageSize: {
+          type: "select",
+          label: "Image size",
+          options: GALLERY_SIZE_OPTIONS,
+        },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Gallery", body: "", imageUrlsText: "", layoutDirection: "rows" as const, columns: "3" as const },
-      render: ({ puck, visibility, layout, title, body, imageUrlsText, layoutDirection, columns }) => {
+      defaultProps: { visibility: "visible", layout: "contained", title: "Gallery", body: "", imageUrlsText: "", layoutDirection: "rows" as const, columns: "3" as const, imageSize: "medium" as const, backgroundColor: "" },
+      render: ({ puck, visibility, layout, title, body, imageUrlsText, layoutDirection, columns, imageSize, backgroundColor }) => {
         const images = splitListInput(imageUrlsText ?? "").slice(0, 8);
         const cols = Number(columns ?? "3");
+        const previewMetrics = getGalleryPreviewMetrics(imageSize ?? "medium");
         const gridStyle = layoutDirection === "columns"
-          ? { columnCount: cols, columnGap: 6 }
-          : { display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: 6 };
+          ? { columnCount: cols, columnGap: previewMetrics.gap }
+          : { display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: previewMetrics.gap };
         return (
           <SectionFrame
             puck={puck}
@@ -1106,12 +1232,13 @@ const puckConfig: Config = {
             subtitle={body}
             layout={layout}
             visibility={visibility}
+            backgroundColor={backgroundColor}
           >
             {images.length ? (
               <div style={{ ...gridStyle, marginTop: 8 }}>
                 {images.map((url) => (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img key={url} src={url} alt="gallery" style={{ width: "100%", height: 64, objectFit: "cover", borderRadius: 6, display: "block", marginBottom: layoutDirection === "columns" ? 6 : 0 }} />
+                  <img key={url} src={url} alt="gallery" style={{ width: "100%", height: previewMetrics.height, objectFit: "cover", borderRadius: 8, display: "block", marginBottom: layoutDirection === "columns" ? previewMetrics.gap : 0 }} />
                 ))}
               </div>
             ) : renderEmptyPreviewState("gallery")}
@@ -1148,8 +1275,9 @@ const puckConfig: Config = {
           type: "text",
           label: "Secondary CTA URL",
         },
+        backgroundColor: SECTION_BACKGROUND_FIELD,
       },
-      defaultProps: { visibility: "visible", layout: "contained", title: "Calls to action", primaryLabel: "Get started", primaryUrl: "/", secondaryLabel: "Learn more", secondaryUrl: "/" },
+      defaultProps: { visibility: "visible", layout: "contained", title: "Calls to action", primaryLabel: "Get started", primaryUrl: "/", secondaryLabel: "Learn more", secondaryUrl: "/", backgroundColor: "" },
       render: ({
         puck,
         visibility,
@@ -1158,6 +1286,7 @@ const puckConfig: Config = {
         primaryUrl,
         secondaryLabel,
         secondaryUrl,
+        backgroundColor,
       }) => (
         <SectionFrame
           puck={puck}
@@ -1166,6 +1295,7 @@ const puckConfig: Config = {
           subtitle="Edit CTA labels and destinations in the right sidebar."
           layout={layout}
           visibility={visibility}
+          backgroundColor={backgroundColor}
         >
           <div style={styles.ctaStack}>
             <div style={styles.ctaButtonPrimary}>{primaryLabel || "Primary CTA"}</div>
