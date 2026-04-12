@@ -14,7 +14,7 @@ type ResidenceRow = EstateDashboardData["residences"][number];
 
 const initialForm = {
   id: "", residenceId: "", type: "VISITOR", holderName: "", purpose: "",
-  peopleCount: "1", vehicleDetails: "", validFrom: "", validUntil: "", status: "ACTIVE",
+  contactPhone: "", peopleCount: "1", vehicleDetails: "", validFrom: "", validUntil: "", status: "ACTIVE",
 };
 
 function downloadCsv(content: string, filename: string) {
@@ -58,7 +58,7 @@ export default function EstatePassesPage() {
     if (!token) return;
     setSaving(true);
     try {
-      const body = { residenceId: form.residenceId || undefined, type: form.type, holderName: form.holderName, purpose: form.purpose || undefined, peopleCount: Number(form.peopleCount) || 1, vehicleDetails: form.vehicleDetails || undefined, validFrom: form.validFrom || undefined, validUntil: form.validUntil || undefined, status: form.status };
+      const body = { residenceId: form.residenceId || undefined, type: form.type, holderName: form.holderName, contactPhone: form.contactPhone, purpose: form.purpose || undefined, peopleCount: Number(form.peopleCount) || 1, vehicleDetails: form.vehicleDetails || undefined, validFrom: form.validFrom || undefined, validUntil: form.validUntil || undefined, status: form.status };
       if (form.id) {
         await apiRequest(`/estate/passes/${form.id}`, { method: "PATCH", token, body });
         showToast("Pass updated.", "success");
@@ -89,20 +89,20 @@ export default function EstatePassesPage() {
   function handleExport() {
     const rows = filteredPasses;
     if (!rows.length) { showToast("No passes to export.", "error"); return; }
-    const csv = convertRowsToCsv(rows.map((p) => ({ holderName: p.holderName, type: p.type, houseNumber: p.houseNumber ?? "", purpose: p.purpose ?? "", peopleCount: p.peopleCount, vehicleDetails: p.vehicleDetails ?? "", accessCode: p.accessCode, status: p.status, validFrom: p.validFrom, validUntil: p.validUntil })));
+    const csv = convertRowsToCsv(rows.map((p) => ({ holderName: p.holderName, contactPhone: p.contactPhone ?? "", type: p.type, houseNumber: p.houseNumber ?? "", purpose: p.purpose ?? "", peopleCount: p.peopleCount, vehicleDetails: p.vehicleDetails ?? "", accessCode: p.accessCode, status: p.status, validFrom: p.validFrom, validUntil: p.validUntil })));
     downloadCsv(csv, "passes.csv");
   }
 
   const filteredPasses = useMemo(() => filter === "ALL" ? passes : passes.filter((p) => p.status === filter), [passes, filter]);
 
   const columns = useMemo<TableColumn<PassRow>[]>(() => [
-    { key: "holderName", label: "Holder", render: (r) => <div><strong>{r.holderName}</strong><div className="td-muted" style={{ fontSize: 12 }}>{r.type}{r.houseNumber ? ` · House ${r.houseNumber}` : ""}</div></div> },
+    { key: "holderName", label: "Holder", render: (r) => <div><strong>{r.holderName}</strong><div className="td-muted" style={{ fontSize: 12 }}>{r.type}{r.houseNumber ? ` · House ${r.houseNumber}` : ""}{r.contactPhone ? ` · ${r.contactPhone}` : ""}</div></div> },
     { key: "purpose", label: "Purpose", render: (r) => <span className="td-muted">{r.purpose ?? "—"}</span> },
     { key: "peopleCount", label: "People", render: (r) => <span>{r.peopleCount}</span> },
     { key: "accessCode", label: "Code", render: (r) => <code style={{ fontSize: 13, fontWeight: 700, letterSpacing: 2, background: "var(--bg)", padding: "2px 8px", borderRadius: 6 }}>{r.accessCode}</code> },
     { key: "validUntil", label: "Valid until", render: (r) => <span className="td-muted">{r.validUntil ? new Date(r.validUntil).toLocaleDateString("en-NG") : "—"}</span> },
     { key: "status", label: "Status", render: (r) => <span style={{ fontSize: 12, fontWeight: 600, color: r.status === "ACTIVE" ? "var(--green)" : "var(--ink3)" }}>{r.status}</span> },
-    { key: "actions", label: "", render: (r) => <div style={{ display: "flex", gap: 8 }}><button type="button" className="btn btn-ghost btn-xs" onClick={() => { setForm({ id: r.id, residenceId: "", type: r.type, holderName: r.holderName, purpose: r.purpose ?? "", peopleCount: String(r.peopleCount), vehicleDetails: r.vehicleDetails ?? "", validFrom: r.validFrom, validUntil: r.validUntil, status: r.status }); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button><button type="button" className="btn btn-ghost btn-xs estate-danger" onClick={() => void handleDelete(r.id, r.holderName)}>Delete</button></div> },
+    { key: "actions", label: "", render: (r) => <div style={{ display: "flex", gap: 8 }}><button type="button" className="btn btn-ghost btn-xs" onClick={() => { setForm({ id: r.id, residenceId: "", type: r.type, holderName: r.holderName, contactPhone: r.contactPhone ?? "", purpose: r.purpose ?? "", peopleCount: String(r.peopleCount), vehicleDetails: r.vehicleDetails ?? "", validFrom: r.validFrom, validUntil: r.validUntil, status: r.status }); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Edit</button><button type="button" className="btn btn-ghost btn-xs estate-danger" onClick={() => void handleDelete(r.id, r.holderName)}>Delete</button></div> },
   ], [token]);
 
   const activeCount = passes.filter((p) => p.status === "ACTIVE").length;
@@ -149,6 +149,7 @@ export default function EstatePassesPage() {
               </select>
             </label>
             <label>Purpose <input className="form-input" value={form.purpose} onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))} placeholder="e.g. Delivery, Visit" /></label>
+            <label>Visitor phone <input className="form-input" value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} placeholder="+234..." required /></label>
             <label>People count <input className="form-input" inputMode="numeric" value={form.peopleCount} onChange={(e) => setForm((f) => ({ ...f, peopleCount: e.target.value }))} /></label>
             <label>Vehicle details <input className="form-input" value={form.vehicleDetails} onChange={(e) => setForm((f) => ({ ...f, vehicleDetails: e.target.value }))} placeholder="Plate number, color, make" /></label>
             <label>Valid from <input className="form-input" type="datetime-local" value={form.validFrom} onChange={(e) => setForm((f) => ({ ...f, validFrom: e.target.value }))} /></label>
@@ -158,7 +159,7 @@ export default function EstatePassesPage() {
                 <option value="ACTIVE">Active</option>
                 <option value="USED">Used</option>
                 <option value="EXPIRED">Expired</option>
-                <option value="REVOKED">Revoked</option>
+                <option value="CANCELLED">Cancelled</option>
               </select>
             </label>
             <div className="estate-form-actions estate-form-wide">

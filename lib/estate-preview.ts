@@ -205,10 +205,12 @@ export type EstateDashboardData = {
     type: "WORKER" | "VISITOR" | "DELIVERY" | "VEHICLE" | "MOVE";
     houseNumber?: string | null;
     holderName: string;
+    contactPhone?: string | null;
     purpose?: string | null;
     peopleCount: number;
     vehicleDetails?: string | null;
     accessCode: string;
+    exitCode?: string;
     qrToken: string;
     validFrom: string;
     validUntil: string;
