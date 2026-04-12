@@ -21,6 +21,14 @@ function downloadCsv(content: string, filename: string) {
 
 type ResidenceRow = EstateDashboardData["residences"][number];
 type ResidentRow = EstateDashboardData["residents"][number];
+type ResidentLedgerRow = {
+  residentId: string;
+  duesStartDate: string | null;
+  lastPaidAt: string | null;
+  nextDueDate: string | null;
+  outstandingBalance: number;
+  totalPaid: number;
+};
 
 const initialForm = {
   id: "",
@@ -106,10 +114,36 @@ export default function EstateHousesPage() {
     downloadCsv(csv, "houses.csv");
   }
 
-  function handleExportResidents() {
+  async function handleExportResidents() {
     if (!residents.length) { showToast("No residents to export.", "error"); return; }
-    const csv = convertRowsToCsv(residents.map((r) => ({ fullName: r.fullName, email: r.email ?? "", phone: r.phone ?? "", houseNumber: r.houseNumber ?? "", residentType: r.residentType, status: r.status })));
-    downloadCsv(csv, "residents.csv");
+    try {
+      const ledgerRows = token
+        ? await apiRequest<{ ledger: ResidentLedgerRow[] }>("/estate/dues-ledger", { token })
+            .then(({ data }) => data.ledger ?? [])
+            .catch(() => [])
+        : [];
+      const ledgerByResidentId = new Map(
+        ledgerRows.map((row) => [row.residentId, row]),
+      );
+      const csv = convertRowsToCsv(
+        residents.map((r) => {
+          const ledger = ledgerByResidentId.get(r.id);
+          return {
+            fullName: r.fullName,
+            email: r.email ?? "",
+            phone: r.phone ?? "",
+            houseNumber: r.houseNumber ?? "",
+            residentType: r.residentType,
+            status: r.status,
+            duesStartDate: ledger?.duesStartDate ? ledger.duesStartDate.slice(0, 10) : "",
+            lastPaidAt: ledger?.lastPaidAt ? ledger.lastPaidAt.slice(0, 10) : "",
+          };
+        }),
+      );
+      downloadCsv(csv, "residents.csv");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not export residents.", "error");
+    }
   }
 
   async function handleImportHouses(event: React.ChangeEvent<HTMLInputElement>) {
@@ -159,7 +193,24 @@ export default function EstateHousesPage() {
         if (!residence?.id) {
           throw new Error(`Resident CSV row ${rowIndex + 2} references house "${houseNumber}" which was not found.`);
         }
-        await apiRequest("/estate/residents", { method: "POST", token, body: { fullName, email, phone: row[idx("phone")] || undefined, residenceId: residence.id, residentType: row[idx("residentType")] || "TENANT", status: row[idx("status")] || "ACTIVE" } });
+        await apiRequest("/estate/residents", {
+          method: "POST",
+          token,
+          body: {
+            fullName,
+            email,
+            phone: row[idx("phone")] || undefined,
+            residenceId: residence.id,
+            residentType: row[idx("residentType")] || "TENANT",
+            status: row[idx("status")] || "ACTIVE",
+            duesStartDate:
+              row[idx("duesStartDate")] || row[idx("dues_start_date")] || undefined,
+            lastPaidAt:
+              row[idx("lastPaidAt")] || row[idx("last_paid_at")] || undefined,
+            duesLedgerNote:
+              row[idx("duesLedgerNote")] || row[idx("dues_ledger_note")] || undefined,
+          },
+        });
         created++;
       }
       showToast(`Imported ${created} resident(s).`, "success");
@@ -279,7 +330,7 @@ export default function EstateHousesPage() {
           </span>
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => residentFileRef.current?.click()} disabled={importing}>{importing ? "Importing…" : "Import Residents CSV"}</button>
           <input ref={residentFileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleImportResidents} />
-          <span className="td-muted" style={{ fontSize: 12 }}>Houses CSV: houseNumber, block, label, ownerName, ownerPhone, billingBasis, status · Residents CSV: fullName, email, phone, houseNumber, residentType, status. Email is required for resident portal sign-in.</span>
+          <span className="td-muted" style={{ fontSize: 12 }}>Houses CSV: houseNumber, block, label, ownerName, ownerPhone, billingBasis, status · Residents CSV: fullName, email, phone, houseNumber, residentType, status, duesStartDate, lastPaidAt, duesLedgerNote. Email is required for resident portal sign-in.</span>
         </div>
       </div>
 

@@ -9,10 +9,25 @@ import { useResidentPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
 import { sanitizeExternalRedirectUrl } from "../../lib/frontend-security";
-import { formatEstateCurrency, type EstateDashboardData } from "../../lib/estate-preview";
+import { formatEstateCurrency } from "../../lib/estate-preview";
 import type { TableColumn } from "../../types/app";
 
-type ChargeRow = EstateDashboardData["charges"][number];
+interface ChargeRow {
+  id: string;
+  title: string;
+  amount: number;
+  unitAmount: number;
+  frequency: string;
+  billingBasis: "UNIT_BASED" | "RESIDENT_BASED";
+  status: "DUE" | "CLEAR";
+  dueNow: boolean;
+  periodsDue: number;
+  dueFrom: string | null;
+  dueTo: string | null;
+  nextDueDate: string | null;
+  overdueSince: string | null;
+  note?: string | null;
+}
 
 interface ResidentPaymentRow {
   id: string;
@@ -28,6 +43,13 @@ interface ResidentPaymentRow {
 interface ResidentDuesData {
   charges: ChargeRow[];
   balance: number;
+  ledger: {
+    duesStartDate: string | null;
+    lastPaidAt: string | null;
+    nextDueDate: string | null;
+    totalPaid: number;
+    outstandingBalance: number;
+  };
   payments: ResidentPaymentRow[];
   paymentSupport?: {
     email?: string | null;
@@ -77,7 +99,8 @@ export default function ResidentDuesPage() {
   const [payments, setPayments] = useState<ResidentPaymentRow[]>([]);
   const [balance, setBalance] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [amount, setAmount] = useState("");
+  const [ledger, setLedger] = useState<ResidentDuesData["ledger"] | null>(null);
+  const [selectedChargeIds, setSelectedChargeIds] = useState<string[]>([]);
   const [initializing, setInitializing] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState("");
@@ -102,9 +125,12 @@ export default function ResidentDuesPage() {
         setCharges(data.charges ?? []);
         setPayments(data.payments ?? []);
         setBalance(data.balance ?? 0);
+        setLedger(data.ledger ?? null);
         setPaymentSupport(data.paymentSupport ?? undefined);
-        setAmount((current) =>
-          current || (data.balance ?? 0) <= 0 ? current : `${data.balance ?? 0}`,
+        setSelectedChargeIds(
+          (data.charges ?? [])
+            .filter((charge) => charge.dueNow && charge.amount > 0)
+            .map((charge) => charge.id),
         );
       })
       .catch(() => null)
@@ -181,10 +207,16 @@ export default function ResidentDuesPage() {
       return;
     }
 
-    const checkoutAmount = Number(amount || 0);
+    const selectedCharges = charges.filter(
+      (charge) => charge.dueNow && selectedChargeIds.includes(charge.id),
+    );
+    const checkoutAmount = selectedCharges.reduce(
+      (sum, charge) => sum + charge.amount,
+      0,
+    );
 
-    if (checkoutAmount <= 0) {
-      showToast("Enter a valid payment amount.", "error");
+    if (selectedCharges.length <= 0 || checkoutAmount <= 0) {
+      showToast("Choose at least one outstanding dues item to pay.", "error");
       return;
     }
 
@@ -199,7 +231,10 @@ export default function ResidentDuesPage() {
           token,
           body: {
             amount: checkoutAmount,
-            periodLabel: "Estate dues payment",
+            chargeIds: selectedCharges.map((charge) => charge.id),
+            periodLabel: `Estate dues payment · ${selectedCharges
+              .map((charge) => charge.title)
+              .join(", ")}`,
           },
         },
       );
@@ -227,12 +262,42 @@ export default function ResidentDuesPage() {
     }
   }
 
+  const dueCharges = useMemo(
+    () => charges.filter((charge) => charge.dueNow && charge.amount > 0),
+    [charges],
+  );
+
+  const selectedTotal = useMemo(
+    () =>
+      dueCharges
+        .filter((charge) => selectedChargeIds.includes(charge.id))
+        .reduce((sum, charge) => sum + charge.amount, 0),
+    [dueCharges, selectedChargeIds],
+  );
+
+  function toggleChargeSelection(chargeId: string) {
+    setSelectedChargeIds((current) =>
+      current.includes(chargeId)
+        ? current.filter((id) => id !== chargeId)
+        : [...current, chargeId],
+    );
+  }
+
   const chargeColumns = useMemo<TableColumn<ChargeRow>[]>(
     () => [
       {
         key: "title",
         label: "Charge",
-        render: (row) => <strong>{row.title}</strong>,
+        render: (row) => (
+          <div>
+            <strong>{row.title}</strong>
+            {row.note ? (
+              <div className="td-muted" style={{ fontSize: 12 }}>
+                {row.note}
+              </div>
+            ) : null}
+          </div>
+        ),
       },
       {
         key: "frequency",
@@ -251,13 +316,37 @@ export default function ResidentDuesPage() {
       {
         key: "amount",
         label: "Amount",
-        render: (row) => <strong>{formatEstateCurrency(row.amount)}</strong>,
+        render: (row) => (
+          <div>
+            <strong>{formatEstateCurrency(row.amount)}</strong>
+            {row.periodsDue > 1 ? (
+              <div className="td-muted" style={{ fontSize: 12 }}>
+                {formatEstateCurrency(row.unitAmount)} x {row.periodsDue}
+              </div>
+            ) : null}
+          </div>
+        ),
+      },
+      {
+        key: "dueWindow",
+        label: "Coverage",
+        render: (row) => (
+          <span className="td-muted">
+            {row.dueFrom
+              ? `${new Date(row.dueFrom).toLocaleDateString("en-NG")} ${
+                  row.dueTo
+                    ? `to ${new Date(row.dueTo).toLocaleDateString("en-NG")}`
+                    : ""
+                }`
+              : "—"}
+          </span>
+        ),
       },
       {
         key: "status",
         label: "Status",
         render: (row) => (
-          <StatusBadge tone={row.status === "ACTIVE" ? "green" : "gray"}>
+          <StatusBadge tone={row.status === "DUE" ? "amber" : "green"}>
             {row.status}
           </StatusBadge>
         ),
@@ -335,9 +424,15 @@ export default function ResidentDuesPage() {
           <div className="stat-value">{formatEstateCurrency(balance)}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Active Charges</div>
-          <div className="stat-value">
-            {charges.filter((charge) => charge.status === "ACTIVE").length}
+          <div className="stat-label">Due Items</div>
+          <div className="stat-value">{dueCharges.length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Last Paid</div>
+          <div className="stat-value" style={{ fontSize: 18 }}>
+            {ledger?.lastPaidAt
+              ? new Date(ledger.lastPaidAt).toLocaleDateString("en-NG")
+              : "Not set"}
           </div>
         </div>
         <div className="stat-card">
@@ -362,9 +457,9 @@ export default function ResidentDuesPage() {
                 Pay estate dues online
               </h3>
               <p className="td-muted" style={{ fontSize: 13, margin: 0 }}>
-                Paystack checkout is now available for your estate dues. You can
-                pay the full balance or enter a smaller amount up to your current
-                due.
+                Select the exact dues items you want to clear. Annual charges
+                follow your own dues timeline, so your total is based on your
+                resident ledger and previous payments.
               </p>
               {paymentSupport?.email || paymentSupport?.phone ? (
                 <p className="td-muted" style={{ fontSize: 12, marginTop: 10 }}>
@@ -379,34 +474,113 @@ export default function ResidentDuesPage() {
 
             <div
               style={{
-                minWidth: 280,
+                minWidth: 320,
                 display: "grid",
                 gap: 12,
               }}
             >
-              <label>
-                Payment amount
-                <input
-                  className="form-input"
-                  inputMode="numeric"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  placeholder="Enter amount"
-                />
-              </label>
+              <div
+                style={{
+                  display: "grid",
+                  gap: 10,
+                  padding: 14,
+                  borderRadius: 14,
+                  background: "var(--bg)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 16 }}>
+                  <strong style={{ fontSize: 14 }}>Selected dues</strong>
+                  <strong>{formatEstateCurrency(selectedTotal)}</strong>
+                </div>
+                <div className="td-muted" style={{ fontSize: 12 }}>
+                  {selectedChargeIds.length} item(s) selected
+                </div>
+                {dueCharges.length > 0 ? (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {dueCharges.map((charge) => {
+                      const selected = selectedChargeIds.includes(charge.id);
+
+                      return (
+                        <label
+                          key={charge.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            gap: 10,
+                            padding: "10px 12px",
+                            borderRadius: 12,
+                            border: selected
+                              ? "1px solid rgba(34, 139, 94, 0.28)"
+                              : "1px solid var(--border)",
+                            background: selected
+                              ? "rgba(34, 139, 94, 0.06)"
+                              : "var(--surface)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleChargeSelection(charge.id)}
+                            style={{ marginTop: 4 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                gap: 12,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <strong>{charge.title}</strong>
+                              <strong>{formatEstateCurrency(charge.amount)}</strong>
+                            </div>
+                            <div className="td-muted" style={{ fontSize: 12, marginTop: 4 }}>
+                              {charge.periodsDue > 1
+                                ? `${charge.periodsDue} ${charge.frequency.toLowerCase()} periods are due`
+                                : `${charge.frequency} charge`}
+                              {charge.overdueSince
+                                ? ` · overdue since ${new Date(
+                                    charge.overdueSince,
+                                  ).toLocaleDateString("en-NG")}`
+                                : ""}
+                            </div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="td-muted" style={{ fontSize: 12 }}>
+                    You do not have any outstanding dues right now.
+                  </div>
+                )}
+              </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <button
                   type="button"
                   className="btn btn-primary"
-                  onClick={() => setAmount(balance > 0 ? `${balance}` : "")}
+                  onClick={() =>
+                    setSelectedChargeIds(dueCharges.map((charge) => charge.id))
+                  }
+                  disabled={dueCharges.length <= 0}
                 >
-                  Use full balance
+                  Select all due items
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => setSelectedChargeIds([])}
+                  disabled={selectedChargeIds.length <= 0}
+                >
+                  Clear selection
                 </button>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => void handlePayNow()}
-                  disabled={initializing || balance <= 0}
+                  disabled={initializing || selectedTotal <= 0}
                 >
                   {initializing ? "Opening Paystack..." : "Pay Online"}
                 </button>
@@ -428,6 +602,57 @@ export default function ResidentDuesPage() {
               {verificationMessage || "Confirming your Paystack payment..."}
             </div>
           ) : null}
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header">
+          <strong>Dues Ledger</strong>
+        </div>
+        <div
+          className="card-body"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+            gap: 16,
+          }}
+        >
+          <div>
+            <div className="td-muted" style={{ fontSize: 12, marginBottom: 6 }}>
+              Dues started
+            </div>
+            <strong>
+              {ledger?.duesStartDate
+                ? new Date(ledger.duesStartDate).toLocaleDateString("en-NG")
+                : "Not set"}
+            </strong>
+          </div>
+          <div>
+            <div className="td-muted" style={{ fontSize: 12, marginBottom: 6 }}>
+              Last paid
+            </div>
+            <strong>
+              {ledger?.lastPaidAt
+                ? new Date(ledger.lastPaidAt).toLocaleDateString("en-NG")
+                : "Not set"}
+            </strong>
+          </div>
+          <div>
+            <div className="td-muted" style={{ fontSize: 12, marginBottom: 6 }}>
+              Next due
+            </div>
+            <strong>
+              {ledger?.nextDueDate
+                ? new Date(ledger.nextDueDate).toLocaleDateString("en-NG")
+                : "Pending clearance"}
+            </strong>
+          </div>
+          <div>
+            <div className="td-muted" style={{ fontSize: 12, marginBottom: 6 }}>
+              Total paid
+            </div>
+            <strong>{formatEstateCurrency(ledger?.totalPaid ?? 0)}</strong>
+          </div>
         </div>
       </div>
 

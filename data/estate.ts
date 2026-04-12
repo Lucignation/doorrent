@@ -18,6 +18,7 @@ const estateNavSections: NavSection[] = [
       { label: "Gate Console", href: "/estate/gate", icon: "shield" },
       { label: "Pass Centre", href: "/estate/passes", icon: "doc" },
       { label: "Governance", href: "/estate/governance", icon: "log" },
+      { label: "ExCo & Elections", href: "/estate/exco", icon: "users" },
       { label: "Landing Page Builder", href: "/estate/landing", icon: "settings" },
     ],
   },

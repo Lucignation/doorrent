@@ -13,6 +13,7 @@ const residentNav: NavSection[] = [
       { label: "Meetings", href: "/resident/meetings", icon: "clock" },
       { label: "Contributions", href: "/resident/contributions", icon: "chart" },
       { label: "My Pass", href: "/resident/pass", icon: "doc" },
+      { label: "Governance", href: "/resident/governance", icon: "users" },
       { label: "Notifications", href: "/resident/notifications", icon: "log" },
     ],
   },
