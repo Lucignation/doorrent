@@ -10,6 +10,7 @@ const residentNav: NavSection[] = [
     items: [
       { label: "Overview", href: "/resident", icon: "grid" },
       { label: "My Dues", href: "/resident/dues", icon: "card" },
+      { label: "Meetings", href: "/resident/meetings", icon: "clock" },
       { label: "Contributions", href: "/resident/contributions", icon: "chart" },
       { label: "My Pass", href: "/resident/pass", icon: "doc" },
       { label: "Notifications", href: "/resident/notifications", icon: "log" },

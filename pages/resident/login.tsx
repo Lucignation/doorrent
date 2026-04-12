@@ -315,7 +315,7 @@ export default function ResidentLoginPage() {
                 Signing in as an estate admin?{" "}
                 <Link href="/portal">Estate admin login</Link>
               </span>
-              {slugResolved && (
+              {/* {slugResolved && (
                 <span className="rl-footer-alts">
                   {workspaceKind === "property" ? (
                     <Link href="/tenant/login">Tenant login</Link>
@@ -329,7 +329,7 @@ export default function ResidentLoginPage() {
                     </>
                   )}
                 </span>
-              )}
+              )} */}
             </div>
           </div>
         </div>
