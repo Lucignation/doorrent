@@ -112,6 +112,12 @@ export default function EstateOverviewPage() {
           stat={loading ? null : `${(data?.workers ?? []).length} worker(s)`}
         />
         <ModuleCard
+          href="/estate/gate"
+          title="Gate Console"
+          description="Validate visitor QR codes, access codes, and exit codes at the estate gate."
+          stat={loading ? null : `${(data?.passes ?? []).filter((pass) => pass.status === "ACTIVE").length} active pass(es)`}
+        />
+        <ModuleCard
           href="/estate/passes"
           title="Pass Centre"
           description="Issue and track visitor access passes."
