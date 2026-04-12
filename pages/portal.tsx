@@ -276,6 +276,39 @@ function getAlternateAuthLink(role: RoleKey) {
   };
 }
 
+function getWorkspaceConsumerAccessLinks(
+  mode?: NonNullable<PublicWorkspaceContext["workspace"]>["workspaceMode"] | null,
+) {
+  if (mode === "ESTATE_ADMIN") {
+    return [
+      {
+        href: "/resident/login",
+        label: "Estate Resident Login",
+      },
+    ];
+  }
+
+  if (mode) {
+    return [
+      {
+        href: "/tenant/login",
+        label: "Tenant Login",
+      },
+    ];
+  }
+
+  return [
+    {
+      href: "/tenant/login",
+      label: "Tenant Login",
+    },
+    {
+      href: "/resident/login",
+      label: "Estate Resident Login",
+    },
+  ];
+}
+
 function getWorkspaceModeLabel(
   mode?: NonNullable<PublicWorkspaceContext["workspace"]>["workspaceMode"] | null,
 ) {
@@ -2109,6 +2142,10 @@ export function PortalExperience({
       : role === "admin"
         ? null
         : resolvedWorkspace?.branding ?? workspaceBranding ?? null;
+  const workspaceConsumerAccessLinks =
+    role === "landlord"
+      ? getWorkspaceConsumerAccessLinks(resolvedWorkspace?.workspaceMode ?? initialWorkspace?.workspaceMode ?? null)
+      : [];
   const authBackgroundUrl = resolveBrandLoginBackgroundUrl(tenantBranding);
   const authHeroStyle = authBackgroundUrl
     ? {
@@ -2299,12 +2336,19 @@ export function PortalExperience({
 
             {role === "landlord" && (
               <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border)", textAlign: "center", fontSize: 13, color: "var(--ink3)" }}>
-                <Link href="/tenant/login" style={{ color: "var(--accent)", fontWeight: 600, marginRight: 16 }}>
-                  Tenant Login
-                </Link>
-                <Link href="/resident/login" style={{ color: "var(--accent)", fontWeight: 600 }}>
-                  Estate Resident Login
-                </Link>
+                {workspaceConsumerAccessLinks.map((link, index) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    style={{
+                      color: "var(--accent)",
+                      fontWeight: 600,
+                      marginRight: index < workspaceConsumerAccessLinks.length - 1 ? 16 : 0,
+                    }}
+                  >
+                    {link.label}
+                  </Link>
+                ))}
                 {/* <Link href="/caretaker/login" style={{ color: "var(--accent)", fontWeight: 600, marginLeft: 16 }}>
                   Caretaker Login
                 </Link> */}
