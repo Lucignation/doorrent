@@ -22,6 +22,8 @@ const initialResidentForm = {
   phone: "",
   residentType: "TENANT",
   status: "ACTIVE",
+  duesStartDate: "",
+  lastPaidAt: "",
 };
 
 export default function EstateHouseDetailPage() {
@@ -57,7 +59,16 @@ export default function EstateHouseDetailPage() {
   useEffect(() => { void loadData(); }, [token, id, dataRefreshVersion]);
 
   function fillResidentForm(r: ResidentRow) {
-    setResidentForm({ id: r.id, fullName: r.fullName, email: r.email ?? "", phone: r.phone ?? "", residentType: r.residentType, status: r.status });
+    setResidentForm({
+      id: r.id,
+      fullName: r.fullName,
+      email: r.email ?? "",
+      phone: r.phone ?? "",
+      residentType: r.residentType,
+      status: r.status,
+      duesStartDate: "",
+      lastPaidAt: "",
+    });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -73,6 +84,8 @@ export default function EstateHouseDetailPage() {
         phone: residentForm.phone || undefined,
         residentType: residentForm.residentType,
         status: residentForm.status,
+        duesStartDate: residentForm.duesStartDate || undefined,
+        lastPaidAt: residentForm.lastPaidAt || undefined,
       };
       if (residentForm.id) {
         await apiRequest(`/estate/residents/${residentForm.id}`, { method: "PATCH", token, body });
@@ -207,6 +220,12 @@ export default function EstateHouseDetailPage() {
                     <option value="ACTIVE">Active</option>
                     <option value="INACTIVE">Inactive</option>
                   </select>
+                </label>
+                <label>Dues start date
+                  <input className="form-input" type="date" value={residentForm.duesStartDate} onChange={(e) => setResidentForm((f) => ({ ...f, duesStartDate: e.target.value }))} />
+                </label>
+                <label>Last paid date
+                  <input className="form-input" type="date" value={residentForm.lastPaidAt} onChange={(e) => setResidentForm((f) => ({ ...f, lastPaidAt: e.target.value }))} />
                 </label>
                 <div className="estate-form-actions estate-form-wide">
                   <button type="submit" className="btn btn-primary" disabled={savingResident}>{savingResident ? "Saving…" : residentForm.id ? "Update Resident" : "Add Resident"}</button>

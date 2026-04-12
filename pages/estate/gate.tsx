@@ -11,6 +11,8 @@ type GateLookupResult = {
   query: string;
   matchedBy: "QR" | "ACCESS_CODE" | "EXIT_CODE";
   suggestedLane: "ENTRY" | "EXIT";
+  // codeType distinguishes a residential access/exit code from a visitor pass code
+  codeType?: "RESIDENTIAL" | "VISITOR_PASS";
   gateRules: {
     qrGateEnforcement: boolean;
     accessCodeRequired: boolean;
@@ -42,6 +44,31 @@ type GateLookupResult = {
     entryUsedAt?: string | null;
     exitUsedAt?: string | null;
   };
+  // Only present when codeType === "RESIDENTIAL" — shows the real registered residents
+  // at the address this code belongs to, so operators can detect code-sharing fraud.
+  residence?: {
+    houseNumber: string;
+    block?: string | null;
+    ownerName?: string | null;
+    ownerPhone?: string | null;
+    residents: Array<{
+      id: string;
+      fullName: string;
+      residentType: string;
+      phone?: string | null;
+      status: string;
+    }>;
+  } | null;
+};
+
+// Dues owed by a resident — returned alongside the gate lookup when enforcement is on
+type ResidentDuesOwed = {
+  residentId: string;
+  fullName: string;
+  houseNumber: string | null;
+  outstandingBalance: number;
+  overdueSince: string | null;
+  chargesSummary: Array<{ title: string; amount: number; frequency: string }>;
 };
 
 type GateDecisionResult = {
@@ -115,6 +142,7 @@ export default function EstateGateConsolePage() {
   const [actioningKey, setActioningKey] = useState("");
   const [lookupResult, setLookupResult] = useState<GateLookupResult | null>(null);
   const [resolvedScanValue, setResolvedScanValue] = useState("");
+  const [duesOwed, setDuesOwed] = useState<ResidentDuesOwed[] | null>(null);
 
   const scanValue = useMemo(() => {
     return (
@@ -141,6 +169,21 @@ export default function EstateGateConsolePage() {
       setLookupResult(data);
       setInputValue(query);
       showToast("Pass found.", "success");
+
+      // If this is a residential code, also fetch outstanding dues for that address
+      if (data.codeType === "RESIDENTIAL" && data.pass.houseNumber) {
+        try {
+          const duesRes = await apiRequest<{ duesOwed: ResidentDuesOwed[] }>(
+            `/estate/dues-ledger/house/${encodeURIComponent(data.pass.houseNumber)}`,
+            { token },
+          );
+          setDuesOwed(duesRes.data.duesOwed ?? []);
+        } catch {
+          setDuesOwed(null);
+        }
+      } else {
+        setDuesOwed(null);
+      }
     } catch (error) {
       setLookupResult(null);
       showToast(
@@ -265,6 +308,7 @@ export default function EstateGateConsolePage() {
                     setLookupResult(null);
                     setInputValue("");
                     setNote("");
+                    setDuesOwed(null);
                   }}
                 >
                   Clear
@@ -407,6 +451,186 @@ export default function EstateGateConsolePage() {
                   </div>
                 </div>
               </div>
+
+              {/* ── RESIDENT IDENTITY VERIFICATION ──────────────────────────
+                   Shown when a RESIDENTIAL access/exit code is scanned.
+                   The gate operator must visually confirm the person presenting
+                   matches one of the registered residents at this address.
+                   This stops residents borrowing a neighbour's code to re-enter. */}
+              {lookupResult.codeType === "RESIDENTIAL" && lookupResult.residence ? (
+                <div
+                  style={{
+                    borderRadius: 16,
+                    border: "2px solid var(--amber)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      background: "rgba(177,133,48,0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>⚠️</span>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: "var(--amber)" }}>
+                        IDENTITY VERIFICATION REQUIRED
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 2 }}>
+                        This is a <strong>residential code</strong> for House {lookupResult.residence.houseNumber}
+                        {lookupResult.residence.block ? ` (Block ${lookupResult.residence.block})` : ""}.
+                        Confirm the person at the gate is one of the registered residents below.
+                        Do NOT allow entry if the person does not match.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ padding: 16, display: "grid", gap: 10 }}>
+                    {lookupResult.residence.ownerName ? (
+                      <div style={{ fontSize: 12, color: "var(--ink3)" }}>
+                        <strong>House owner:</strong> {lookupResult.residence.ownerName}
+                        {lookupResult.residence.ownerPhone ? ` · ${lookupResult.residence.ownerPhone}` : ""}
+                      </div>
+                    ) : null}
+                    <div style={{ fontWeight: 700, fontSize: 13, marginTop: 4, marginBottom: 4 }}>
+                      Registered residents at this address:
+                    </div>
+                    {lookupResult.residence.residents.length === 0 ? (
+                      <div style={{ fontSize: 13, color: "var(--ink3)" }}>No residents registered for this house.</div>
+                    ) : (
+                      lookupResult.residence.residents.map((res) => (
+                        <div
+                          key={res.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 12,
+                            padding: "10px 14px",
+                            borderRadius: 12,
+                            background: "var(--bg)",
+                            border: "1px solid var(--border)",
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: "50%",
+                              background: "var(--primary-light, rgba(26,92,66,0.12))",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontWeight: 800,
+                              fontSize: 13,
+                              color: "var(--primary, #1A5C42)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {res.fullName.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>{res.fullName}</div>
+                            <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 2 }}>
+                              {res.residentType}{res.phone ? ` · ${res.phone}` : ""}
+                            </div>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "3px 8px",
+                              borderRadius: 999,
+                              background: res.status === "ACTIVE" ? "rgba(34,139,94,0.1)" : "rgba(150,150,150,0.1)",
+                              color: res.status === "ACTIVE" ? "var(--green)" : "var(--ink3)",
+                            }}
+                          >
+                            {res.status}
+                          </span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : null}
+
+              {/* ── DUES OWED AT GATE ──────────────────────────────────────── */}
+              {duesOwed && duesOwed.length > 0 && (
+                <div
+                  style={{
+                    borderRadius: 16,
+                    border: "2px solid var(--red, #dc2626)",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      background: "rgba(220,38,38,0.07)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>🚨</span>
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: 14, color: "var(--red, #dc2626)" }}>
+                        OUTSTANDING DUES
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 2 }}>
+                        The following residents at this address have unpaid estate dues.
+                        Report to estate management for enforcement action.
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ padding: 16, display: "grid", gap: 12 }}>
+                    {duesOwed.map((d) => (
+                      <div
+                        key={d.residentId}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 12,
+                          background: "var(--bg)",
+                          border: "1px solid rgba(220,38,38,0.18)",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>{d.fullName}</div>
+                            <div style={{ fontSize: 12, color: "var(--ink3)", marginTop: 2 }}>
+                              House {d.houseNumber ?? "—"}
+                              {d.overdueSince ? ` · overdue since ${new Date(d.overdueSince).toLocaleDateString("en-NG")}` : ""}
+                            </div>
+                          </div>
+                          <div style={{ fontWeight: 800, fontSize: 16, color: "var(--red, #dc2626)" }}>
+                            ₦{d.outstandingBalance.toLocaleString()}
+                          </div>
+                        </div>
+                        {d.chargesSummary.length > 0 && (
+                          <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                            {d.chargesSummary.map((ch) => (
+                              <span
+                                key={ch.title}
+                                style={{
+                                  fontSize: 11,
+                                  padding: "2px 8px",
+                                  borderRadius: 999,
+                                  background: "rgba(220,38,38,0.08)",
+                                  color: "var(--red, #dc2626)",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                {ch.title} · ₦{ch.amount.toLocaleString()} ({ch.frequency})
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {lookupResult.warningMessages.length ? (
                 <div

@@ -12,6 +12,15 @@ interface ResidentDashboardData {
   charges: Array<{ id: string; title: string; amount: number; frequency: string }>;
   activeCauses: Array<{ id: string; title: string; targetAmount: number; contributedAmount: number; deadline?: string | null }>;
   recentNotifications: Array<{ id: string; title: string; body: string; createdAt: string }>;
+  officeAccess?: {
+    offices: Array<{
+      id: string;
+      position: string;
+      tenureStartDate: string;
+      tenureEndDate: string;
+    }>;
+    permissions: string[];
+  };
 }
 
 export default function ResidentDashboardPage() {
@@ -75,7 +84,31 @@ export default function ResidentDashboardPage() {
               <div className="stat-label">Open Causes</div>
               <div className="stat-value">{data?.activeCauses.length ?? 0}</div>
             </div>
+            <div className="stat-card">
+              <div className="stat-label">Estate Offices</div>
+              <div className="stat-value">{data?.officeAccess?.offices.length ?? 0}</div>
+            </div>
           </div>
+
+          {data?.officeAccess?.offices.length ? (
+            <div className="card" style={{ marginBottom: 24 }}>
+              <div className="card-header"><strong>Current Estate Office Access</strong></div>
+              <div className="card-body" style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  {data.officeAccess.offices.map((office) => (
+                    <StatusBadge key={office.id} tone="green">
+                      {office.position}
+                    </StatusBadge>
+                  ))}
+                </div>
+                <div className="td-muted" style={{ fontSize: 13 }}>
+                  {data.officeAccess.permissions.length > 0
+                    ? `Workspace access enabled: ${data.officeAccess.permissions.join(", ")}`
+                    : "Your estate office access is active."}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
           {/* Active causes summary */}
           {data && data.activeCauses.length > 0 ? (
