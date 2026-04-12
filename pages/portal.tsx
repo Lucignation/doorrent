@@ -260,6 +260,22 @@ function getWorkspaceLoginPath(role: RoleKey) {
   return role === "admin" ? "/admin/login" : "/portal";
 }
 
+function getAlternateAuthLink(role: RoleKey) {
+  if (role === "tenant") {
+    return {
+      href: "/resident/login",
+      label: "Estate Resident Login",
+      copy: "Signing in as an estate resident instead?",
+    };
+  }
+
+  return {
+    href: "/tenant/login",
+    label: "Tenant Login",
+    copy: "Signing in as a tenant instead?",
+  };
+}
+
 function getWorkspaceModeLabel(
   mode?: NonNullable<PublicWorkspaceContext["workspace"]>["workspaceMode"] | null,
 ) {
@@ -407,6 +423,8 @@ export function PortalExperience({
       const redirectPath =
         requestedRole === "tenant"
           ? "/tenant/login"
+          : requestedRole === "resident"
+            ? "/resident/login"
           : requestedRole === "admin"
             ? "/admin/login"
             : null;
@@ -2062,6 +2080,25 @@ export function PortalExperience({
           Need access? Ask your landlord to invite you, then use the same email
           here after onboarding.
         </div>
+
+        <div
+          style={{
+            marginTop: 18,
+            paddingTop: 18,
+            borderTop: "1px solid var(--border)",
+            textAlign: "center",
+            fontSize: 13,
+            color: "var(--ink3)",
+          }}
+        >
+          {getAlternateAuthLink("tenant").copy}{" "}
+          <Link
+            href={getAlternateAuthLink("tenant").href}
+            style={{ color: "var(--accent)", fontWeight: 700 }}
+          >
+            {getAlternateAuthLink("tenant").label}
+          </Link>
+        </div>
       </>
     );
   }
@@ -2265,7 +2302,10 @@ export function PortalExperience({
                 <Link href="/tenant/login" style={{ color: "var(--accent)", fontWeight: 600, marginRight: 16 }}>
                   Tenant Login
                 </Link>
-                {/* <Link href="/caretaker/login" style={{ color: "var(--accent)", fontWeight: 600 }}>
+                <Link href="/resident/login" style={{ color: "var(--accent)", fontWeight: 600 }}>
+                  Estate Resident Login
+                </Link>
+                {/* <Link href="/caretaker/login" style={{ color: "var(--accent)", fontWeight: 600, marginLeft: 16 }}>
                   Caretaker Login
                 </Link> */}
               </div>

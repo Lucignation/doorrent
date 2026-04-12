@@ -14,7 +14,9 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     }
   });
 
-  const destination = params.toString() ? `/portal?${params.toString()}` : "/portal";
+  const destination = params.toString()
+    ? `/resident/login?${params.toString()}`
+    : "/resident/login";
 
   return {
     redirect: {
