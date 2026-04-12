@@ -1,4 +1,5 @@
 import { type FormEvent, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/router";
 import PageMeta from "../../components/layout/PageMeta";
 import { useResidentPortalSession } from "../../context/TenantSessionContext";
@@ -93,11 +94,11 @@ export default function ResidentLoginPage() {
 
   return (
     <>
-      <PageMeta title="Resident Sign In" />
+      <PageMeta title="Estate Resident Login" />
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", padding: "24px 16px" }}>
         <div style={{ width: "100%", maxWidth: 420 }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Resident Portal</h1>
+            <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Estate Resident Login</h1>
             <p style={{ color: "var(--ink3)", fontSize: 15 }}>
               {step === "email" ? "Enter your email to sign in to your estate resident account." : `Enter the 6-digit code sent to ${email}.`}
             </p>
@@ -160,6 +161,13 @@ export default function ResidentLoginPage() {
                 </form>
               )}
             </div>
+          </div>
+
+          <div style={{ marginTop: 20, textAlign: "center", color: "var(--ink3)", fontSize: 13 }}>
+            Signing in as a tenant instead?{" "}
+            <Link href="/tenant/login" style={{ color: "var(--accent)", fontWeight: 700 }}>
+              Tenant Login
+            </Link>
           </div>
         </div>
       </div>
