@@ -6,6 +6,11 @@ import StatusBadge from "../../components/ui/StatusBadge";
 import { useResidentPortalSession } from "../../context/TenantSessionContext";
 import { usePrototypeUI } from "../../context/PrototypeUIContext";
 import { apiRequest } from "../../lib/api";
+import {
+  getSafeWorkspaceHostFromWindow,
+  PUBLIC_APP_ORIGIN,
+  ROOT_PUBLIC_DOMAIN,
+} from "../../lib/frontend-security";
 
 interface EstatePass {
   id: string;
@@ -32,8 +37,22 @@ const initialForm = {
   validUntil: "",
 };
 
-function buildPassQrUrl(qrToken: string) {
-  const payload = `ESTATE_PASS:${qrToken}`;
+function buildGateConsoleUrl(qrToken: string, workspaceSlug?: string | null) {
+  const safeHost = getSafeWorkspaceHostFromWindow();
+
+  if (safeHost && typeof window !== "undefined") {
+    return `${window.location.protocol}//${safeHost}/estate/gate?scan=${encodeURIComponent(qrToken)}`;
+  }
+
+  if (workspaceSlug) {
+    return `https://${workspaceSlug}.${ROOT_PUBLIC_DOMAIN}/estate/gate?scan=${encodeURIComponent(qrToken)}`;
+  }
+
+  return `${PUBLIC_APP_ORIGIN}/estate/gate?scan=${encodeURIComponent(qrToken)}`;
+}
+
+function buildPassQrUrl(qrToken: string, workspaceSlug?: string | null) {
+  const payload = buildGateConsoleUrl(qrToken, workspaceSlug);
   return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(payload)}`;
 }
 
@@ -375,12 +394,12 @@ export default function ResidentPassPage() {
                     }}
                   >
                     <img
-                      src={buildPassQrUrl(pass.qrToken)}
+                      src={buildPassQrUrl(pass.qrToken, resident?.workspaceSlug)}
                       alt={`QR code for ${pass.holderName}`}
                       style={{ width: 160, height: 160, borderRadius: 12 }}
                     />
                     <div className="td-muted" style={{ fontSize: 12 }}>
-                      Gate QR verification
+                      Scan from the estate Gate Console
                     </div>
                   </div>
 
