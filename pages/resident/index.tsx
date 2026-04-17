@@ -7,11 +7,20 @@ import { useResidentPortalSession } from "../../context/TenantSessionContext";
 import { apiRequest } from "../../lib/api";
 import { formatEstateCurrency } from "../../lib/estate-preview";
 
+interface ResidentGateAccess {
+  mode: "SHORT_LIVED_QR";
+  token: string;
+  expiresAt: string;
+  gateUrl: string;
+  instructions: string;
+}
+
 interface ResidentDashboardData {
   balance: number;
   charges: Array<{ id: string; title: string; amount: number; frequency: string }>;
   activeCauses: Array<{ id: string; title: string; targetAmount: number; contributedAmount: number; deadline?: string | null }>;
   recentNotifications: Array<{ id: string; title: string; body: string; createdAt: string }>;
+  gateAccess?: ResidentGateAccess;
   officeAccess?: {
     offices: Array<{
       id: string;
@@ -23,6 +32,12 @@ interface ResidentDashboardData {
   };
 }
 
+function buildGateQrUrl(gateUrl: string) {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+    gateUrl,
+  )}`;
+}
+
 export default function ResidentDashboardPage() {
   const { residentSession } = useResidentPortalSession();
   const token = residentSession?.token;
@@ -30,15 +45,39 @@ export default function ResidentDashboardPage() {
 
   const [data, setData] = useState<ResidentDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gateAccess, setGateAccess] = useState<ResidentGateAccess | null>(null);
+  const [refreshingGateAccess, setRefreshingGateAccess] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     setLoading(true);
     apiRequest<ResidentDashboardData>("/resident/dashboard", { token })
-      .then(({ data: d }) => setData(d))
+      .then(({ data: d }) => {
+        setData(d);
+        setGateAccess(d.gateAccess ?? null);
+      })
       .catch(() => null)
       .finally(() => setLoading(false));
   }, [token]);
+
+  async function refreshGateAccess() {
+    if (!token) {
+      return;
+    }
+
+    setRefreshingGateAccess(true);
+
+    try {
+      const response = await apiRequest<ResidentGateAccess>("/resident/gate-access", {
+        token,
+      });
+      setGateAccess(response.data);
+    } catch {
+      // Keep the last valid gate proof on screen if refresh fails.
+    } finally {
+      setRefreshingGateAccess(false);
+    }
+  }
 
   return (
     <ResidentPortalShell topbarTitle="My Home" breadcrumb="Overview">
@@ -48,20 +87,117 @@ export default function ResidentDashboardPage() {
         description={`House ${resident?.houseNumber ?? ""}${resident?.block ? ` · Block ${resident.block}` : ""} · ${resident?.estateName ?? "Estate"}`}
       />
 
-      {/* Access codes */}
+      {/* Live gate access */}
       <div className="card" style={{ marginBottom: 24 }}>
-        <div className="card-body" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)", letterSpacing: 1, marginBottom: 8 }}>ENTRY CODE</div>
-            <code style={{ fontSize: 28, fontWeight: 800, letterSpacing: 5, background: "var(--bg)", padding: "12px 20px", borderRadius: 10, display: "inline-block" }}>
-              {resident?.accessCode ?? "—"}
-            </code>
+        <div className="card-header"><strong>Live Gate Access</strong></div>
+        <div
+          className="card-body"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(220px, 240px) 1fr",
+            gap: 20,
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gap: 10,
+              justifyItems: "center",
+              padding: 16,
+              borderRadius: 18,
+              background: "var(--bg)",
+            }}
+          >
+            {gateAccess ? (
+              <img
+                src={buildGateQrUrl(gateAccess.gateUrl)}
+                alt="Live gate access QR"
+                width={220}
+                height={220}
+                style={{ width: "100%", maxWidth: 220, borderRadius: 16 }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: 220,
+                  height: 220,
+                  borderRadius: 16,
+                  background: "var(--surface)",
+                  display: "grid",
+                  placeItems: "center",
+                  color: "var(--ink3)",
+                  textAlign: "center",
+                  padding: 20,
+                }}
+              >
+                Live gate QR unavailable right now.
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => void refreshGateAccess()}
+              disabled={refreshingGateAccess}
+            >
+              {refreshingGateAccess ? "Refreshing..." : "Refresh Live QR"}
+            </button>
           </div>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)", letterSpacing: 1, marginBottom: 8 }}>EXIT CODE</div>
-            <code style={{ fontSize: 28, fontWeight: 800, letterSpacing: 5, background: "var(--bg)", padding: "12px 20px", borderRadius: 10, display: "inline-block" }}>
-              {resident?.exitCode ?? "—"}
-            </code>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ fontSize: 13, color: "var(--ink2)", lineHeight: 1.7 }}>
+              {gateAccess?.instructions ??
+                "Use the resident gate QR for entry and exit. Static resident codes are no longer accepted at the estate gate."}
+            </div>
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: 14,
+                background: "rgba(177, 133, 48, 0.12)",
+                color: "var(--amber)",
+                fontSize: 13,
+                lineHeight: 1.7,
+              }}
+            >
+              Shared resident or house codes can be abused. This live QR expires quickly and is now the
+              gate-valid proof for resident access.
+            </div>
+            <div style={{ fontSize: 12, color: "var(--ink3)" }}>
+              Expires:{" "}
+              <strong>
+                {gateAccess?.expiresAt
+                  ? new Date(gateAccess.expiresAt).toLocaleString("en-NG")
+                  : "—"}
+              </strong>
+            </div>
+            {gateAccess?.token ? (
+              <div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--ink3)",
+                    letterSpacing: 1,
+                    marginBottom: 8,
+                  }}
+                >
+                  FALLBACK TOKEN
+                </div>
+                <code
+                  style={{
+                    display: "block",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    background: "var(--bg)",
+                    fontSize: 12,
+                    lineHeight: 1.6,
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {gateAccess.token}
+                </code>
+              </div>
+            ) : null}
           </div>
         </div>
       </div>
@@ -106,6 +242,25 @@ export default function ResidentDashboardPage() {
                     ? `Workspace access enabled: ${data.officeAccess.permissions.join(", ")}`
                     : "Your estate office access is active."}
                 </div>
+                {data.officeAccess.permissions.length > 0 ? (
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {data.officeAccess.permissions.includes("finance_overview") ? (
+                      <a className="btn btn-secondary btn-sm" href="/resident/office/finance">
+                        Finance Overview
+                      </a>
+                    ) : null}
+                    {data.officeAccess.permissions.includes("gate_coordination") ? (
+                      <a className="btn btn-secondary btn-sm" href="/resident/office/gate">
+                        Gate Console
+                      </a>
+                    ) : null}
+                    {data.officeAccess.permissions.includes("meetings_overview") ? (
+                      <a className="btn btn-secondary btn-sm" href="/resident/office/meetings">
+                        Meetings Overview
+                      </a>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           ) : null}

@@ -26,6 +26,8 @@ type GateLookupResult = {
     exitRecorded: boolean;
     entryAllowed: boolean;
     exitAllowed: boolean;
+    identityVerified?: boolean;
+    requiresLiveQr?: boolean;
   };
   pass: {
     id: string;
@@ -374,45 +376,84 @@ export default function EstateGateConsolePage() {
                 />
               </div>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                  gap: 14,
-                }}
-              >
-                <div className="card" style={{ background: "var(--bg)" }}>
-                  <div className="card-body">
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)" }}>
-                      ACCESS CODE
-                    </div>
-                    <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2 }}>
-                      {pass?.accessCode}
-                    </code>
-                  </div>
-                </div>
-                <div className="card" style={{ background: "var(--bg)" }}>
-                  <div className="card-body">
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)" }}>
-                      EXIT CODE
-                    </div>
-                    <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2 }}>
-                      {pass?.exitCode}
-                    </code>
-                  </div>
-                </div>
-                <div className="card" style={{ background: "var(--bg)" }}>
-                  <div className="card-body">
-                    <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)" }}>
-                      VISIT WINDOW
-                    </div>
-                    <div style={{ fontWeight: 700 }}>{formatDateTime(pass?.validFrom)}</div>
-                    <div className="td-muted" style={{ marginTop: 6 }}>
-                      until {formatDateTime(pass?.validUntil)}
+              {lookupResult.codeType === "RESIDENTIAL" ? (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 14,
+                  }}
+                >
+                  <div className="card" style={{ background: "var(--bg)" }}>
+                    <div className="card-body">
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)" }}>
+                        RESIDENT IDENTITY
+                      </div>
+                      <div style={{ fontWeight: 700, marginTop: 6 }}>
+                        {lookupResult.validation.identityVerified
+                          ? "Live resident QR verified"
+                          : "Live resident QR required"}
+                      </div>
+                      <div className="td-muted" style={{ marginTop: 6 }}>
+                        House and long-lived resident codes are no longer gate-valid.
+                      </div>
                     </div>
                   </div>
+                  <div className="card" style={{ background: "var(--bg)" }}>
+                    <div className="card-body">
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)" }}>
+                        ADDRESS
+                      </div>
+                      <div style={{ fontWeight: 700, marginTop: 6 }}>
+                        House {pass?.houseNumber ?? "—"}
+                      </div>
+                      <div className="td-muted" style={{ marginTop: 6 }}>
+                        Match the person physically present with the registered resident list below.
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                    gap: 14,
+                  }}
+                >
+                  <div className="card" style={{ background: "var(--bg)" }}>
+                    <div className="card-body">
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)" }}>
+                        ACCESS CODE
+                      </div>
+                      <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2 }}>
+                        {pass?.accessCode}
+                      </code>
+                    </div>
+                  </div>
+                  <div className="card" style={{ background: "var(--bg)" }}>
+                    <div className="card-body">
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)" }}>
+                        EXIT CODE
+                      </div>
+                      <code style={{ fontSize: 20, fontWeight: 800, letterSpacing: 2 }}>
+                        {pass?.exitCode}
+                      </code>
+                    </div>
+                  </div>
+                  <div className="card" style={{ background: "var(--bg)" }}>
+                    <div className="card-body">
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--ink3)" }}>
+                        VISIT WINDOW
+                      </div>
+                      <div style={{ fontWeight: 700 }}>{formatDateTime(pass?.validFrom)}</div>
+                      <div className="td-muted" style={{ marginTop: 6 }}>
+                        until {formatDateTime(pass?.validUntil)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div
                 style={{
