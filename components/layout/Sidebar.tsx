@@ -41,6 +41,7 @@ export default function Sidebar({
     clearAdminSession,
     clearCaretakerSession,
     clearLandlordSession,
+    clearResidentSession,
     clearTenantSession,
   } = useTenantPortalSession();
   const homeHref = navSections[0]?.items[0]?.href ?? "/";
@@ -48,6 +49,7 @@ export default function Sidebar({
   const isLandlordRoute = router.pathname.startsWith("/landlord");
   const isAdminRoute = router.pathname.startsWith("/admin");
   const isCaretakerRoute = router.pathname.startsWith("/caretaker");
+  const isResidentRoute = router.pathname.startsWith("/resident");
   const [logoLoadFailed, setLogoLoadFailed] = useState(false);
   const signOutHref = isTenantRoute
     ? "/tenant/login"
@@ -55,6 +57,8 @@ export default function Sidebar({
       ? "/admin/login"
       : isCaretakerRoute
         ? "/caretaker/login"
+        : isResidentRoute
+          ? "/resident/login"
         : "/portal";
   const brandName = resolveBrandDisplayName(branding, "DoorRent");
   const customBrandLogoUrl = resolveBrandLogoUrl(branding, "");
@@ -87,6 +91,11 @@ export default function Sidebar({
 
     if (isCaretakerRoute) {
       clearCaretakerSession();
+      return;
+    }
+
+    if (isResidentRoute) {
+      clearResidentSession();
       return;
     }
 

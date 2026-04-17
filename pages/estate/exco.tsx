@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import EstatePortalShell from "../../components/auth/EstatePortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import DataTable from "../../components/ui/DataTable";
@@ -111,6 +111,10 @@ function isElectionOpen(e: Election) {
   return e.status === "OPEN" && new Date(e.startTime).getTime() <= now && new Date(e.endTime).getTime() >= now;
 }
 
+function formatResidentOptionLabel(resident: EstateResidentOption) {
+  return `${resident.fullName}${resident.houseNumber ? ` · House ${resident.houseNumber}` : ""}${resident.residentType ? ` · ${resident.residentType}` : ""}`;
+}
+
 const initialMemberForm = {
   id: "", residentId: "", position: POSITIONS[0],
   tenureStartDate: todayStr(), tenureYears: "2", bio: "", status: "ACTIVE",
@@ -147,6 +151,8 @@ export default function EstateExcoPage() {
   const [savingElection, setSavingElection] = useState(false);
   const [activeTab, setActiveTab] = useState<"members" | "elections">("members");
   const [expandedElectionId, setExpandedElectionId] = useState<string | null>(null);
+  const [candidateDropdownOpen, setCandidateDropdownOpen] = useState(false);
+  const candidateDropdownRef = useRef<HTMLDivElement | null>(null);
 
   async function loadData() {
     if (!token) return;
@@ -164,6 +170,19 @@ export default function EstateExcoPage() {
   }
 
   useEffect(() => { void loadData(); }, [token, dataRefreshVersion]);
+
+  useEffect(() => {
+    if (!candidateDropdownOpen) return;
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!candidateDropdownRef.current?.contains(event.target as Node)) {
+        setCandidateDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [candidateDropdownOpen]);
 
   const residentIdBySnapshot = useMemo(() => {
     const byKey = new Map<string, string>();
@@ -194,6 +213,18 @@ export default function EstateExcoPage() {
       ),
     [activeResidents, electionForm.candidateResidentIds],
   );
+
+  const candidateDropdownLabel = useMemo(() => {
+    if (selectedElectionResidents.length === 0) {
+      return "Select active residents";
+    }
+
+    if (selectedElectionResidents.length <= 2) {
+      return selectedElectionResidents.map((resident) => resident.fullName).join(", ");
+    }
+
+    return `${selectedElectionResidents.length} active residents selected`;
+  }, [selectedElectionResidents]);
 
   // ── Member CRUD ─────────────────────────────────────────────────────────────
 
@@ -286,8 +317,21 @@ export default function EstateExcoPage() {
       candidateResidentIds,
       status: el.status,
     });
+    setCandidateDropdownOpen(false);
     setActiveTab("elections");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function toggleElectionCandidate(residentId: string) {
+    setElectionForm((current) => {
+      const alreadySelected = current.candidateResidentIds.includes(residentId);
+      return {
+        ...current,
+        candidateResidentIds: alreadySelected
+          ? current.candidateResidentIds.filter((id) => id !== residentId)
+          : [...current.candidateResidentIds, residentId],
+      };
+    });
   }
 
   async function handleSaveElection(e: FormEvent) {
@@ -315,6 +359,7 @@ export default function EstateExcoPage() {
         showToast("Election created.", "success");
       }
       setElectionForm(buildInitialElectionForm());
+      setCandidateDropdownOpen(false);
       void loadData();
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to save election.", "error");
@@ -455,9 +500,7 @@ export default function EstateExcoPage() {
                     <option value="">Select an active resident</option>
                     {activeResidents.map((resident) => (
                       <option key={resident.id} value={resident.id}>
-                        {resident.fullName}
-                        {resident.houseNumber ? ` · House ${resident.houseNumber}` : ""}
-                        {resident.residentType ? ` · ${resident.residentType}` : ""}
+                        {formatResidentOptionLabel(resident)}
                       </option>
                     ))}
                   </select>
@@ -545,33 +588,128 @@ export default function EstateExcoPage() {
                     <option value="CLOSED">Closed</option>
                   </select>
                 </label>
-                <label className="estate-form-wide">
-                  Candidates (multi-select active residents)
-                  <select
-                    className="form-input"
-                    multiple
-                    size={Math.min(Math.max(activeResidents.length, 4), 10)}
-                    value={electionForm.candidateResidentIds}
-                    onChange={(e) =>
-                      setElectionForm((f) => ({
-                        ...f,
-                        candidateResidentIds: Array.from(e.currentTarget.selectedOptions, (option) => option.value),
-                      }))
-                    }
-                    required
-                  >
-                    {activeResidents.map((resident) => (
-                      <option key={resident.id} value={resident.id}>
-                        {resident.fullName}
-                        {resident.houseNumber ? ` · House ${resident.houseNumber}` : ""}
-                        {resident.residentType ? ` · ${resident.residentType}` : ""}
-                      </option>
-                    ))}
-                  </select>
+                <div className="estate-form-wide">
+                  <div style={{ fontWeight: 600, marginBottom: 6 }}>Candidates (multi-select active residents)</div>
+                  <div ref={candidateDropdownRef} style={{ position: "relative" }}>
+                    <button
+                      type="button"
+                      className="form-input"
+                      aria-haspopup="listbox"
+                      aria-expanded={candidateDropdownOpen}
+                      onClick={() => setCandidateDropdownOpen((open) => !open)}
+                      style={{
+                        width: "100%",
+                        minHeight: 52,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                        textAlign: "left",
+                        background: "var(--surface)",
+                      }}
+                    >
+                      <span style={{ color: selectedElectionResidents.length ? "var(--ink)" : "var(--ink3)" }}>
+                        {candidateDropdownLabel}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--ink3)" }}>
+                        {candidateDropdownOpen ? "▲" : "▼"}
+                      </span>
+                    </button>
+
+                    {candidateDropdownOpen ? (
+                      <div
+                        role="listbox"
+                        aria-multiselectable="true"
+                        style={{
+                          position: "absolute",
+                          top: "calc(100% + 8px)",
+                          left: 0,
+                          right: 0,
+                          zIndex: 30,
+                          maxHeight: 280,
+                          overflowY: "auto",
+                          borderRadius: 16,
+                          border: "1px solid var(--border)",
+                          background: "var(--surface)",
+                          boxShadow: "0 18px 40px rgba(15, 23, 42, 0.14)",
+                          padding: 8,
+                          display: "grid",
+                          gap: 6,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            padding: "6px 8px 10px",
+                            marginBottom: 2,
+                            borderBottom: "1px solid var(--border)",
+                          }}
+                        >
+                          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--ink3)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            Active residents
+                          </span>
+                          {electionForm.candidateResidentIds.length > 0 ? (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-xs"
+                              onClick={() =>
+                                setElectionForm((current) => ({
+                                  ...current,
+                                  candidateResidentIds: [],
+                                }))
+                              }
+                            >
+                              Clear
+                            </button>
+                          ) : null}
+                        </div>
+
+                        {activeResidents.map((resident) => {
+                          const checked = electionForm.candidateResidentIds.includes(resident.id);
+
+                          return (
+                            <label
+                              key={resident.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "flex-start",
+                                gap: 10,
+                                padding: "10px 12px",
+                                borderRadius: 12,
+                                cursor: "pointer",
+                                background: checked ? "rgba(34,139,94,0.08)" : "transparent",
+                                border: checked ? "1px solid rgba(34,139,94,0.24)" : "1px solid transparent",
+                              }}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleElectionCandidate(resident.id)}
+                                style={{ marginTop: 2 }}
+                              />
+                              <span style={{ display: "grid", gap: 2 }}>
+                                <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>
+                                  {resident.fullName}
+                                </span>
+                                <span className="td-muted" style={{ fontSize: 12 }}>
+                                  {resident.houseNumber ? `House ${resident.houseNumber} · ` : ""}
+                                  {resident.residentType}
+                                  {resident.phone ? ` · ${resident.phone}` : ""}
+                                </span>
+                              </span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                   <span className="td-muted" style={{ display: "block", marginTop: 6, fontSize: 12 }}>
-                    Hold Ctrl/Cmd to select multiple residents from the dropdown list.
+                    Open the dropdown and tick two or more active residents.
                   </span>
-                </label>
+                </div>
                 <div className="estate-form-wide" style={{ borderRadius: 14, border: "1px solid var(--border)", padding: 14, background: "var(--surface)" }}>
                   <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
                     Selected candidates ({selectedElectionResidents.length})
@@ -583,8 +721,7 @@ export default function EstateExcoPage() {
                           key={resident.id}
                           style={{ fontSize: 12, padding: "6px 10px", borderRadius: 999, background: "var(--bg)", border: "1px solid var(--border)" }}
                         >
-                          {resident.fullName}
-                          {resident.houseNumber ? ` · House ${resident.houseNumber}` : ""}
+                          {formatResidentOptionLabel(resident)}
                         </span>
                       ))}
                     </div>
@@ -599,7 +736,7 @@ export default function EstateExcoPage() {
                 </label>
                 <div className="estate-form-actions estate-form-wide">
                   <button type="submit" className="btn btn-primary" disabled={savingElection || activeResidents.length < 2}>{savingElection ? "Saving…" : electionForm.id ? "Update Election" : "Create Election"}</button>
-                  {electionForm.id ? <button type="button" className="btn btn-secondary" onClick={() => setElectionForm(buildInitialElectionForm())}>Cancel</button> : null}
+                  {electionForm.id ? <button type="button" className="btn btn-secondary" onClick={() => { setElectionForm(buildInitialElectionForm()); setCandidateDropdownOpen(false); }}>Cancel</button> : null}
                 </div>
               </form>
             </div>
