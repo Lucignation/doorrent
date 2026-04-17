@@ -13,6 +13,7 @@ import type { TableColumn } from "../../types/app";
 
 interface ExcoMember {
   id: string;
+  residentId?: string | null;
   position: string;       // e.g. "President", "Finance", "COS", "Secretary"
   fullName: string;
   phone: string;
@@ -26,12 +27,23 @@ interface ExcoMember {
 
 interface ElectionCandidate {
   id: string;
+  residentId?: string | null;
   name: string;
   position: string;
   bio?: string | null;
   voteCount: number;
   // Transparent — voter names & positions visible to all
   voters: Array<{ residentId: string; fullName: string; houseNumber: string | null; votedAt: string }>;
+}
+
+interface EstateResidentOption {
+  id: string;
+  fullName: string;
+  phone?: string | null;
+  email?: string | null;
+  residentType: string;
+  houseNumber?: string | null;
+  status: "ACTIVE";
 }
 
 interface Election {
@@ -50,6 +62,7 @@ interface Election {
 interface ExcoPageData {
   members: ExcoMember[];
   elections: Election[];
+  activeResidents: EstateResidentOption[];
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -69,12 +82,6 @@ const POSITIONS = [
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
-}
-
-function yearFromNow(years: number) {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() + years);
-  return d.toISOString().slice(0, 10);
 }
 
 function fmtDate(s: string | null | undefined) {
@@ -105,7 +112,7 @@ function isElectionOpen(e: Election) {
 }
 
 const initialMemberForm = {
-  id: "", position: POSITIONS[0], fullName: "", phone: "", email: "",
+  id: "", residentId: "", position: POSITIONS[0],
   tenureStartDate: todayStr(), tenureYears: "2", bio: "", status: "ACTIVE",
 };
 
@@ -118,7 +125,7 @@ function buildInitialElectionForm() {
     id: "", title: "", description: "", position: POSITIONS[0],
     startTime: start.toISOString().slice(0, 16),
     endTime: end.toISOString().slice(0, 16),
-    candidatesText: "", // comma-separated names for quick entry
+    candidateResidentIds: [] as string[],
     status: "DRAFT",
   };
 }
@@ -132,6 +139,7 @@ export default function EstateExcoPage() {
 
   const [members, setMembers] = useState<ExcoMember[]>([]);
   const [elections, setElections] = useState<Election[]>([]);
+  const [activeResidents, setActiveResidents] = useState<EstateResidentOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [memberForm, setMemberForm] = useState(initialMemberForm);
   const [electionForm, setElectionForm] = useState(buildInitialElectionForm());
@@ -147,6 +155,7 @@ export default function EstateExcoPage() {
       const { data } = await apiRequest<ExcoPageData>("/estate/exco", { token });
       setMembers(data.members ?? []);
       setElections(data.elections ?? []);
+      setActiveResidents(data.activeResidents ?? []);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Failed to load ExCo data.", "error");
     } finally {
@@ -156,12 +165,48 @@ export default function EstateExcoPage() {
 
   useEffect(() => { void loadData(); }, [token, dataRefreshVersion]);
 
+  const residentIdBySnapshot = useMemo(() => {
+    const byKey = new Map<string, string>();
+
+    for (const resident of activeResidents) {
+      if (resident.email?.trim()) {
+        byKey.set(`email:${resident.email.trim().toLowerCase()}`, resident.id);
+      }
+
+      const fullNameKey = `name:${resident.fullName.trim().toLowerCase()}`;
+      if (!byKey.has(fullNameKey)) {
+        byKey.set(fullNameKey, resident.id);
+      }
+    }
+
+    return byKey;
+  }, [activeResidents]);
+
+  const selectedMemberResident = useMemo(
+    () => activeResidents.find((resident) => resident.id === memberForm.residentId) ?? null,
+    [activeResidents, memberForm.residentId],
+  );
+
+  const selectedElectionResidents = useMemo(
+    () =>
+      activeResidents.filter((resident) =>
+        electionForm.candidateResidentIds.includes(resident.id),
+      ),
+    [activeResidents, electionForm.candidateResidentIds],
+  );
+
   // ── Member CRUD ─────────────────────────────────────────────────────────────
 
   function fillMemberForm(m: ExcoMember) {
+    const inferredResidentId =
+      m.residentId ??
+      (m.email ? residentIdBySnapshot.get(`email:${m.email.trim().toLowerCase()}`) : undefined) ??
+      residentIdBySnapshot.get(`name:${m.fullName.trim().toLowerCase()}`) ??
+      "";
+
     setMemberForm({
-      id: m.id, position: m.position, fullName: m.fullName, phone: m.phone,
-      email: m.email ?? "", tenureStartDate: m.tenureStartDate.slice(0, 10),
+      id: m.id, residentId: inferredResidentId, position: m.position,
+      tenureStartDate: m.tenureStartDate.slice(0, 10),
       tenureYears: String(m.tenureYears), bio: m.bio ?? "", status: m.status,
     });
     setActiveTab("members");
@@ -171,6 +216,10 @@ export default function EstateExcoPage() {
   async function handleSaveMember(e: FormEvent) {
     e.preventDefault();
     if (!token) return;
+    if (!memberForm.residentId) {
+      showToast("Select an active resident for this ExCo position.", "error");
+      return;
+    }
     setSavingMember(true);
     try {
       const tenureYears = Number(memberForm.tenureYears) || 2;
@@ -180,8 +229,8 @@ export default function EstateExcoPage() {
         return d.toISOString().slice(0, 10);
       })();
       const body = {
-        position: memberForm.position, fullName: memberForm.fullName,
-        phone: memberForm.phone, email: memberForm.email || undefined,
+        residentId: memberForm.residentId,
+        position: memberForm.position,
         tenureStartDate: memberForm.tenureStartDate, tenureEndDate, tenureYears,
         bio: memberForm.bio || undefined, status: memberForm.status,
       };
@@ -215,12 +264,26 @@ export default function EstateExcoPage() {
   // ── Election CRUD ────────────────────────────────────────────────────────────
 
   function fillElectionForm(el: Election) {
+    const candidateResidentIds = Array.from(
+      new Set(
+        el.candidates
+          .map((candidate) => {
+            if (candidate.residentId) {
+              return candidate.residentId;
+            }
+
+            return residentIdBySnapshot.get(`name:${candidate.name.trim().toLowerCase()}`) ?? null;
+          })
+          .filter((value): value is string => Boolean(value)),
+      ),
+    );
+
     setElectionForm({
       id: el.id, title: el.title, description: el.description ?? "",
       position: el.position,
       startTime: new Date(el.startTime).toISOString().slice(0, 16),
       endTime: new Date(el.endTime).toISOString().slice(0, 16),
-      candidatesText: el.candidates.map((c) => c.name).join(", "),
+      candidateResidentIds,
       status: el.status,
     });
     setActiveTab("elections");
@@ -230,18 +293,18 @@ export default function EstateExcoPage() {
   async function handleSaveElection(e: FormEvent) {
     e.preventDefault();
     if (!token) return;
+    if (electionForm.candidateResidentIds.length < 2) {
+      showToast("Select at least two active residents as candidates.", "error");
+      return;
+    }
     setSavingElection(true);
     try {
-      const candidateNames = electionForm.candidatesText
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean);
       const body = {
         title: electionForm.title, description: electionForm.description || undefined,
         position: electionForm.position,
         startTime: new Date(electionForm.startTime).toISOString(),
         endTime: new Date(electionForm.endTime).toISOString(),
-        candidates: candidateNames.map((name) => ({ name, position: electionForm.position })),
+        candidates: electionForm.candidateResidentIds.map((residentId) => ({ residentId })),
         status: electionForm.status,
       };
       if (electionForm.id) {
@@ -305,7 +368,7 @@ export default function EstateExcoPage() {
         </div>
       ),
     },
-    { key: "phone", label: "Phone", render: (r) => <span style={{ fontFamily: "monospace", fontSize: 13 }}>{r.phone}</span> },
+    { key: "phone", label: "Phone", render: (r) => <span style={{ fontFamily: "monospace", fontSize: 13 }}>{r.phone || "—"}</span> },
     {
       key: "tenure", label: "Tenure",
       render: (r) => {
@@ -373,7 +436,7 @@ export default function EstateExcoPage() {
                 {memberForm.id ? "Edit ExCo Member" : "Add ExCo Member"}
               </h3>
               <p className="td-muted" style={{ fontSize: 13, marginBottom: 16 }}>
-                The estate can specify a tenure duration. Members are automatically marked for renewal when their tenure expires.
+                ExCo members must be selected from the estate&apos;s active residents. Tenure is still tracked here and members are automatically marked for renewal when their tenure expires.
               </p>
               <form onSubmit={handleSaveMember} className="estate-form-grid">
                 <label>Position
@@ -381,14 +444,23 @@ export default function EstateExcoPage() {
                     {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </label>
-                <label>Full name
-                  <input className="form-input" value={memberForm.fullName} onChange={(e) => setMemberForm((f) => ({ ...f, fullName: e.target.value }))} required />
-                </label>
-                <label>Phone number
-                  <input className="form-input" type="tel" value={memberForm.phone} onChange={(e) => setMemberForm((f) => ({ ...f, phone: e.target.value }))} required placeholder="+234…" />
-                </label>
-                <label>Email (optional)
-                  <input className="form-input" type="email" value={memberForm.email} onChange={(e) => setMemberForm((f) => ({ ...f, email: e.target.value }))} />
+                <label>
+                  Assign resident
+                  <select
+                    className="form-input"
+                    value={memberForm.residentId}
+                    onChange={(e) => setMemberForm((f) => ({ ...f, residentId: e.target.value }))}
+                    required
+                  >
+                    <option value="">Select an active resident</option>
+                    {activeResidents.map((resident) => (
+                      <option key={resident.id} value={resident.id}>
+                        {resident.fullName}
+                        {resident.houseNumber ? ` · House ${resident.houseNumber}` : ""}
+                        {resident.residentType ? ` · ${resident.residentType}` : ""}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label>
                   Tenure start date
@@ -406,11 +478,26 @@ export default function EstateExcoPage() {
                     <option value="INACTIVE">Inactive</option>
                   </select>
                 </label>
+                <div className="estate-form-wide" style={{ borderRadius: 14, border: "1px solid var(--border)", padding: 14, background: "var(--surface)" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Selected resident details</div>
+                  {selectedMemberResident ? (
+                    <div style={{ display: "grid", gap: 4, fontSize: 13 }}>
+                      <div><strong>{selectedMemberResident.fullName}</strong>{selectedMemberResident.houseNumber ? ` · House ${selectedMemberResident.houseNumber}` : ""}</div>
+                      <div className="td-muted">{selectedMemberResident.residentType}</div>
+                      <div>Phone: {selectedMemberResident.phone || "No phone on resident profile yet"}</div>
+                      <div>Email: {selectedMemberResident.email || "No email on resident profile yet"}</div>
+                    </div>
+                  ) : (
+                    <div className="td-muted" style={{ fontSize: 13 }}>
+                      Pick one active resident from the dropdown to assign this office.
+                    </div>
+                  )}
+                </div>
                 <label className="estate-form-wide">Bio / note (optional)
                   <textarea className="form-input" rows={2} value={memberForm.bio} onChange={(e) => setMemberForm((f) => ({ ...f, bio: e.target.value }))} placeholder="Brief description of this member's role" />
                 </label>
                 <div className="estate-form-actions estate-form-wide">
-                  <button type="submit" className="btn btn-primary" disabled={savingMember}>{savingMember ? "Saving…" : memberForm.id ? "Update Member" : "Add Member"}</button>
+                  <button type="submit" className="btn btn-primary" disabled={savingMember || activeResidents.length === 0}>{savingMember ? "Saving…" : memberForm.id ? "Update Member" : "Add Member"}</button>
                   {memberForm.id ? <button type="button" className="btn btn-secondary" onClick={() => setMemberForm(initialMemberForm)}>Cancel</button> : null}
                 </div>
               </form>
@@ -434,7 +521,7 @@ export default function EstateExcoPage() {
               </h3>
               <p className="td-muted" style={{ fontSize: 13, marginBottom: 16 }}>
                 Votes are transparent — resident names and positions are visible to all.
-                Set a start and end time; voting closes automatically when the period ends.
+                Candidates must be selected from active residents of this estate, then voting opens and closes on the schedule you set.
               </p>
               <form onSubmit={handleSaveElection} className="estate-form-grid">
                 <label>Election title
@@ -459,14 +546,59 @@ export default function EstateExcoPage() {
                   </select>
                 </label>
                 <label className="estate-form-wide">
-                  Candidates (comma-separated names)
-                  <input className="form-input" value={electionForm.candidatesText} onChange={(e) => setElectionForm((f) => ({ ...f, candidatesText: e.target.value }))} placeholder="Adebola James, Kemi Osei, Tunde Bello" required />
+                  Candidates (multi-select active residents)
+                  <select
+                    className="form-input"
+                    multiple
+                    size={Math.min(Math.max(activeResidents.length, 4), 10)}
+                    value={electionForm.candidateResidentIds}
+                    onChange={(e) =>
+                      setElectionForm((f) => ({
+                        ...f,
+                        candidateResidentIds: Array.from(e.currentTarget.selectedOptions, (option) => option.value),
+                      }))
+                    }
+                    required
+                  >
+                    {activeResidents.map((resident) => (
+                      <option key={resident.id} value={resident.id}>
+                        {resident.fullName}
+                        {resident.houseNumber ? ` · House ${resident.houseNumber}` : ""}
+                        {resident.residentType ? ` · ${resident.residentType}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="td-muted" style={{ display: "block", marginTop: 6, fontSize: 12 }}>
+                    Hold Ctrl/Cmd to select multiple residents from the dropdown list.
+                  </span>
                 </label>
+                <div className="estate-form-wide" style={{ borderRadius: 14, border: "1px solid var(--border)", padding: 14, background: "var(--surface)" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
+                    Selected candidates ({selectedElectionResidents.length})
+                  </div>
+                  {selectedElectionResidents.length > 0 ? (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                      {selectedElectionResidents.map((resident) => (
+                        <span
+                          key={resident.id}
+                          style={{ fontSize: 12, padding: "6px 10px", borderRadius: 999, background: "var(--bg)", border: "1px solid var(--border)" }}
+                        >
+                          {resident.fullName}
+                          {resident.houseNumber ? ` · House ${resident.houseNumber}` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="td-muted" style={{ fontSize: 13 }}>
+                      Choose at least two active residents as candidates.
+                    </div>
+                  )}
+                </div>
                 <label className="estate-form-wide">Description (optional)
                   <textarea className="form-input" rows={2} value={electionForm.description} onChange={(e) => setElectionForm((f) => ({ ...f, description: e.target.value }))} placeholder="Brief context for this election" />
                 </label>
                 <div className="estate-form-actions estate-form-wide">
-                  <button type="submit" className="btn btn-primary" disabled={savingElection}>{savingElection ? "Saving…" : electionForm.id ? "Update Election" : "Create Election"}</button>
+                  <button type="submit" className="btn btn-primary" disabled={savingElection || activeResidents.length < 2}>{savingElection ? "Saving…" : electionForm.id ? "Update Election" : "Create Election"}</button>
                   {electionForm.id ? <button type="button" className="btn btn-secondary" onClick={() => setElectionForm(buildInitialElectionForm())}>Cancel</button> : null}
                 </div>
               </form>
