@@ -135,64 +135,12 @@ export default function ResidentPassPage() {
 
       <div className="card" style={{ marginBottom: 24 }}>
         <div className="card-header">
-          <strong>Your House Entry / Exit Codes</strong>
+          <strong>Resident Gate Access</strong>
         </div>
-        <div
-          className="card-body"
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: "var(--ink3)",
-                letterSpacing: 1,
-                marginBottom: 6,
-              }}
-            >
-              ENTRY CODE
-            </div>
-            <code
-              style={{
-                fontSize: 24,
-                fontWeight: 800,
-                letterSpacing: 4,
-                background: "var(--bg)",
-                padding: "10px 16px",
-                borderRadius: 8,
-                display: "inline-block",
-              }}
-            >
-              {resident?.accessCode ?? "—"}
-            </code>
-          </div>
-          <div>
-            <div
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: "var(--ink3)",
-                letterSpacing: 1,
-                marginBottom: 6,
-              }}
-            >
-              EXIT CODE
-            </div>
-            <code
-              style={{
-                fontSize: 24,
-                fontWeight: 800,
-                letterSpacing: 4,
-                background: "var(--bg)",
-                padding: "10px 16px",
-                borderRadius: 8,
-                display: "inline-block",
-              }}
-            >
-              {resident?.exitCode ?? "—"}
-            </code>
-          </div>
+        <div className="card-body" style={{ color: "var(--ink2)", lineHeight: 1.7 }}>
+          Resident gate access now uses the short-lived live QR on your{" "}
+          <a href="/resident">overview dashboard</a>. Shared resident or house codes are no longer valid
+          for gate clearance.
         </div>
       </div>
 

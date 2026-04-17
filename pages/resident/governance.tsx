@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ResidentPortalShell from "../../components/auth/ResidentPortalShell";
 import PageMeta from "../../components/layout/PageMeta";
 import PageHeader from "../../components/ui/PageHeader";
@@ -28,7 +28,13 @@ interface ElectionCandidate {
   bio?: string | null;
   voteCount: number;
   // Transparent: all voter names & houses visible in real time
-  voters: Array<{ residentId: string; fullName: string; houseNumber: string | null; votedAt: string }>;
+  voters: Array<{
+    residentId: string;
+    fullName: string;
+    houseNumber: string | null;
+    position?: string | null;
+    votedAt: string;
+  }>;
 }
 
 interface Election {
@@ -95,7 +101,7 @@ export default function ResidentGovernancePage() {
   const [expandedElectionId, setExpandedElectionId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"exco" | "elections">("exco");
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!token) return;
     setLoading(true);
     setError("");
@@ -107,7 +113,7 @@ export default function ResidentGovernancePage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [token]);
 
   useEffect(() => { void loadData(); }, [token, dataRefreshVersion]);
 
@@ -132,6 +138,20 @@ export default function ResidentGovernancePage() {
   const inactiveMembers = useMemo(() => data?.exco.filter((m) => m.status !== "ACTIVE") ?? [], [data]);
   const openElections = useMemo(() => data?.elections.filter((e) => isOpen(e)) ?? [], [data]);
   const closedElections = useMemo(() => data?.elections.filter((e) => e.status === "CLOSED") ?? [], [data]);
+
+  useEffect(() => {
+    if (!token || openElections.length === 0) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void loadData();
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loadData, openElections.length, token]);
 
   return (
     <ResidentPortalShell topbarTitle="Governance" breadcrumb="Governance">
@@ -387,7 +407,9 @@ export default function ResidentGovernancePage() {
                                     key={v.residentId}
                                     style={{ fontSize: 12, padding: "4px 10px", borderRadius: 999, background: "var(--surface)", border: "1px solid var(--border)", color: "var(--ink2)" }}
                                   >
-                                    {v.fullName}{v.houseNumber ? ` · House ${v.houseNumber}` : ""}
+                                    {v.fullName}
+                                    {v.position ? ` · ${v.position}` : ""}
+                                    {v.houseNumber ? ` · House ${v.houseNumber}` : ""}
                                   </span>
                                 ))}
                               </div>
