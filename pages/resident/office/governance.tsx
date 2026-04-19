@@ -1,4 +1,4 @@
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import ResidentPortalShell from "../../../components/auth/ResidentPortalShell";
 import PageMeta from "../../../components/layout/PageMeta";
 import PageHeader from "../../../components/ui/PageHeader";
@@ -32,6 +32,16 @@ interface GovernanceElection {
   }>;
 }
 
+interface GovernanceApprovalStep {
+  id: string;
+  orderIndex: number;
+  roleLabel: string;
+  approverName?: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED" | "SKIPPED";
+  notes?: string | null;
+  decidedAt?: string | null;
+}
+
 interface GovernanceApproval {
   id: string;
   title: string;
@@ -42,6 +52,38 @@ interface GovernanceApproval {
   approvers: string[];
   entityType?: string | null;
   entityId?: string | null;
+  steps: GovernanceApprovalStep[];
+}
+
+interface ApprovalSupportTypeOption {
+  value: string;
+  label: string;
+  description: string;
+  entityTypes: Array<{
+    value: string;
+    label: string;
+  }>;
+}
+
+interface ApprovalSupportEntityOption {
+  approvalType: string;
+  entityType: string;
+  entityId: string;
+  label: string;
+  helper?: string | null;
+}
+
+interface ApprovalSupportApproverOption {
+  id: string;
+  position: string;
+  fullName: string;
+  phone?: string | null;
+  label: string;
+}
+
+interface ApprovalSupportStatusOption {
+  value: string;
+  label: string;
 }
 
 interface GovernanceOverviewResponse {
@@ -57,19 +99,28 @@ interface GovernanceOverviewResponse {
   members: GovernanceMember[];
   elections: GovernanceElection[];
   approvals: GovernanceApproval[];
+  approvalSupport: {
+    guidance: string;
+    types: ApprovalSupportTypeOption[];
+    statuses: ApprovalSupportStatusOption[];
+    approverOptions: ApprovalSupportApproverOption[];
+    entityOptions: ApprovalSupportEntityOption[];
+  };
 }
 
-const initialApprovalForm = {
-  id: "",
-  type: "EXPENSE",
-  title: "",
-  entityType: "",
-  entityId: "",
-  status: "PENDING",
-  requiredApprovals: "1",
-  receivedApprovals: "0",
-  approvers: "",
-};
+function buildInitialApprovalForm() {
+  return {
+    id: "",
+    type: "EXPENSE",
+    title: "",
+    entityType: "ESTATE_EXPENSE",
+    entityId: "",
+    status: "PENDING",
+    requiredApprovals: "1",
+    receivedApprovals: "0",
+    approverOptionIds: [] as string[],
+  };
+}
 
 function formatDateTime(value: string) {
   const parsed = new Date(value);
@@ -88,7 +139,9 @@ export default function ResidentOfficeGovernancePage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [approvalForm, setApprovalForm] = useState(initialApprovalForm);
+  const [approvalForm, setApprovalForm] = useState(buildInitialApprovalForm);
+  const [approverDropdownOpen, setApproverDropdownOpen] = useState(false);
+  const approverDropdownRef = useRef<HTMLDivElement | null>(null);
 
   function loadGovernanceOverview(currentToken: string) {
     let cancelled = false;
@@ -131,10 +184,175 @@ export default function ResidentOfficeGovernancePage() {
     return loadGovernanceOverview(token);
   }, [token]);
 
+  useEffect(() => {
+    if (!approverDropdownOpen) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!approverDropdownRef.current?.contains(event.target as Node)) {
+        setApproverDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, [approverDropdownOpen]);
+
   const activeMembers = useMemo(
     () => (data?.members ?? []).filter((member) => member.status === "ACTIVE"),
     [data],
   );
+
+  const approvalTypeOptions = data?.approvalSupport.types ?? [];
+
+  const approverOptions = useMemo(() => {
+    const baseOptions = data?.approvalSupport.approverOptions ?? [];
+    const optionMap = new Map<string, ApprovalSupportApproverOption>();
+
+    for (const option of baseOptions) {
+      optionMap.set(option.id, option);
+    }
+
+    for (const approval of data?.approvals ?? []) {
+      for (const step of approval.steps ?? []) {
+        const alreadyExists = Array.from(optionMap.values()).some(
+          (option) =>
+            option.position === step.roleLabel &&
+            (step.approverName ? option.fullName === step.approverName : true),
+        );
+
+        if (alreadyExists) {
+          continue;
+        }
+
+        const legacyId = `legacy:${step.roleLabel}:${step.approverName ?? ""}`;
+        optionMap.set(legacyId, {
+          id: legacyId,
+          position: step.roleLabel,
+          fullName: step.approverName ?? step.roleLabel,
+          phone: null,
+          label: step.approverName
+            ? `${step.roleLabel} · ${step.approverName}`
+            : step.roleLabel,
+        });
+      }
+    }
+
+    return Array.from(optionMap.values());
+  }, [data]);
+
+  const currentApprovalType = useMemo(
+    () =>
+      approvalTypeOptions.find((option) => option.value === approvalForm.type) ??
+      approvalTypeOptions[0] ??
+      null,
+    [approvalForm.type, approvalTypeOptions],
+  );
+
+  const currentEntityTypeOptions = currentApprovalType?.entityTypes ?? [];
+
+  const currentEntityOptions = useMemo(
+    () =>
+      (data?.approvalSupport.entityOptions ?? []).filter(
+        (option) =>
+          option.approvalType === approvalForm.type &&
+          (!approvalForm.entityType || option.entityType === approvalForm.entityType),
+      ),
+    [approvalForm.entityType, approvalForm.type, data],
+  );
+
+  const selectedApproverOptions = useMemo(
+    () =>
+      approvalForm.approverOptionIds
+        .map((optionId) => approverOptions.find((option) => option.id === optionId) ?? null)
+        .filter((option): option is ApprovalSupportApproverOption => Boolean(option)),
+    [approverOptions, approvalForm.approverOptionIds],
+  );
+
+  const approverDropdownLabel = useMemo(() => {
+    if (selectedApproverOptions.length === 0) {
+      return "Select approving offices";
+    }
+
+    if (selectedApproverOptions.length <= 2) {
+      return selectedApproverOptions.map((option) => option.fullName).join(", ");
+    }
+
+    return `${selectedApproverOptions.length} approvers selected`;
+  }, [selectedApproverOptions]);
+
+  useEffect(() => {
+    if (!approvalTypeOptions.length) {
+      return;
+    }
+
+    const resolvedType =
+      approvalTypeOptions.find((option) => option.value === approvalForm.type) ??
+      approvalTypeOptions[0];
+    const entityTypes = resolvedType.entityTypes ?? [];
+    const entityTypeStillValid = entityTypes.some(
+      (option) => option.value === approvalForm.entityType,
+    );
+    const nextEntityType = entityTypeStillValid
+      ? approvalForm.entityType
+      : entityTypes[0]?.value ?? "";
+
+    if (
+      resolvedType.value !== approvalForm.type ||
+      nextEntityType !== approvalForm.entityType
+    ) {
+      setApprovalForm((current) => ({
+        ...current,
+        type: resolvedType.value,
+        entityType: nextEntityType,
+        entityId:
+          entityTypeStillValid && resolvedType.value === current.type ? current.entityId : "",
+      }));
+    }
+  }, [approvalForm.entityType, approvalForm.type, approvalTypeOptions]);
+
+  useEffect(() => {
+    if (!approvalForm.entityId) {
+      return;
+    }
+
+    const entityStillValid = currentEntityOptions.some(
+      (option) => option.entityId === approvalForm.entityId,
+    );
+
+    if (!entityStillValid) {
+      setApprovalForm((current) => ({
+        ...current,
+        entityId: "",
+      }));
+    }
+  }, [approvalForm.entityId, currentEntityOptions]);
+
+  function handleApprovalTypeChange(nextType: string) {
+    const nextTypeConfig =
+      approvalTypeOptions.find((option) => option.value === nextType) ?? null;
+
+    setApprovalForm((current) => ({
+      ...current,
+      type: nextType,
+      entityType: nextTypeConfig?.entityTypes[0]?.value ?? "",
+      entityId: "",
+    }));
+  }
+
+  function toggleApproverOption(optionId: string) {
+    setApprovalForm((current) => {
+      const exists = current.approverOptionIds.includes(optionId);
+
+      return {
+        ...current,
+        approverOptionIds: exists
+          ? current.approverOptionIds.filter((currentId) => currentId !== optionId)
+          : [...current.approverOptionIds, optionId],
+      };
+    });
+  }
 
   async function handleSaveApproval(event: FormEvent) {
     event.preventDefault();
@@ -143,25 +361,42 @@ export default function ResidentOfficeGovernancePage() {
       return;
     }
 
+    if (selectedApproverOptions.length === 0) {
+      showToast("Select at least one approver for this request.", "error");
+      return;
+    }
+
+    const requiredApprovals = Number(approvalForm.requiredApprovals) || 1;
+    const receivedApprovals = Number(approvalForm.receivedApprovals) || 0;
+
+    if (requiredApprovals > selectedApproverOptions.length) {
+      showToast(
+        "Required approvals cannot be more than the selected approval levels.",
+        "error",
+      );
+      return;
+    }
+
+    if (receivedApprovals > requiredApprovals) {
+      showToast("Received approvals cannot be more than required approvals.", "error");
+      return;
+    }
+
     setSaving(true);
 
     try {
-      const approverLabels = approvalForm.approvers
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
-
       const body = {
         type: approvalForm.type,
         title: approvalForm.title,
         entityType: approvalForm.entityType || undefined,
         entityId: approvalForm.entityId || undefined,
         status: approvalForm.status,
-        requiredApprovals: Number(approvalForm.requiredApprovals) || 1,
-        receivedApprovals: Number(approvalForm.receivedApprovals) || 0,
-        steps: approverLabels.map((label, index) => ({
+        requiredApprovals,
+        receivedApprovals,
+        steps: selectedApproverOptions.map((option, index) => ({
           orderIndex: index + 1,
-          roleLabel: label,
+          roleLabel: option.position,
+          approverName: option.fullName,
           status: "PENDING",
         })),
       };
@@ -182,7 +417,8 @@ export default function ResidentOfficeGovernancePage() {
         showToast("Governance request created.", "success");
       }
 
-      setApprovalForm(initialApprovalForm);
+      setApprovalForm(buildInitialApprovalForm());
+      setApproverDropdownOpen(false);
       void loadGovernanceOverview(token);
     } catch (requestError) {
       showToast(
@@ -219,6 +455,24 @@ export default function ResidentOfficeGovernancePage() {
   }
 
   function fillApprovalForm(approval: GovernanceApproval) {
+    const nextApproverIds = approval.steps
+      .map((step) => {
+        const exactMatch = approverOptions.find(
+          (option) =>
+            option.position === step.roleLabel &&
+            (step.approverName ? option.fullName === step.approverName : true),
+        );
+
+        if (exactMatch) {
+          return exactMatch.id;
+        }
+
+        return (
+          approverOptions.find((option) => option.position === step.roleLabel)?.id ?? null
+        );
+      })
+      .filter((value): value is string => Boolean(value));
+
     setApprovalForm({
       id: approval.id,
       type: approval.type,
@@ -228,8 +482,9 @@ export default function ResidentOfficeGovernancePage() {
       status: approval.status,
       requiredApprovals: `${approval.requiredApprovals}`,
       receivedApprovals: `${approval.receivedApprovals}`,
-      approvers: approval.approvers.join(", "),
+      approverOptionIds: nextApproverIds,
     });
+    setApproverDropdownOpen(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -275,6 +530,21 @@ export default function ResidentOfficeGovernancePage() {
             </strong>
           </div>
           <div className="card-body">
+            <div
+              className="estate-form-wide td-muted"
+              style={{
+                marginBottom: 18,
+                borderRadius: 14,
+                border: "1px solid var(--border)",
+                padding: 14,
+                background: "var(--surface)",
+                fontSize: 13,
+              }}
+            >
+              {data?.approvalSupport.guidance ??
+                "Approval levels are the ordered approvers you select for this request."}
+            </div>
+
             <form onSubmit={handleSaveApproval} className="estate-form-grid">
               <label>
                 Title
@@ -295,19 +565,19 @@ export default function ResidentOfficeGovernancePage() {
                 <select
                   className="form-input"
                   value={approvalForm.type}
-                  onChange={(event) =>
-                    setApprovalForm((current) => ({
-                      ...current,
-                      type: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => handleApprovalTypeChange(event.target.value)}
                 >
-                  <option value="EXPENSE">Expense</option>
-                  <option value="CAUSE">Cause</option>
-                  <option value="LEVY">Levy</option>
-                  <option value="EXCO_HANDOVER">ExCo Handover</option>
-                  <option value="POLICY">Policy</option>
+                  {approvalTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
+                {currentApprovalType ? (
+                  <div className="td-muted" style={{ fontSize: 12, marginTop: 6 }}>
+                    {currentApprovalType.description}
+                  </div>
+                ) : null}
               </label>
               <label>
                 Status
@@ -321,9 +591,11 @@ export default function ResidentOfficeGovernancePage() {
                     }))
                   }
                 >
-                  <option value="PENDING">Pending</option>
-                  <option value="APPROVED">Approved</option>
-                  <option value="REJECTED">Rejected</option>
+                  {(data?.approvalSupport.statuses ?? []).map((status) => (
+                    <option key={status.value} value={status.value}>
+                      {status.label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label>
@@ -355,21 +627,36 @@ export default function ResidentOfficeGovernancePage() {
                 />
               </label>
               <label>
-                Entity type
-                <input
+                Related record type
+                <select
                   className="form-input"
                   value={approvalForm.entityType}
                   onChange={(event) =>
                     setApprovalForm((current) => ({
                       ...current,
                       entityType: event.target.value,
+                      entityId: "",
                     }))
                   }
-                />
+                  disabled={currentEntityTypeOptions.length === 0}
+                >
+                  {currentEntityTypeOptions.length === 0 ? (
+                    <option value="">No linked record required</option>
+                  ) : null}
+                  {currentEntityTypeOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <div className="td-muted" style={{ fontSize: 12, marginTop: 6 }}>
+                  This replaces the raw entity ID field. Users now pick the actual estate record
+                  instead of typing an internal ID.
+                </div>
               </label>
               <label className="estate-form-wide">
-                Entity ID
-                <input
+                Related record
+                <select
                   className="form-input"
                   value={approvalForm.entityId}
                   onChange={(event) =>
@@ -378,22 +665,126 @@ export default function ResidentOfficeGovernancePage() {
                       entityId: event.target.value,
                     }))
                   }
-                />
+                  disabled={currentEntityTypeOptions.length === 0 || currentEntityOptions.length === 0}
+                >
+                  <option value="">
+                    {currentEntityTypeOptions.length === 0
+                      ? "No linked record needed for this approval type"
+                      : currentEntityOptions.length === 0
+                        ? "No matching records available yet"
+                        : "Select a linked record"}
+                  </option>
+                  {currentEntityOptions.map((option) => (
+                    <option key={`${option.entityType}:${option.entityId}`} value={option.entityId}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {approvalForm.entityId ? (
+                  <div className="td-muted" style={{ fontSize: 12, marginTop: 6 }}>
+                    {currentEntityOptions.find(
+                      (option) => option.entityId === approvalForm.entityId,
+                    )?.helper ?? ""}
+                  </div>
+                ) : null}
               </label>
-              <label className="estate-form-wide">
-                Approver roles or names
-                <input
+              <div className="estate-form-wide" ref={approverDropdownRef}>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>Approver roles or names</div>
+                <button
+                  type="button"
                   className="form-input"
-                  value={approvalForm.approvers}
-                  onChange={(event) =>
-                    setApprovalForm((current) => ({
-                      ...current,
-                      approvers: event.target.value,
-                    }))
-                  }
-                  placeholder="President, Finance Secretary, Auditor"
-                />
-              </label>
+                  onClick={() => setApproverDropdownOpen((current) => !current)}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                    cursor: "pointer",
+                    minHeight: 48,
+                    background: "var(--surface-elevated, #fff)",
+                  }}
+                >
+                  <span
+                    style={{
+                      color:
+                        selectedApproverOptions.length > 0
+                          ? "var(--text)"
+                          : "var(--muted-text, #6b7280)",
+                    }}
+                  >
+                    {approverDropdownLabel}
+                  </span>
+                  <span className="td-muted" style={{ fontSize: 12 }}>
+                    {approverDropdownOpen ? "Close" : "Open"}
+                  </span>
+                </button>
+                {approverDropdownOpen ? (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      borderRadius: 14,
+                      border: "1px solid var(--border)",
+                      background: "var(--surface-elevated, #fff)",
+                      boxShadow: "0 18px 38px rgba(15, 23, 42, 0.08)",
+                      maxHeight: 260,
+                      overflowY: "auto",
+                    }}
+                  >
+                    {approverOptions.length ? (
+                      approverOptions.map((option) => {
+                        const selected = approvalForm.approverOptionIds.includes(option.id);
+
+                        return (
+                          <label
+                            key={option.id}
+                            style={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: 12,
+                              padding: "12px 14px",
+                              borderBottom: "1px solid var(--border)",
+                              cursor: "pointer",
+                              background: selected ? "rgba(47, 110, 74, 0.06)" : "transparent",
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => toggleApproverOption(option.id)}
+                              style={{ marginTop: 2 }}
+                            />
+                            <div>
+                              <div style={{ fontWeight: 600, fontSize: 14 }}>{option.fullName}</div>
+                              <div className="td-muted" style={{ fontSize: 12 }}>
+                                {option.position}
+                                {option.phone ? ` · ${option.phone}` : ""}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })
+                    ) : (
+                      <div className="td-muted" style={{ padding: 14, fontSize: 13 }}>
+                        No active ExCo approvers are available yet.
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+                <div className="td-muted" style={{ fontSize: 12, marginTop: 8 }}>
+                  The order you select approvers becomes the approval levels for this request.
+                </div>
+                {selectedApproverOptions.length ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                    {selectedApproverOptions.map((option, index) => (
+                      <StatusBadge key={option.id} tone="gray">
+                        Level {index + 1}: {option.position}
+                      </StatusBadge>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
               <div className="estate-form-actions estate-form-wide">
                 <button type="submit" className="btn btn-primary" disabled={saving}>
                   {saving
@@ -406,7 +797,10 @@ export default function ResidentOfficeGovernancePage() {
                   <button
                     type="button"
                     className="btn btn-secondary"
-                    onClick={() => setApprovalForm(initialApprovalForm)}
+                    onClick={() => {
+                      setApprovalForm(buildInitialApprovalForm());
+                      setApproverDropdownOpen(false);
+                    }}
                   >
                     Cancel
                   </button>
