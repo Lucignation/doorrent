@@ -246,7 +246,9 @@ export default function ResidentDashboardPage() {
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     {data.officeAccess.permissions.includes("finance_overview") ? (
                       <a className="btn btn-secondary btn-sm" href="/resident/office/finance">
-                        Finance Overview
+                        {data.officeAccess.permissions.includes("finance_management")
+                          ? "Finance Office"
+                          : "Finance Overview"}
                       </a>
                     ) : null}
                     {data.officeAccess.permissions.includes("gate_coordination") ? (
@@ -256,7 +258,24 @@ export default function ResidentDashboardPage() {
                     ) : null}
                     {data.officeAccess.permissions.includes("meetings_overview") ? (
                       <a className="btn btn-secondary btn-sm" href="/resident/office/meetings">
-                        Meetings Overview
+                        {data.officeAccess.permissions.includes("meetings_management")
+                          ? "Meetings Office"
+                          : "Meetings Overview"}
+                      </a>
+                    ) : null}
+                    {data.officeAccess.permissions.includes("treasury_overview") ? (
+                      <a className="btn btn-secondary btn-sm" href="/resident/office/treasury">
+                        Treasury Overview
+                      </a>
+                    ) : null}
+                    {data.officeAccess.permissions.includes("governance_management") ? (
+                      <a className="btn btn-secondary btn-sm" href="/resident/office/exco">
+                        ExCo & Elections
+                      </a>
+                    ) : null}
+                    {data.officeAccess.permissions.includes("governance_overview") ? (
+                      <a className="btn btn-secondary btn-sm" href="/resident/office/governance">
+                        Governance Overview
                       </a>
                     ) : null}
                   </div>
