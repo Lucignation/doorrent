@@ -45,6 +45,7 @@ type AuditResponse = {
 function actorTone(actorType: AuditLogRow["actorType"]): BadgeTone {
   if (actorType === "LANDLORD") return "green";
   if (actorType === "TEAM_MEMBER") return "blue";
+  if (actorType === "RESIDENT_OFFICE") return "gold";
   if (actorType === "SYSTEM") return "amber";
   return "gray";
 }
@@ -52,6 +53,7 @@ function actorTone(actorType: AuditLogRow["actorType"]): BadgeTone {
 function actorLabel(actorType: AuditLogRow["actorType"]) {
   if (actorType === "LANDLORD") return "Estate admin";
   if (actorType === "TEAM_MEMBER") return "Team member";
+  if (actorType === "RESIDENT_OFFICE") return "Resident office";
   if (actorType === "SYSTEM") return "System";
   return actorType;
 }
